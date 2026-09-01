@@ -9,7 +9,7 @@ To provide global age-verification functionality, O-SAVS stores the following mi
 - **Discord User ID:** Stored as text to uniquely identify users across participating servers.
 - **VRChat User ID:** Stored as text to map verified status between Discord and VRChat accounts.
 - **Server Settings:** Guild IDs, role IDs, log channel IDs, and custom verification prefix codes configured by server administrators.
-- **Global Sanction Records:** Discord User IDs, reason, timestamp, and moderator ID for globally banned accounts to enforce system-wide exclusions.
+- **Global Sanction Records:** Discord User IDs, internal reason codes, timestamps, and moderator IDs for globally banned accounts to enforce system-wide exclusions.
 
 ## 2. Information We DO NOT Collect
 - **Personal Identification Documents:** We do not request, collect, or store real-name IDs, passports, driver's licenses, or facial images.
@@ -20,11 +20,11 @@ To provide global age-verification functionality, O-SAVS stores the following mi
 Collected data is used solely to:
 - Verify that a Discord account is linked to a VRChat profile containing a valid verification code.
 - Automatically assign verified 18+ roles across mutual Discord servers operating O-SAVS.
-- Maintain global ban lists and audit administrative actions (`.link`, `.unlink`, `.ban`, `.unban`, `.get_ban`) to protect participating communities from unauthorized or underage access.
+- Maintain global ban lists and audit administrative actions (`.link`, `.unlink`, `.ban`, `.unban`, `.get_ban`) to protect participating communities from unauthorized or unsafe access.
 
 ## 4. Data Retention & Deletion
 - **User Unlinking:** If a user is unlinked, their record is permanently deleted from the active verification database.
-- **Data Removal Requests:** Users may request complete data removal at any time by opening a ticket in our Support Server (Noodle's Nexus) or contacting a Bot Administrator.
+- **Data Removal Requests:** Users may request complete data removal at any time by opening a ticket in the [Noodle's Nexus](https://discord.gg/PeXzxBeUcB) support server.
 - **Server Removal:** When O-SAVS leaves a server, server configuration settings are scheduled for automatic purge.
 
 ## 5. Third-Party Services
