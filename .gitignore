@@ -1,14 +1,7 @@
 __pycache__/
 */__pycache__/
 */*/__pycache__/
-*/*/*/__pycache__/
 *.py[cod]
-*$py.class
-.env
-config.json
-secrets.py
 *.db
 *.json
-.DS_Store
-.vscode/
-.idea/
+.env
