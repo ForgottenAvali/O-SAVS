@@ -1,5 +1,7 @@
 # O-SAVS Privacy Policy
 
+[📖 README](README.md) | [⚖️ License](LICENSE) | [📜 Terms of Service](TERMS.md)
+
 Last Updated: August 31, 2026
 
 O-SAVS ("the Bot") is committed to protecting user privacy and maintaining transparency regarding data collection, storage, and usage.
