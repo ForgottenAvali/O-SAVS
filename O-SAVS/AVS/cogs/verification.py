@@ -14,10 +14,13 @@ from data.database import (
     is_vrchat_id_verified,
     add_verified_user,
     remove_verified_user,
-    remove_verified_user,
     save_server_settings,
     get_all_verified_users,
-    delete_server_settings
+    delete_server_settings,
+    is_banned,
+    add_banned_user,
+    remove_banned_user,
+    get_banned_user
 )
 
 
@@ -148,8 +151,15 @@ class VRChatUsername(ui.Modal, title="VRChat Verification"):
         if existing_vrc_id:
             return await modal_interaction.followup.send(
                 f"❌ Your Discord account is already linked to VRChat ID (`{existing_vrc_id}`).\n"
-                "If you need to unlink this account, please contact forgotten_avali through [Noodle's Nexus](https://discord.gg/PeXzxBeUcB).",
+                "If you need to unlink this account, you may join the [Noodle's Nexus](https://discord.gg/PeXzxBeUcB) support server.",
                 ephemeral=True
+            )
+
+        banned_user = await is_banned(modal_interaction.user.id)
+        if banned_user:
+            return await modal_interaction.followup.send(
+                f"❌ Your Discord account was banned by the administration team for O-SAVS.\n"
+                "If you believe this ban was issued in error you may appeal by joining the [Noodle's Nexus](https://discord.gg/PeXzxBeUcB) support server."
             )
 
         user_input = self.userID.value.strip()
@@ -162,7 +172,8 @@ class VRChatUsername(ui.Modal, title="VRChat Verification"):
                 title="Invalid Input!",
                 description=(
                     "Could not detect a valid VRChat User ID.\n"
-                    "Please paste your **profile link** (e.g. `https://vrchat.com/home/user/usr_...`) or raw **User ID** (`usr_...`).\n\n"
+                    "Please paste your **profile link** (e.g. `https://vrchat.com/home/user/usr_...`) or raw **User ID** (`usr_...`).\n"
+                    "If you believe this is an error you may get assistance in the [Noodle's Nexus](https://discord.gg/PeXzxBeUcB) support server.\n\n"
                     f"You entered: `{user_input}`"
                 ),
                 color=discord.Color.red()
@@ -424,10 +435,14 @@ class AgeVerify(commands.Cog):
 
         vrc_user = await get_vrchat_user(vrchat_id)
         if not vrc_user:
-            return await ctx.send(f"❌ Invalid VRChat User ID or unable to fetch user profile: `{vrchat_id}`")
+            embed = Embed(
+                title="❌ VRChat User Not Found",
+                description=f"Invalid VRChat User ID or unable to fetch user profile for `{vrchat_id}`.",
+                color=discord.Color.red()
+            )
+            return await ctx.send(embed=embed)
 
         username = vrc_user.get("username", "Unknown User")
-
         await add_verified_user(target_user_id, vrchat_id)
 
         added_count = 0
@@ -451,9 +466,9 @@ class AgeVerify(commands.Cog):
                         await member.add_roles(role, reason=f"Global Admin Link by {ctx.author.name}" + (f": {reason}" if reason else ""))
                         added_count += 1
                     except discord.Forbidden:
-                        error_summary.append(f"• **{guild.name}:** ❌ Missing permissions to add role")
+                        error_summary.append(f"• **{guild.name}:** Missing permissions to add role")
                     except discord.HTTPException as e:
-                        error_summary.append(f"• **{guild.name}:** ❌ API error (`{e.status}`): `{e.text}`")
+                        error_summary.append(f"• **{guild.name}:** API error (`{e.status}`): `{e.text}`")
                 else:
                     already_had_count += 1
 
@@ -479,13 +494,21 @@ class AgeVerify(commands.Cog):
         if error_summary:
             summary_parts.extend(error_summary)
 
-        summary_text = "\n".join(summary_parts)
-        reason_text = f"\n- **Reason:** {reason}" if reason else ""
+        target_user = self.bot.get_user(target_user_id) or await self.bot.fetch_user(target_user_id) catch_all
+        user_tag = f"{target_user.name} (`{target_user_id}`)" if target_user else f"`{target_user_id}`"
 
-        await ctx.send(
-            f"✅ Successfully linked <@{target_user_id}> (`{target_user_id}`) to VRChat user **[{username}](https://vrchat.com/home/user/{vrchat_id})** (`{vrchat_id}`)\nReason: {reason_text}\n\n"
-            f"**Role Addition Summary:**\n{summary_text}"
+        embed = Embed(
+            title="🔗 Account Link Enforced",
+            color=discord.Color.green(),
+            timestamp=discord.utils.utcnow()
         )
+        embed.add_field(name="Target User", value=user_tag, inline=False)
+        embed.add_field(name="VRChat Profile", value=f"**[{username}](https://vrchat.com/home/user/{vrchat_id})** (`{vrchat_id}`)", inline=False)
+        embed.add_field(name="Operator", value=f"{ctx.author.name} (`{ctx.author.id}`)", inline=True)
+        embed.add_field(name="Reason", value=reason or "No reason provided", inline=False)
+        embed.add_field(name="Role Addition Summary", value="\n".join(summary_parts), inline=False)
+
+        await ctx.send(embed=embed)
 
     @link_cmd.error
     async def link_cmd_error(self, ctx: commands.Context, error: Exception):
@@ -495,12 +518,15 @@ class AgeVerify(commands.Cog):
         original_error = getattr(error, "original", error)
 
         if isinstance(original_error, commands.MissingRequiredArgument):
-            await ctx.send("⚠️ Usage: `.link <discord_user_id> <vrchat_user_id> [reason]`")
+            embed = Embed(title="⚠️ Invalid Command Usage", description="Usage: `.link <discord_user_id> <vrchat_user_id> [reason]`", color=discord.Color.gold())
+            await ctx.send(embed=embed)
         elif isinstance(original_error, commands.BadArgument):
-            await ctx.send("❌ Invalid target user ID provided. Must be a valid Discord integer ID.")
+            embed = Embed(title="❌ Invalid Argument", description="Target User ID must be a numeric Discord integer ID.", color=discord.Color.red())
+            await ctx.send(embed=embed)
         else:
             logging.error(f"[Link Error] {original_error}", exc_info=original_error)
-            await ctx.send(f"⚠️ Internal error: `{original_error}`")
+            embed = Embed(title="⚠️ Internal Error", description=f"`{original_error}`", color=discord.Color.red())
+            await ctx.send(embed=embed)
 
 
     @commands.command(name="unlink", help="Admin only: Unlink a Discord user from their VRChat account across all servers")
@@ -511,7 +537,12 @@ class AgeVerify(commands.Cog):
         vrchat_id = await get_vrchat_id_from_discord(target_user_id)
 
         if not vrchat_id:
-            return await ctx.send(f"❌ No linked VRChat account found for Discord ID `{target_user_id}`.")
+            embed = Embed(
+                title="❌ User Not Linked",
+                description=f"No linked VRChat account found for Discord ID `{target_user_id}`.",
+                color=discord.Color.red()
+            )
+            return await ctx.send(embed=embed)
 
         vrc_user = await get_vrchat_user(vrchat_id)
         username = vrc_user.get("username", "Unknown User") if vrc_user else "Unknown User"
@@ -519,7 +550,12 @@ class AgeVerify(commands.Cog):
         removed = await remove_verified_user(target_user_id)
 
         if not removed:
-            return await ctx.send(f"❌ Failed to remove database record for `<@{target_user_id}>`.")
+            embed = Embed(
+                title="❌ Database Error",
+                description=f"Failed to remove database record for `<@{target_user_id}>`.",
+                color=discord.Color.red()
+            )
+            return await ctx.send(embed=embed)
 
         removed_count = 0
         did_not_have_count = 0
@@ -542,9 +578,9 @@ class AgeVerify(commands.Cog):
                         await member.remove_roles(role, reason=f"Global Admin Unlink by {ctx.author.name}" + (f": {reason}" if reason else ""))
                         removed_count += 1
                     except discord.Forbidden:
-                        error_summary.append(f"• **{guild.name}:** ❌ Missing permissions to remove role")
+                        error_summary.append(f"• **{guild.name}:** Missing permissions to remove role")
                     except discord.HTTPException as e:
-                        error_summary.append(f"• **{guild.name}:** ❌ API error (`{e.status}`): `{e.text}`")
+                        error_summary.append(f"• **{guild.name}:** API error (`{e.status}`): `{e.text}`")
                 else:
                     did_not_have_count += 1
 
@@ -570,13 +606,21 @@ class AgeVerify(commands.Cog):
         if error_summary:
             summary_parts.extend(error_summary)
 
-        summary_text = "\n".join(summary_parts)
-        reason_text = f"\n- **Reason:** {reason}" if reason else ""
+        target_user = self.bot.get_user(target_user_id) or await self.bot.fetch_user(target_user_id) catch_all
+        user_tag = f"{target_user.name} (`{target_user_id}`)" if target_user else f"`{target_user_id}`"
 
-        await ctx.send(
-            f"✅ Successfully unlinked `<@{target_user_id}>` (`{target_user_id}`) from VRChat user **[{username}](https://vrchat.com/home/user/{vrchat_id})** (`{vrchat_id}`)\nReason: {reason_text}\n\n"
-            f"**Role Removal Summary:**\n{summary_text}"
+        embed = Embed(
+            title="🔓 Account Unlink Enforced",
+            color=discord.Color.orange(),
+            timestamp=discord.utils.utcnow()
         )
+        embed.add_field(name="Target User", value=user_tag, inline=False)
+        embed.add_field(name="Unlinked VRChat Profile", value=f"**[{username}](https://vrchat.com/home/user/{vrchat_id})** (`{vrchat_id}`)", inline=False)
+        embed.add_field(name="Operator", value=f"{ctx.author.name} (`{ctx.author.id}`)", inline=True)
+        embed.add_field(name="Reason", value=reason or "No reason provided", inline=False)
+        embed.add_field(name="Role Removal Summary", value="\n".join(summary_parts), inline=False)
+
+        await ctx.send(embed=embed)
 
     @unlink_cmd.error
     async def unlink_cmd_error(self, ctx: commands.Context, error: Exception):
@@ -586,12 +630,249 @@ class AgeVerify(commands.Cog):
         original_error = getattr(error, "original", error)
 
         if isinstance(original_error, commands.MissingRequiredArgument):
-            await ctx.send("⚠️ Usage: `.unlink <discord_user_id> [reason]`")
+            embed = Embed(title="⚠️ Invalid Command Usage", description="Usage: `.unlink <discord_user_id> [reason]`", color=discord.Color.gold())
+            await ctx.send(embed=embed)
         elif isinstance(original_error, commands.BadArgument):
-            await ctx.send("❌ Invalid User ID provided. Must be a valid Discord integer ID.")
+            embed = Embed(title="❌ Invalid Argument", description="Target User ID must be a numeric Discord integer ID.", color=discord.Color.red())
+            await ctx.send(embed=embed)
         else:
             logging.error(f"[Unlink Error] {original_error}", exc_info=original_error)
-            await ctx.send(f"⚠️ Internal error: `{original_error}`")
+            embed = Embed(title="⚠️ Internal Error", description=f"`{original_error}`", color=discord.Color.red())
+            await ctx.send(embed=embed)
+
+
+    @commands.command(name="ban", help="Admin only: Globally ban a user ID, unlink their VRChat ID, and strip roles")
+    async def ban_cmd(self, ctx: commands.Context, target_user_id: int, *, reason: str):
+        if ctx.author.id not in ALLOWED_USER_IDS:
+            return
+
+        if await is_banned(target_user_id):
+            embed = Embed(
+                title="❌ Already Banned",
+                description=f"User ID `{target_user_id}` is already globally blacklisted.",
+                color=discord.Color.red()
+            )
+            return await ctx.send(embed=embed)
+
+        target_user = self.bot.get_user(target_user_id)
+        if not target_user:
+            try:
+                target_user = await self.bot.fetch_user(target_user_id)
+            except discord.NotFound:
+                target_user = None
+
+        vrchat_id = await get_vrchat_id_from_discord(target_user_id)
+
+        await add_banned_user(
+            discord_id=target_user_id,
+            reason=reason,
+            moderator_id=ctx.author.id
+        )
+        await remove_verified_user(target_user_id)
+
+        removed_count = 0
+        did_not_have_count = 0
+        error_summary = []
+
+        for guild in self.bot.guilds:
+            member = guild.get_member(target_user_id)
+            if not member:
+                continue
+
+            settings = await get_server_settings(guild.id)
+            role_id = settings.get("verified_role")
+            if not role_id:
+                continue
+
+            role = guild.get_role(role_id)
+            if role:
+                if role in member.roles:
+                    try:
+                        await member.remove_roles(role, reason="Global Ban Enforced")
+                        removed_count += 1
+                    except discord.Forbidden:
+                        error_summary.append(f"• **{guild.name}:** Missing permissions to remove role")
+                    except discord.HTTPException as e:
+                        error_summary.append(f"• **{guild.name}:** API error (`{e.status}`): `{e.text}`")
+                else:
+                    did_not_have_count += 1
+
+            if vrchat_id:
+                await self.send_verify_log(
+                    guild=guild,
+                    action="Global User Ban",
+                    member=member,
+                    vrchat_id=vrchat_id,
+                    operator=ctx.author,
+                    reason="Global Ban Enforced"
+                )
+
+            await asyncio.sleep(0.5)
+
+        summary_parts = []
+        if removed_count > 0:
+            summary_parts.append(f"• Stripped verified role in **{removed_count}** server(s).")
+        if did_not_have_count > 0:
+            summary_parts.append(f"• User did not have the verified role in **{did_not_have_count}** server(s).")
+        if not summary_parts and not error_summary:
+            summary_parts.append("• *User was not found as a member in any mutual servers.*")
+
+        if error_summary:
+            summary_parts.extend(error_summary)
+
+        user_tag = f"{target_user.name} (`{target_user_id}`)" if target_user else f"`{target_user_id}`"
+
+        embed = Embed(
+            title="🚫 Global Ban Enforced",
+            color=discord.Color.red(),
+            timestamp=discord.utils.utcnow()
+        )
+        embed.add_field(name="Target User", value=user_tag, inline=False)
+        embed.add_field(name="Moderator", value=f"{ctx.author.name} (`{ctx.author.id}`)", inline=True)
+        embed.add_field(name="Unlinked VRChat ID", value=f"`{vrchat_id or 'None'}`", inline=True)
+        embed.add_field(name="Reason", value=reason, inline=False)
+        embed.add_field(name="Role Removal Summary", value="\n".join(summary_parts), inline=False)
+
+        await ctx.send(embed=embed)
+
+    @ban_cmd.error
+    async def ban_cmd_error(self, ctx: commands.Context, error: Exception):
+        if ctx.author.id not in ALLOWED_USER_IDS:
+            return
+
+        original_error = getattr(error, "original", error)
+
+        if isinstance(original_error, commands.MissingRequiredArgument):
+            embed = Embed(title="⚠️ Invalid Command Usage", description="Usage: `.ban <discord_user_id> <reason>`", color=discord.Color.gold())
+            await ctx.send(embed=embed)
+        elif isinstance(original_error, commands.BadArgument):
+            embed = Embed(title="❌ Invalid Argument", description="Target User ID must be a numeric Discord integer ID.", color=discord.Color.red())
+            await ctx.send(embed=embed)
+        else:
+            logging.error(f"[Ban Error] {original_error}", exc_info=original_error)
+            embed = Embed(title="⚠️ Internal Error", description=f"`{original_error}`", color=discord.Color.red())
+            await ctx.send(embed=embed)
+
+
+    @commands.command(name="unban", help="Admin only: Remove a user from the global ban list")
+    async def unban_cmd(self, ctx: commands.Context, target_user_id: int, *, reason: Optional[str] = None):
+        if ctx.author.id not in ALLOWED_USER_IDS:
+            return
+
+        if not await remove_banned_user(target_user_id):
+            embed = Embed(
+                title="❌ Not Blacklisted",
+                description=f"User ID `{target_user_id}` is not currently globally banned.",
+                color=discord.Color.red()
+            )
+            return await ctx.send(embed=embed)
+
+        target_user = self.bot.get_user(target_user_id) or await self.bot.fetch_user(target_user_id) catch_all
+        user_tag = f"{target_user.name} (`{target_user_id}`)" if target_user else f"`{target_user_id}`"
+
+        embed = Embed(
+            title="✅ Global Ban Removed",
+            color=discord.Color.green(),
+            timestamp=discord.utils.utcnow()
+        )
+        embed.add_field(name="Target User", value=user_tag, inline=False)
+        embed.add_field(name="Moderator", value=f"{ctx.author.name} (`{ctx.author.id}`)", inline=True)
+        embed.add_field(name="Reason", value=reason or "No reason provided", inline=False)
+
+        await ctx.send(embed=embed)
+
+    @unban_cmd.error
+    async def unban_cmd_error(self, ctx: commands.Context, error: Exception):
+        if ctx.author.id not in ALLOWED_USER_IDS:
+            return
+
+        original_error = getattr(error, "original", error)
+
+        if isinstance(original_error, commands.MissingRequiredArgument):
+            embed = Embed(title="⚠️ Invalid Command Usage", description="Usage: `.unban <discord_user_id> [reason]`", color=discord.Color.gold())
+            await ctx.send(embed=embed)
+        elif isinstance(original_error, commands.BadArgument):
+            embed = Embed(title="❌ Invalid Argument", description="Target User ID must be a numeric Discord integer ID.", color=discord.Color.red())
+            await ctx.send(embed=embed)
+        else:
+            logging.error(f"[Unban Error] {original_error}", exc_info=original_error)
+            embed = Embed(title="⚠️ Internal Error", description=f"`{original_error}`", color=discord.Color.red())
+            await ctx.send(embed=embed)
+
+
+    @commands.command(name="get_ban", help="Admin only: Check if a Discord user is globally banned and view ban details")
+    async def get_ban_cmd(self, ctx: commands.Context, target_user_id: int):
+        if ctx.author.id not in ALLOWED_USER_IDS:
+            return
+
+        ban_info = await get_banned_user(target_user_id)
+
+        if not ban_info:
+            embed = Embed(
+                title="✅ No Ban Record Found",
+                description=f"User ID `{target_user_id}` is **not** globally banned.",
+                color=discord.Color.green()
+            )
+            return await ctx.send(embed=embed)
+
+        reason = ban_info.get("reason", "No reason provided")
+        moderator_id = ban_info.get("moderator_id")
+        created_at = ban_info.get("timestamp")
+        if isinstance(created_at, str):
+            try:
+                created_at = datetime.fromisoformat(created_at)
+            except ValueError:
+                pass
+
+        target_user = self.bot.get_user(target_user_id)
+        if not target_user:
+            try:
+                target_user = await self.bot.fetch_user(target_user_id)
+            except discord.NotFound:
+                target_user = None
+
+        mod_user = self.bot.get_user(moderator_id) if moderator_id else None
+        if moderator_id and not mod_user:
+            try:
+                mod_user = await self.bot.fetch_user(moderator_id)
+            except discord.NotFound:
+                mod_user = None
+
+        user_tag = f"{target_user.name} (`{target_user_id}`)" if target_user else f"`{target_user_id}`"
+        mod_tag = f"{mod_user.name} (`{moderator_id}`)" if mod_user else (f"`{moderator_id}`" if moderator_id else "Unknown")
+
+        embed = Embed(
+            title="🚫 Global Ban Record Found",
+            color=discord.Color.red(),
+            timestamp=discord.utils.utcnow()
+        )
+        embed.add_field(name="Target User", value=user_tag, inline=False)
+        embed.add_field(name="Moderator", value=mod_tag, inline=True)
+
+        if created_at:
+            embed.add_field(name="Ban Date", value=f"<t:{int(created_at.timestamp())}:F>" if isinstance(created_at, datetime) else f"`{created_at}`", inline=True)
+
+        embed.add_field(name="Reason", value=reason, inline=False)
+
+        await ctx.send(embed=embed)
+
+    @get_ban_cmd.error
+    async def get_ban_cmd_error(self, ctx: commands.Context, error: Exception):
+        if ctx.author.id not in ALLOWED_USER_IDS:
+            return
+
+        original_error = getattr(error, "original", error)
+
+        if isinstance(original_error, commands.MissingRequiredArgument):
+            embed = Embed(title="⚠️ Invalid Command Usage", description="Usage: `.get_ban <discord_user_id>`", color=discord.Color.gold())
+            await ctx.send(embed=embed)
+        elif isinstance(original_error, commands.BadArgument):
+            embed = Embed(title="❌ Invalid Argument", description="Target User ID must be a numeric Discord integer ID.", color=discord.Color.red())
+            await ctx.send(embed=embed)
+        else:
+            logging.error(f"[Get Ban Error] {original_error}", exc_info=original_error)
+            embed = Embed(title="⚠️ Internal Error", description=f"`{original_error}`", color=discord.Color.red())
+            await ctx.send(embed=embed)
 
 
     @commands.Cog.listener()
