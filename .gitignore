@@ -1,11 +1,14 @@
 __pycache__/
+*/__pycache__/
+*/*/__pycache__/
+*/*/*/__pycache__/
 *.py[cod]
 *$py.class
 .env
 config.json
 secrets.py
-database.db
-vrc_auth_token.json
+*.db
+*.json
 .DS_Store
 .vscode/
 .idea/
