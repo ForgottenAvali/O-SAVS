@@ -27,6 +27,6 @@ By inviting, configuring, or using O-SAVS ("the Bot") in your Discord server, or
 O-SAVS is licensed under the **PolyForm Noncommercial License 1.0.0**. Commercial hosting, selling access to verification, or monetizing the bot's features is strictly prohibited.
 
 ## 6. Contact & Support
-For support, bug reporting, or data deletion requests, join the official support server:
+For support, bug reporting, or data deletion requests, join the official support server or create a issue on GitHub:
 - **Noodle's Nexus:** https://discord.gg/PeXzxBeUcB
 - **GitHub Repository:** https://github.com/ForgottenAvali/O-SAVS
