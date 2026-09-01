@@ -34,3 +34,13 @@ O-SAVS utilizes **SQLite (`aiosqlite`)** with text-based Snowflake column schema
 
 ```bash
 pip install discord.py aiosqlite aiohttp vrchatapi
+```
+
+---
+## License
+
+This project is licensed under the **PolyForm Noncommercial License 1.0.0**. 
+
+You are free to use, modify, and host this bot for non-commercial community use. Commercial hosting, selling, or monetization of this software is strictly prohibited. 
+
+See the full [LICENSE](LICENSE) file for details.
