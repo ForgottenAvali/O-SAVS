@@ -826,7 +826,13 @@ class AgeVerify(commands.Cog):
         created_at = ban_info.get("timestamp")
         if isinstance(created_at, str):
             try:
-                created_at = datetime.fromisoformat(created_at)
+                cleaned_ts = created_at.replace("Z", "+00:00")
+                dt = datetime.fromisoformat(cleaned_ts)
+        
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+            
+                created_at = dt
             except ValueError:
                 pass
 
