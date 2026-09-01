@@ -4,12 +4,8 @@ __pycache__/
 .env
 config.json
 secrets.py
-*.db
-*.sqlite
-*.sqlite3
-.venv/
-venv/
-env/
+database.db
+vrc_auth_token.json
 .DS_Store
 .vscode/
 .idea/
