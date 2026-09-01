@@ -3,8 +3,6 @@
 [![Discord](https://img.shields.io/badge/Discord-Join%20Community-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/PeXzxBeUcB)
 [![Ko-fi](https://img.shields.io/badge/Ko--fi-Support%20Me-F16061?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/forgottenavali)
 
-[🔒 Privacy Policy](PRIVACY.md) | [📜 Terms of Service](TERMS.md)
-
 O-SAVS is a global Discord age-verification bot designed to integrate seamlessly with VRChat profiles. It allows server administrators to restrict adult spaces by ensuring members have verified their 18+ status on VRChat. Once a user is verified in one server running O-SAVS, their status automatically syncs across all mutual servers operating the bot.
 
 ---
@@ -42,10 +40,9 @@ pip install discord.py aiosqlite aiohttp vrchatapi
 ```
 
 ---
-## License
+## Legal & Policies
 
-This project is licensed under the **PolyForm Noncommercial License 1.0.0**. 
-
-You are free to use, modify, and host this bot for non-commercial community use. Commercial hosting, selling, or monetization of this software is strictly prohibited. 
-
-See the full [LICENSE](LICENSE) file for details.
+* [Privacy Policy](PRIVACY.md) — Details on data collection, storage, and retention.
+* [Terms of Service](TERMS.md) — Usage rules, server admin responsibilities, and guidelines.
+* [License](LICENSE) — PolyForm Noncommercial License 1.0.0
+   * You are free to use, modify, and host this bot for non-commercial community use. Commercial hosting, selling, or monetization of this software is strictly prohibited. 
