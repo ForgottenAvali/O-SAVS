@@ -795,7 +795,7 @@ class AgeVerify(commands.Cog):
         original_error = getattr(error, "original", error)
 
         if isinstance(original_error, commands.MissingRequiredArgument):
-            embed = Embed(title="⚠️ Invalid Command Usage", description="Usage: `.unban <discord_user_id> [reason]`", color=discord.Color.gold())
+            embed = Embed(title="⚠️ Invalid Command Usage", description="Usage: `.unban <discord_user_id> <reason>`", color=discord.Color.gold())
             await ctx.send(embed=embed)
         elif isinstance(original_error, commands.BadArgument):
             embed = Embed(title="❌ Invalid Argument", description="Target User ID must be a numeric Discord integer ID.", color=discord.Color.red())
@@ -875,6 +875,21 @@ class AgeVerify(commands.Cog):
             logging.error(f"[Get Ban Error] {original_error}", exc_info=original_error)
             embed = Embed(title="⚠️ Internal Error", description=f"`{original_error}`", color=discord.Color.red())
             await ctx.send(embed=embed)
+
+
+    @commands.command(name="commands", help="Admin only: See what all the admin commands are")
+    async def commands_cmd(self, ctx: commands.Context):
+        if ctx.author.id not in ALLOWED_USER_IDS:
+            return
+
+        embed = Embed(
+            title="O-SAVS Administrator Commands",
+            description=".link (Usage: `.link <discord_user_id> <vrchat_user_id> [reason]`)\n.unlink (Usage: `.link <discord_user_id> [reason]`)\n.ban (Usage: `.ban <discord_user_id> <reason>`)\n.unban (Usage: `.unban <discord_user_id> <reason>`)\n.get_ban (Usage: `.get_ban <discord_user_id>`)",
+            color=discord.Color.red(),
+            timestamp=discord.utils.utcnow()
+        )
+
+        await ctx.send(embed=embed)
 
 
     @commands.Cog.listener()
