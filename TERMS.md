@@ -1,7 +1,5 @@
 # O-SAVS Terms of Service
 
-[📖 README](README.md) | [⚖️ License](LICENSE) | [🔒 Privacy Policy](PRIVACY.md)
-
 Last Updated: August 31, 2026
 
 By inviting, configuring, or using O-SAVS ("the Bot") in your Discord server, or by verifying through the Bot as an end-user, you agree to the following terms:
