@@ -51,7 +51,7 @@ class ServerPaginatorView(discord.ui.View):
         )
 
         lines = [
-            f"• **{g.name}** (`{g.id}`) — {g.member_count} members"
+            f"• **{g.name}** (`{g.id}`) - {g.member_count} members"
             for g in page_guilds
         ]
         
