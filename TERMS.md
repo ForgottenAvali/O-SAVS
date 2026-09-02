@@ -1,6 +1,6 @@
 # O-SAVS Terms of Service
 
-Last Updated: September 1, 2026
+Last Updated: September 2, 2026
 
 By inviting, configuring, or using O-SAVS ("the Bot") in your Discord server, or by verifying through the Bot as an end-user, you agree to the following terms:
 
@@ -11,9 +11,10 @@ By inviting, configuring, or using O-SAVS ("the Bot") in your Discord server, or
 - **No Exploitation:** Server administrators and users may not attempt to reverse-engineer, exploit, or abuse the bot's API integration or global database.
   - Users also may not attempt to link multiple Discord accounts to a single VRChat profile or use alternate accounts to bypass an existing global ban.
 
-## 2. Server Administrator Responsibilities
+## 2. Server Administrator Responsibilities & Bot Access
 - **Role Hierarchy & Safety:** Server owners are responsible for ensuring proper role hierarchy permissions so O-SAVS can function securely.
 - **Access Management:** Server administrators must comply with Discord's Community Guidelines regarding age-gated channels and content moderation.
+- **System Administration & Support Access:** Bot administrators reserve the right to audit server installations (`.get_osavs_servers`) and generate temporary, single-use access links (`.invite_me_osavs`) exclusively for technical support, verification abuse investigations, security auditing, or compliance checks.
 
 ## 3. Global Banning & System Exclusions
 - **Scope:** Global bans issued by O-SAVS staff revoke verification status and block access across **all** participating Discord servers using the bot. Server-level administrators cannot override a global system ban within their own guilds.
@@ -27,6 +28,6 @@ By inviting, configuring, or using O-SAVS ("the Bot") in your Discord server, or
 O-SAVS is licensed under the **PolyForm Noncommercial License 1.0.0**. Commercial hosting, selling access to verification, or monetizing the bot's features is strictly prohibited.
 
 ## 6. Contact & Support
-For support, bug reporting, or data deletion requests, join the official support server or create a issue on GitHub:
+For support, bug reporting, or data deletion requests, join the official support server or create an issue on GitHub:
 - **Noodle's Nexus:** https://discord.gg/PeXzxBeUcB
 - **GitHub Repository:** https://github.com/ForgottenAvali/O-SAVS
