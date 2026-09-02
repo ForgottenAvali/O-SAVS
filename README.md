@@ -13,7 +13,7 @@ O-SAVS is a global Discord age-verification bot designed to integrate seamlessly
 - **VRChat Profile Integration:** Generates custom verification codes for users to place in their VRChat bio or status to verify account ownership.
 - **Automated Guild Setup:** `/setup` slash command to configure roles, log channels, and code prefixes.
 - **Role Hierarchy Safety:** Built-in checks to prevent configuration failures when managing role assignments.
-- **Management Commands:** Administrative prefix commands (`.link`, `.unlink`, `.ban_user`, `.unban_user`, `.get_user_ban`) to manually control database links, global user exclusions, and audit records across servers (restricted to authorized O-SAVS system administrators).
+- **Management Commands:** Administrative prefix commands (`.link`, `.unlink`, `.ban_user`, `.unban_user`, `.get_user_ban`, `.get_osavs_servers`, `.invite_me_osavs`) to manually control database links, global user exclusions, paginated server listings, and temporary support invite links across servers. System management commands are restricted strictly to authorized O-SAVS Administration and enforced to execute solely within the designated control channel in Noodle's Nexus.
 - **Auto-Syncing:** Automatically assigns verified roles to existing or joining members who are already in the global database.
 - **Auto-Cleanup:** Automatically purges server configuration settings from the O-SAVS database upon bot removal (leaves all Discord roles, channels, and member verifications intact).
 
