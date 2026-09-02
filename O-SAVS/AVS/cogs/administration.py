@@ -25,6 +25,21 @@ SUPPORT_SERVER_ID = 1543888548296392775
 ADMIN_CONTROL_CHANNEL_ID = 1544214237524525066
 
 
+def is_admin_control_channel():
+    async def predicate(ctx: commands.Context):
+        if not ctx.guild or ctx.guild.id != SUPPORT_SERVER_ID:
+            return False
+
+        if ctx.channel.id != ADMIN_CONTROL_CHANNEL_ID:
+            await ctx.send(
+                f"❌ This command can only be used in <#{ADMIN_CONTROL_CHANNEL_ID}>.",
+                delete_after=10
+            )
+            return False
+        return True
+    return commands.check(predicate)
+
+
 class ServerPaginatorView(discord.ui.View):
     def __init__(self, author_id: int, guilds: list[discord.Guild], per_page: int = 10):
         super().__init__(timeout=180)
@@ -86,13 +101,8 @@ class Administration(commands.Cog):
 
 
     async def cog_command_error(self, ctx: commands.Context, error: Exception):
-        if isinstance(error, commands.CommandInvokeError):
-            error = error.original
-
-        if isinstance(error, commands.CheckFailure):
+        if isinstance(original_error, commands.CheckFailure):
             return
-
-        logging.error(f"[Administration Error] Command '{ctx.command}': {error}")
 
 
     def is_user_allowed(self, user_id: int) -> bool:
@@ -104,21 +114,6 @@ class Administration(commands.Cog):
         except (FileNotFoundError, json.JSONDecodeError) as e:
             logging.error(f"[Administration] Error reading {ADMIN_USERS}: {e}")
             return False
-
-
-    def is_admin_control_channel():
-        async def predicate(ctx: commands.Context):
-            if not ctx.guild or ctx.guild.id != SUPPORT_SERVER_ID:
-                return False
-
-            if ctx.channel.id != ADMIN_CONTROL_CHANNEL_ID:
-                await ctx.send(
-                    f"❌ This command can only be used in <#{ADMIN_CONTROL_CHANNEL_ID}>.",
-                    delete_after=10
-                )
-                return False
-            return True
-        return commands.check(predicate)
 
 
     async def cog_check(self, ctx: commands.Context) -> bool:
@@ -607,25 +602,28 @@ class Administration(commands.Cog):
             await ctx.send(embed=embed)
 
 
-    @commands.command(name="get_osavs_servers")
+    @commands.command(name="get_osavs_servers", help="Admin only: View paginated server list where O-SAVS is present")
     @is_admin_control_channel()
     async def get_osavs_servers(self, ctx: commands.Context):
-        if not self.is_user_allowed(ctx.author.id):
-            return
-
         if not self.bot.guilds:
             return await ctx.send("❌ O-SAVS is not currently in any servers.")
 
         view = ServerPaginatorView(author_id=ctx.author.id, guilds=list(self.bot.guilds))
         await ctx.send(embed=view.create_embed(), view=view)
 
+    @get_osavs_servers.error
+    async def get_osavs_servers_error(self, ctx: commands.Context, error: Exception):
+        original_error = getattr(error, "original", error)
 
-    @commands.command(name="invite_me_osavs")
+        if not isinstance(original_error, commands.CheckFailure):
+            logging.error(f"[Get Servers Error] {original_error}", exc_info=original_error)
+            embed = Embed(title="⚠️ Internal Error", description=f"`{original_error}`", color=discord.Color.red())
+            await ctx.send(embed=embed)
+
+
+    @commands.command(name="invite_me_osavs", help="Admin only: Generate single-use invite for specified guild ID")
     @is_admin_control_channel()
     async def invite_me_osavs(self, ctx: commands.Context, server_id: int):
-        if not self.is_user_allowed(ctx.author.id):
-            return
-
         guild = self.bot.get_guild(server_id)
         
         if not guild:
@@ -659,6 +657,21 @@ class Administration(commands.Cog):
         except discord.HTTPException as e:
             logging.error(f"[Invite Admin Error] {e}")
             await ctx.send(f"❌ Failed to generate invite due to an HTTP exception: `{e}`")
+
+    @invite_me_osavs.error
+    async def invite_me_osavs_error(self, ctx: commands.Context, error: Exception):
+        original_error = getattr(error, "original", error)
+
+        if isinstance(original_error, commands.MissingRequiredArgument):
+            embed = Embed(title="⚠️ Invalid Command Usage", description="Usage: `.invite_me_osavs <discord_server_id>`", color=discord.Color.gold())
+            await ctx.send(embed=embed)
+        elif isinstance(original_error, commands.BadArgument):
+            embed = Embed(title="❌ Invalid Argument", description="Target Server ID must be a numeric Discord integer ID.", color=discord.Color.red())
+            await ctx.send(embed=embed)
+        elif not isinstance(original_error, commands.CheckFailure):
+            logging.error(f"[Invite Error] {original_error}", exc_info=original_error)
+            embed = Embed(title="⚠️ Internal Error", description=f"`{original_error}`", color=discord.Color.red())
+            await ctx.send(embed=embed)
 
 
     @commands.command(name="commands", help="Admin only: See what all the admin commands are")
