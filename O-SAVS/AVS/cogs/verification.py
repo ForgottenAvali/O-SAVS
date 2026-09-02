@@ -213,7 +213,14 @@ class VRChatUsername(ui.Modal, title="VRChat Verification"):
 class AgeVerify(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+        self._has_synced = False
         self.bot.add_view(ConfirmCheck(bot, self))
+
+
+    async def cog_load(self):
+        if self.bot.is_ready() and not self._has_synced:
+            self._has_synced = True
+            self.bot.loop.create_task(self.sync_offline_verifications())
 
 
     async def send_verify_log(self, guild: discord.Guild, action: str, member: discord.Member, vrchat_id: str, operator: Optional[discord.User | discord.Member] = None, reason: Optional[str] = None):
@@ -652,8 +659,8 @@ class AgeVerify(commands.Cog):
             await ctx.send(embed=embed)
 
 
-    @commands.command(name="ban", help="Admin only: Globally ban a user ID, unlink their VRChat ID, and strip roles")
-    async def ban_cmd(self, ctx: commands.Context, target_user_id: int, *, reason: str):
+    @commands.command(name="ban_user", help="Admin only: Globally ban a user ID, unlink their VRChat ID, and strip roles")
+    async def ban_user_cmd(self, ctx: commands.Context, target_user_id: int, *, reason: str):
         if ctx.author.id not in ALLOWED_USER_IDS:
             return
 
@@ -741,15 +748,15 @@ class AgeVerify(commands.Cog):
 
         await ctx.send(embed=embed)
 
-    @ban_cmd.error
-    async def ban_cmd_error(self, ctx: commands.Context, error: Exception):
+    @ban_user_cmd.error
+    async def ban_user_cmd_error(self, ctx: commands.Context, error: Exception):
         if ctx.author.id not in ALLOWED_USER_IDS:
             return
 
         original_error = getattr(error, "original", error)
 
         if isinstance(original_error, commands.MissingRequiredArgument):
-            embed = Embed(title="⚠️ Invalid Command Usage", description="Usage: `.ban <discord_user_id> <reason>`", color=discord.Color.gold())
+            embed = Embed(title="⚠️ Invalid Command Usage", description="Usage: `.ban_user <discord_user_id> <reason>`", color=discord.Color.gold())
             await ctx.send(embed=embed)
         elif isinstance(original_error, commands.BadArgument):
             embed = Embed(title="❌ Invalid Argument", description="Target User ID must be a numeric Discord integer ID.", color=discord.Color.red())
@@ -760,8 +767,8 @@ class AgeVerify(commands.Cog):
             await ctx.send(embed=embed)
 
 
-    @commands.command(name="unban", help="Admin only: Remove a user from the global ban list")
-    async def unban_cmd(self, ctx: commands.Context, target_user_id: int, *, reason: str):
+    @commands.command(name="unban_user", help="Admin only: Remove a user from the global ban list")
+    async def unban_user_cmd(self, ctx: commands.Context, target_user_id: int, *, reason: str):
         if ctx.author.id not in ALLOWED_USER_IDS:
             return
 
@@ -787,15 +794,15 @@ class AgeVerify(commands.Cog):
 
         await ctx.send(embed=embed)
 
-    @unban_cmd.error
-    async def unban_cmd_error(self, ctx: commands.Context, error: Exception):
+    @unban_user_cmd.error
+    async def unban_user_cmd_error(self, ctx: commands.Context, error: Exception):
         if ctx.author.id not in ALLOWED_USER_IDS:
             return
 
         original_error = getattr(error, "original", error)
 
         if isinstance(original_error, commands.MissingRequiredArgument):
-            embed = Embed(title="⚠️ Invalid Command Usage", description="Usage: `.unban <discord_user_id> <reason>`", color=discord.Color.gold())
+            embed = Embed(title="⚠️ Invalid Command Usage", description="Usage: `.unban_user <discord_user_id> <reason>`", color=discord.Color.gold())
             await ctx.send(embed=embed)
         elif isinstance(original_error, commands.BadArgument):
             embed = Embed(title="❌ Invalid Argument", description="Target User ID must be a numeric Discord integer ID.", color=discord.Color.red())
@@ -806,8 +813,8 @@ class AgeVerify(commands.Cog):
             await ctx.send(embed=embed)
 
 
-    @commands.command(name="get_ban", help="Admin only: Check if a Discord user is globally banned and view ban details")
-    async def get_ban_cmd(self, ctx: commands.Context, target_user_id: int):
+    @commands.command(name="get_user_ban", help="Admin only: Check if a Discord user is globally banned and view ban details")
+    async def get_user_ban_cmd(self, ctx: commands.Context, target_user_id: int):
         if ctx.author.id not in ALLOWED_USER_IDS:
             return
 
@@ -858,15 +865,15 @@ class AgeVerify(commands.Cog):
 
         await ctx.send(embed=embed)
 
-    @get_ban_cmd.error
-    async def get_ban_cmd_error(self, ctx: commands.Context, error: Exception):
+    @get_user_ban_cmd.error
+    async def get_user_ban_cmd_error(self, ctx: commands.Context, error: Exception):
         if ctx.author.id not in ALLOWED_USER_IDS:
             return
 
         original_error = getattr(error, "original", error)
 
         if isinstance(original_error, commands.MissingRequiredArgument):
-            embed = Embed(title="⚠️ Invalid Command Usage", description="Usage: `.get_ban <discord_user_id>`", color=discord.Color.gold())
+            embed = Embed(title="⚠️ Invalid Command Usage", description="Usage: `.get_user_ban <discord_user_id>`", color=discord.Color.gold())
             await ctx.send(embed=embed)
         elif isinstance(original_error, commands.BadArgument):
             embed = Embed(title="❌ Invalid Argument", description="Target User ID must be a numeric Discord integer ID.", color=discord.Color.red())
@@ -884,7 +891,12 @@ class AgeVerify(commands.Cog):
 
         embed = Embed(
             title="O-SAVS Administrator Commands",
-            description=".link (Usage: `.link <discord_user_id> <vrchat_user_id> [reason]`)\n.unlink (Usage: `.link <discord_user_id> [reason]`)\n.ban (Usage: `.ban <discord_user_id> <reason>`)\n.unban (Usage: `.unban <discord_user_id> <reason>`)\n.get_ban (Usage: `.get_ban <discord_user_id>`)",
+            description=
+                ".link (Usage: `.link <discord_user_id> <vrchat_user_id> [reason]`)\n"
+                ".unlink (Usage: `.unlink <discord_user_id> [reason]`)\n"
+                ".ban_user (Usage: `.ban_user <discord_user_id> <reason>`)\n"
+                ".unban_user (Usage: `.unban_user <discord_user_id> <reason>`)\n"
+                ".get_user_ban (Usage: `.get_user_ban <discord_user_id>`)",
             color=discord.Color.red(),
             timestamp=discord.utils.utcnow()
         )
@@ -943,6 +955,60 @@ class AgeVerify(commands.Cog):
             )
         except Exception as e:
             logging.error(f"[Member Join Log Error - {member.guild.id}] {e}")
+
+            
+    async def sync_offline_verifications(self):
+        await self.bot.wait_until_ready()
+        logging.info("[Startup Sync] Starting startup verification role sync")
+
+        all_verified = await get_all_verified_users()
+        if not all_verified:
+            logging.info("[Startup Sync] No verified users found in database")
+            return
+
+        verified_map = {discord_id: vrchat_id for discord_id, vrchat_id in all_verified}
+        synced_count = 0
+        error_count = 0
+
+        for guild in self.bot.guilds:
+            settings = await get_server_settings(guild.id)
+            role_id = settings.get("verified_role")
+            if not role_id:
+                continue
+
+            role = guild.get_role(role_id)
+            bot_member = guild.me
+            
+            if not role or not bot_member.guild_permissions.manage_roles or role >= bot_member.top_role:
+                continue
+
+            for member in guild.members:
+                if member.id in verified_map and role not in member.roles:
+                    if await is_banned(member.id):
+                        continue
+
+                    try:
+                        await member.add_roles(role, reason="O-SAVS Startup Sync: Granting role to offline verified user")
+                        synced_count += 1
+                        
+                        await self.send_verify_log(
+                            guild=guild,
+                            action="User Verified",
+                            member=member,
+                            vrchat_id=verified_map[member.id],
+                            operator=self.bot.user,
+                            reason="O-SAVS Startup Sync"
+                        )
+                        
+                        await asyncio.sleep(0.5)
+                    except discord.Forbidden:
+                        logging.warning(f"[Startup Sync Error - {guild.id}] Missing permissions in {guild.name} for {member}")
+                        error_count += 1
+                    except discord.HTTPException as e:
+                        logging.error(f"[Startup Sync Error - {guild.id}] HTTP Error in {guild.name} for {member}: {e}")
+                        error_count += 1
+
+        logging.info(f"[Startup Sync] Complete! Granted roles to {synced_count} member(s). Errors: {error_count}")
 
 
 async def setup(bot: commands.Bot):
