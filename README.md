@@ -45,4 +45,5 @@ pip install discord.py aiosqlite aiohttp vrchatapi
 * [Privacy Policy](PRIVACY.md) — Details on data collection, storage, and retention.
 * [Terms of Service](TERMS.md) — Usage rules, server admin responsibilities, and guidelines.
 * [License](LICENSE) — PolyForm Noncommercial License 1.0.0
-   * You are free to use, modify, and host this bot for non-commercial community use. Commercial hosting, selling, or monetization of this software is strictly prohibited. 
+   * You are free to use, modify, and host this bot for non-commercial community use. Commercial hosting, selling, or monetization of this software is strictly prohibited.
+   * The bot is hosted by ForgottenAvali 24/7 and can be added to your server for free in [Noodle's Nexus](https://discord.gg/PeXzxBeUcB)
