@@ -12,7 +12,7 @@ To provide global age-verification functionality, O-SAVS stores the following mi
 - **Global Sanction Records:** Discord User IDs, internal reason codes, timestamps, and moderator IDs for globally banned accounts to enforce system-wide exclusions.
 
 ## 2. Information We DO NOT Collect
-- **Personal Identification Documents:** We do not request, collect, or store real-name IDs, passports, driver's licenses, or facial images.
+- **Personal Identification Documents:** We do not request, collect, or store real names, IDs, passports, driver's licenses, or facial images.
 - **Message Content:** We do not read, log, or store chat messages in any Discord server.
 - **VRChat Account Credentials:** Authentication tokens and login details are restricted to the bot's host environment and are never stored alongside user records.
 
