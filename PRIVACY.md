@@ -1,6 +1,6 @@
 # O-SAVS Privacy Policy
 
-Last Updated: September 1, 2026
+Last Updated: September 2, 2026
 
 O-SAVS ("the Bot") is committed to protecting user privacy and maintaining transparency regarding data collection, storage, and usage.
 
@@ -20,7 +20,7 @@ To provide global age-verification functionality, O-SAVS stores the following mi
 Collected data is used solely to:
 - Verify that a Discord account is linked to a VRChat profile containing a valid verification code.
 - Automatically assign verified 18+ roles across mutual Discord servers operating O-SAVS.
-- Maintain global ban lists and audit administrative actions (`.link`, `.unlink`, `.ban`, `.unban`, `.get_ban`) to protect participating communities from unauthorized or unsafe access.
+- Maintain global ban lists and audit administrative actions (`.link`, `.unlink`, `.ban_user`, `.unban_user`, `.get_user_ban`) to protect participating communities from unauthorized or unsafe access.
 
 ## 4. Data Retention & Deletion
 - **User Unlinking:** If a user is unlinked, their record is permanently deleted from the active verification database.
