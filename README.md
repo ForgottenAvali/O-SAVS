@@ -15,7 +15,7 @@ O-SAVS is a global Discord age-verification bot designed to integrate seamlessly
 - **Role Hierarchy Safety:** Built-in checks to prevent configuration failures when managing role assignments.
 - **Management Commands:** Administrative prefix commands (`.link`, `.unlink`, `.ban_user`, `.unban_user`, `.get_user_ban`) to manually control database links, global user exclusions, and audit records across servers. (Restricted to authorized O-SAVS system administrators.)
 - **Auto-Syncing:** Automatically assigns verified roles to existing or joining members who are already in the global database.
-- **Auto-Cleanup:** Cleans up server configuration data upon bot departure (`on_guild_remove`).
+- **Auto-Cleanup:** Cleans up server configuration data upon the bots departure from your server.
 
 ---
 
