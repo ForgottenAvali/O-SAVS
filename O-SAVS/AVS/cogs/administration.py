@@ -25,21 +25,6 @@ SUPPORT_SERVER_ID = 1543888548296392775
 ADMIN_CONTROL_CHANNEL_ID = 1544214237524525066
 
 
-def is_admin_control_channel():
-    async def predicate(ctx: commands.Context):
-        if not ctx.guild or ctx.guild.id != SUPPORT_SERVER_ID:
-            return False
-
-        if ctx.channel.id != ADMIN_CONTROL_CHANNEL_ID:
-            await ctx.send(
-                f"❌ This command can only be used in <#{ADMIN_CONTROL_CHANNEL_ID}>.",
-                delete_after=10
-            )
-            return False
-        return True
-    return commands.check(predicate)
-
-
 class ServerPaginatorView(discord.ui.View):
     def __init__(self, author_id: int, guilds: list[discord.Guild], per_page: int = 10):
         super().__init__(timeout=180)
@@ -48,12 +33,13 @@ class ServerPaginatorView(discord.ui.View):
         self.per_page = per_page
         self.current_page = 0
         self.total_pages = max(1, (len(guilds) + per_page - 1) // per_page)
-        
         self.update_button_states()
+
 
     def update_button_states(self):
         self.prev_button.disabled = (self.current_page == 0)
         self.next_button.disabled = (self.current_page >= self.total_pages - 1)
+
 
     def create_embed(self) -> discord.Embed:
         start_idx = self.current_page * self.per_page
@@ -74,11 +60,13 @@ class ServerPaginatorView(discord.ui.View):
         embed.set_footer(text=f"Page {self.current_page + 1} of {self.total_pages}")
         return embed
 
+
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id != self.author_id:
             await interaction.response.send_message("❌ Only the command invoker can use these controls.", ephemeral=True)
             return False
         return True
+
 
     @discord.ui.button(label="◀ Previous", style=discord.ButtonStyle.secondary)
     async def prev_button(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -86,6 +74,7 @@ class ServerPaginatorView(discord.ui.View):
             self.current_page -= 1
             self.update_button_states()
             await interaction.response.edit_message(embed=self.create_embed(), view=self)
+
 
     @discord.ui.button(label="Next ▶", style=discord.ButtonStyle.secondary)
     async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -98,19 +87,6 @@ class ServerPaginatorView(discord.ui.View):
 class Administration(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-
-
-    async def cog_command_error(self, ctx: commands.Context, error: Exception):
-        original_error = getattr(error, "original", error)
-
-        if isinstance(error, commands.NoPrivateMessage) or isinstance(original_error, commands.NoPrivateMessage):
-            await ctx.send("❌ This command cannot be used in Direct Messages.")
-            return
-
-        if isinstance(error, commands.CheckFailure) or isinstance(original_error, commands.CheckFailure):
-            return
-
-        logging.error(f"[Administration Error] Command '{ctx.command}': {original_error}")
 
 
     def is_user_allowed(self, user_id: int) -> bool:
@@ -170,10 +146,33 @@ class Administration(commands.Cog):
 
 
     @commands.command(name="link", help="Admin only: Force link a Discord user to a VRChat ID across all servers")
-    @commands.guild_only()
-    @is_admin_control_channel()
     async def link_cmd(self, ctx: commands.Context, target_user_id: int, vrchat_id: str, *, reason: Optional[str] = None):
         if not self.is_user_allowed(ctx.author.id):
+            await ctx.send(
+                "❌ This command can only be used by O-SAVS Administration.",
+                delete_after=10
+            )
+            return
+
+        if ctx.guild is None:
+            await ctx.send(
+                "❌ This command cannot be used in Direct Messages.",
+                delete_after=10
+            )
+            return
+
+        if ctx.guild.id != SUPPORT_SERVER_ID:
+            await ctx.send(
+                "❌ This command can only be used in the support server.",
+                delete_after=10
+            )
+            return
+
+        if ctx.channel.id != ADMIN_CONTROL_CHANNEL_ID:
+            await ctx.send(
+                f"❌ This command can only be used in <#{ADMIN_CONTROL_CHANNEL_ID}>.",
+                delete_after=10
+            )
             return
 
         vrc_user = await get_vrchat_user(vrchat_id)
@@ -256,6 +255,31 @@ class Administration(commands.Cog):
     @link_cmd.error
     async def link_cmd_error(self, ctx: commands.Context, error: Exception):
         if not self.is_user_allowed(ctx.author.id):
+            await ctx.send(
+                "❌ This command can only be used by O-SAVS Administration.",
+                delete_after=10
+            )
+            return
+
+        if ctx.guild is None:
+            await ctx.send(
+                "❌ This command cannot be used in Direct Messages.",
+                delete_after=10
+            )
+            return
+
+        if ctx.guild.id != SUPPORT_SERVER_ID:
+            await ctx.send(
+                "❌ This command can only be used in the support server.",
+                delete_after=10
+            )
+            return
+
+        if ctx.channel.id != ADMIN_CONTROL_CHANNEL_ID:
+            await ctx.send(
+                f"❌ This command can only be used in <#{ADMIN_CONTROL_CHANNEL_ID}>.",
+                delete_after=10
+            )
             return
 
         original_error = getattr(error, "original", error)
@@ -273,10 +297,33 @@ class Administration(commands.Cog):
 
 
     @commands.command(name="unlink", help="Admin only: Unlink a Discord user from their VRChat account across all servers")
-    @commands.guild_only()
-    @is_admin_control_channel()
     async def unlink_cmd(self, ctx: commands.Context, target_user_id: int, *, reason: Optional[str] = None):
         if not self.is_user_allowed(ctx.author.id):
+            await ctx.send(
+                "❌ This command can only be used by O-SAVS Administration.",
+                delete_after=10
+            )
+            return
+
+        if ctx.guild is None:
+            await ctx.send(
+                "❌ This command cannot be used in Direct Messages.",
+                delete_after=10
+            )
+            return
+
+        if ctx.guild.id != SUPPORT_SERVER_ID:
+            await ctx.send(
+                "❌ This command can only be used in the support server.",
+                delete_after=10
+            )
+            return
+
+        if ctx.channel.id != ADMIN_CONTROL_CHANNEL_ID:
+            await ctx.send(
+                f"❌ This command can only be used in <#{ADMIN_CONTROL_CHANNEL_ID}>.",
+                delete_after=10
+            )
             return
 
         vrchat_id = await get_vrchat_id_from_discord(target_user_id)
@@ -370,6 +417,31 @@ class Administration(commands.Cog):
     @unlink_cmd.error
     async def unlink_cmd_error(self, ctx: commands.Context, error: Exception):
         if not self.is_user_allowed(ctx.author.id):
+            await ctx.send(
+                "❌ This command can only be used by O-SAVS Administration.",
+                delete_after=10
+            )
+            return
+
+        if ctx.guild is None:
+            await ctx.send(
+                "❌ This command cannot be used in Direct Messages.",
+                delete_after=10
+            )
+            return
+
+        if ctx.guild.id != SUPPORT_SERVER_ID:
+            await ctx.send(
+                "❌ This command can only be used in the support server.",
+                delete_after=10
+            )
+            return
+
+        if ctx.channel.id != ADMIN_CONTROL_CHANNEL_ID:
+            await ctx.send(
+                f"❌ This command can only be used in <#{ADMIN_CONTROL_CHANNEL_ID}>.",
+                delete_after=10
+            )
             return
 
         original_error = getattr(error, "original", error)
@@ -387,10 +459,33 @@ class Administration(commands.Cog):
 
 
     @commands.command(name="ban_user", help="Admin only: Globally ban a user ID, unlink their VRChat ID, and strip roles")
-    @commands.guild_only()
-    @is_admin_control_channel()
     async def ban_user_cmd(self, ctx: commands.Context, target_user_id: int, *, reason: str):
         if not self.is_user_allowed(ctx.author.id):
+            await ctx.send(
+                "❌ This command can only be used by O-SAVS Administration.",
+                delete_after=10
+            )
+            return
+
+        if ctx.guild is None:
+            await ctx.send(
+                "❌ This command cannot be used in Direct Messages.",
+                delete_after=10
+            )
+            return
+
+        if ctx.guild.id != SUPPORT_SERVER_ID:
+            await ctx.send(
+                "❌ This command can only be used in the support server.",
+                delete_after=10
+            )
+            return
+
+        if ctx.channel.id != ADMIN_CONTROL_CHANNEL_ID:
+            await ctx.send(
+                f"❌ This command can only be used in <#{ADMIN_CONTROL_CHANNEL_ID}>.",
+                delete_after=10
+            )
             return
 
         if await is_banned(target_user_id):
@@ -479,6 +574,31 @@ class Administration(commands.Cog):
     @ban_user_cmd.error
     async def ban_user_cmd_error(self, ctx: commands.Context, error: Exception):
         if not self.is_user_allowed(ctx.author.id):
+            await ctx.send(
+                "❌ This command can only be used by O-SAVS Administration.",
+                delete_after=10
+            )
+            return
+
+        if ctx.guild is None:
+            await ctx.send(
+                "❌ This command cannot be used in Direct Messages.",
+                delete_after=10
+            )
+            return
+
+        if ctx.guild.id != SUPPORT_SERVER_ID:
+            await ctx.send(
+                "❌ This command can only be used in the support server.",
+                delete_after=10
+            )
+            return
+
+        if ctx.channel.id != ADMIN_CONTROL_CHANNEL_ID:
+            await ctx.send(
+                f"❌ This command can only be used in <#{ADMIN_CONTROL_CHANNEL_ID}>.",
+                delete_after=10
+            )
             return
 
         original_error = getattr(error, "original", error)
@@ -496,10 +616,33 @@ class Administration(commands.Cog):
 
 
     @commands.command(name="unban_user", help="Admin only: Remove a user from the global ban list")
-    @commands.guild_only()
-    @is_admin_control_channel()
     async def unban_user_cmd(self, ctx: commands.Context, target_user_id: int, *, reason: str):
         if not self.is_user_allowed(ctx.author.id):
+            await ctx.send(
+                "❌ This command can only be used by O-SAVS Administration.",
+                delete_after=10
+            )
+            return
+
+        if ctx.guild is None:
+            await ctx.send(
+                "❌ This command cannot be used in Direct Messages.",
+                delete_after=10
+            )
+            return
+
+        if ctx.guild.id != SUPPORT_SERVER_ID:
+            await ctx.send(
+                "❌ This command can only be used in the support server.",
+                delete_after=10
+            )
+            return
+
+        if ctx.channel.id != ADMIN_CONTROL_CHANNEL_ID:
+            await ctx.send(
+                f"❌ This command can only be used in <#{ADMIN_CONTROL_CHANNEL_ID}>.",
+                delete_after=10
+            )
             return
 
         if not await remove_banned_user(target_user_id):
@@ -527,6 +670,31 @@ class Administration(commands.Cog):
     @unban_user_cmd.error
     async def unban_user_cmd_error(self, ctx: commands.Context, error: Exception):
         if not self.is_user_allowed(ctx.author.id):
+            await ctx.send(
+                "❌ This command can only be used by O-SAVS Administration.",
+                delete_after=10
+            )
+            return
+
+        if ctx.guild is None:
+            await ctx.send(
+                "❌ This command cannot be used in Direct Messages.",
+                delete_after=10
+            )
+            return
+
+        if ctx.guild.id != SUPPORT_SERVER_ID:
+            await ctx.send(
+                "❌ This command can only be used in the support server.",
+                delete_after=10
+            )
+            return
+
+        if ctx.channel.id != ADMIN_CONTROL_CHANNEL_ID:
+            await ctx.send(
+                f"❌ This command can only be used in <#{ADMIN_CONTROL_CHANNEL_ID}>.",
+                delete_after=10
+            )
             return
 
         original_error = getattr(error, "original", error)
@@ -544,10 +712,33 @@ class Administration(commands.Cog):
 
 
     @commands.command(name="get_user_ban", help="Admin only: Check if a Discord user is globally banned and view ban details")
-    @commands.guild_only()
-    @is_admin_control_channel()
     async def get_user_ban_cmd(self, ctx: commands.Context, target_user_id: int):
         if not self.is_user_allowed(ctx.author.id):
+            await ctx.send(
+                "❌ This command can only be used by O-SAVS Administration.",
+                delete_after=10
+            )
+            return
+
+        if ctx.guild is None:
+            await ctx.send(
+                "❌ This command cannot be used in Direct Messages.",
+                delete_after=10
+            )
+            return
+
+        if ctx.guild.id != SUPPORT_SERVER_ID:
+            await ctx.send(
+                "❌ This command can only be used in the support server.",
+                delete_after=10
+            )
+            return
+
+        if ctx.channel.id != ADMIN_CONTROL_CHANNEL_ID:
+            await ctx.send(
+                f"❌ This command can only be used in <#{ADMIN_CONTROL_CHANNEL_ID}>.",
+                delete_after=10
+            )
             return
 
         ban_info = await get_banned_user(target_user_id)
@@ -599,6 +790,31 @@ class Administration(commands.Cog):
     @get_user_ban_cmd.error
     async def get_user_ban_cmd_error(self, ctx: commands.Context, error: Exception):
         if not self.is_user_allowed(ctx.author.id):
+            await ctx.send(
+                "❌ This command can only be used by O-SAVS Administration.",
+                delete_after=10
+            )
+            return
+
+        if ctx.guild is None:
+            await ctx.send(
+                "❌ This command cannot be used in Direct Messages.",
+                delete_after=10
+            )
+            return
+
+        if ctx.guild.id != SUPPORT_SERVER_ID:
+            await ctx.send(
+                "❌ This command can only be used in the support server.",
+                delete_after=10
+            )
+            return
+
+        if ctx.channel.id != ADMIN_CONTROL_CHANNEL_ID:
+            await ctx.send(
+                f"❌ This command can only be used in <#{ADMIN_CONTROL_CHANNEL_ID}>.",
+                delete_after=10
+            )
             return
 
         original_error = getattr(error, "original", error)
@@ -616,9 +832,35 @@ class Administration(commands.Cog):
 
 
     @commands.command(name="get_osavs_servers", help="Admin only: View paginated server list where O-SAVS is present")
-    @commands.guild_only()
-    @is_admin_control_channel()
     async def get_osavs_servers(self, ctx: commands.Context):
+        if not self.is_user_allowed(ctx.author.id):
+            await ctx.send(
+                "❌ This command can only be used by O-SAVS Administration.",
+                delete_after=10
+            )
+            return
+
+        if ctx.guild is None:
+            await ctx.send(
+                "❌ This command cannot be used in Direct Messages.",
+                delete_after=10
+            )
+            return
+
+        if ctx.guild.id != SUPPORT_SERVER_ID:
+            await ctx.send(
+                "❌ This command can only be used in the support server.",
+                delete_after=10
+            )
+            return
+
+        if ctx.channel.id != ADMIN_CONTROL_CHANNEL_ID:
+            await ctx.send(
+                f"❌ This command can only be used in <#{ADMIN_CONTROL_CHANNEL_ID}>.",
+                delete_after=10
+            )
+            return
+
         if not self.bot.guilds:
             return await ctx.send("❌ O-SAVS is not currently in any servers.")
 
@@ -627,6 +869,34 @@ class Administration(commands.Cog):
 
     @get_osavs_servers.error
     async def get_osavs_servers_error(self, ctx: commands.Context, error: Exception):
+        if not self.is_user_allowed(ctx.author.id):
+            await ctx.send(
+                "❌ This command can only be used by O-SAVS Administration.",
+                delete_after=10
+            )
+            return
+
+        if ctx.guild is None:
+            await ctx.send(
+                "❌ This command cannot be used in Direct Messages.",
+                delete_after=10
+            )
+            return
+
+        if ctx.guild.id != SUPPORT_SERVER_ID:
+            await ctx.send(
+                "❌ This command can only be used in the support server.",
+                delete_after=10
+            )
+            return
+
+        if ctx.channel.id != ADMIN_CONTROL_CHANNEL_ID:
+            await ctx.send(
+                f"❌ This command can only be used in <#{ADMIN_CONTROL_CHANNEL_ID}>.",
+                delete_after=10
+            )
+            return
+
         original_error = getattr(error, "original", error)
 
         if not isinstance(original_error, commands.CheckFailure):
@@ -636,9 +906,35 @@ class Administration(commands.Cog):
 
 
     @commands.command(name="invite_me_osavs", help="Admin only: Generate single-use invite for specified guild ID")
-    @commands.guild_only()
-    @is_admin_control_channel()
     async def invite_me_osavs(self, ctx: commands.Context, server_id: int):
+        if not self.is_user_allowed(ctx.author.id):
+            await ctx.send(
+                "❌ This command can only be used by O-SAVS Administration.",
+                delete_after=10
+            )
+            return
+
+        if ctx.guild is None:
+            await ctx.send(
+                "❌ This command cannot be used in Direct Messages.",
+                delete_after=10
+            )
+            return
+
+        if ctx.guild.id != SUPPORT_SERVER_ID:
+            await ctx.send(
+                "❌ This command can only be used in the support server.",
+                delete_after=10
+            )
+            return
+
+        if ctx.channel.id != ADMIN_CONTROL_CHANNEL_ID:
+            await ctx.send(
+                f"❌ This command can only be used in <#{ADMIN_CONTROL_CHANNEL_ID}>.",
+                delete_after=10
+            )
+            return
+
         guild = self.bot.get_guild(server_id)
         
         if not guild:
@@ -675,6 +971,34 @@ class Administration(commands.Cog):
 
     @invite_me_osavs.error
     async def invite_me_osavs_error(self, ctx: commands.Context, error: Exception):
+        if not self.is_user_allowed(ctx.author.id):
+            await ctx.send(
+                "❌ This command can only be used by O-SAVS Administration.",
+                delete_after=10
+            )
+            return
+
+        if ctx.guild is None:
+            await ctx.send(
+                "❌ This command cannot be used in Direct Messages.",
+                delete_after=10
+            )
+            return
+
+        if ctx.guild.id != SUPPORT_SERVER_ID:
+            await ctx.send(
+                "❌ This command can only be used in the support server.",
+                delete_after=10
+            )
+            return
+
+        if ctx.channel.id != ADMIN_CONTROL_CHANNEL_ID:
+            await ctx.send(
+                f"❌ This command can only be used in <#{ADMIN_CONTROL_CHANNEL_ID}>.",
+                delete_after=10
+            )
+            return
+
         original_error = getattr(error, "original", error)
 
         if isinstance(original_error, commands.MissingRequiredArgument):
@@ -690,9 +1014,35 @@ class Administration(commands.Cog):
 
 
     @commands.command(name="commands", help="Admin only: See what all the admin commands are")
-    @commands.guild_only()
-    @is_admin_control_channel()
     async def commands_cmd(self, ctx: commands.Context):
+        if not self.is_user_allowed(ctx.author.id):
+            await ctx.send(
+                "❌ This command can only be used by O-SAVS Administration.",
+                delete_after=10
+            )
+            return
+
+        if ctx.guild is None:
+            await ctx.send(
+                "❌ This command cannot be used in Direct Messages.",
+                delete_after=10
+            )
+            return
+
+        if ctx.guild.id != SUPPORT_SERVER_ID:
+            await ctx.send(
+                "❌ This command can only be used in the support server.",
+                delete_after=10
+            )
+            return
+
+        if ctx.channel.id != ADMIN_CONTROL_CHANNEL_ID:
+            await ctx.send(
+                f"❌ This command can only be used in <#{ADMIN_CONTROL_CHANNEL_ID}>.",
+                delete_after=10
+            )
+            return
+            
         embed = Embed(
             title="O-SAVS Administrator Commands",
             description=(
