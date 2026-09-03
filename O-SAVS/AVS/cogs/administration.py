@@ -101,8 +101,16 @@ class Administration(commands.Cog):
 
 
     async def cog_command_error(self, ctx: commands.Context, error: Exception):
-        if isinstance(original_error, commands.CheckFailure):
+        original_error = getattr(error, "original", error)
+
+        if isinstance(error, commands.NoPrivateMessage) or isinstance(original_error, commands.NoPrivateMessage):
+            await ctx.send("❌ This command cannot be used in Direct Messages.")
             return
+
+        if isinstance(error, commands.CheckFailure) or isinstance(original_error, commands.CheckFailure):
+            return
+
+        logging.error(f"[Administration Error] Command '{ctx.command}': {original_error}")
 
 
     def is_user_allowed(self, user_id: int) -> bool:
@@ -162,6 +170,7 @@ class Administration(commands.Cog):
 
 
     @commands.command(name="link", help="Admin only: Force link a Discord user to a VRChat ID across all servers")
+    @commands.guild_only()
     @is_admin_control_channel()
     async def link_cmd(self, ctx: commands.Context, target_user_id: int, vrchat_id: str, *, reason: Optional[str] = None):
         if not self.is_user_allowed(ctx.author.id):
@@ -264,6 +273,7 @@ class Administration(commands.Cog):
 
 
     @commands.command(name="unlink", help="Admin only: Unlink a Discord user from their VRChat account across all servers")
+    @commands.guild_only()
     @is_admin_control_channel()
     async def unlink_cmd(self, ctx: commands.Context, target_user_id: int, *, reason: Optional[str] = None):
         if not self.is_user_allowed(ctx.author.id):
@@ -377,6 +387,7 @@ class Administration(commands.Cog):
 
 
     @commands.command(name="ban_user", help="Admin only: Globally ban a user ID, unlink their VRChat ID, and strip roles")
+    @commands.guild_only()
     @is_admin_control_channel()
     async def ban_user_cmd(self, ctx: commands.Context, target_user_id: int, *, reason: str):
         if not self.is_user_allowed(ctx.author.id):
@@ -485,6 +496,7 @@ class Administration(commands.Cog):
 
 
     @commands.command(name="unban_user", help="Admin only: Remove a user from the global ban list")
+    @commands.guild_only()
     @is_admin_control_channel()
     async def unban_user_cmd(self, ctx: commands.Context, target_user_id: int, *, reason: str):
         if not self.is_user_allowed(ctx.author.id):
@@ -532,6 +544,7 @@ class Administration(commands.Cog):
 
 
     @commands.command(name="get_user_ban", help="Admin only: Check if a Discord user is globally banned and view ban details")
+    @commands.guild_only()
     @is_admin_control_channel()
     async def get_user_ban_cmd(self, ctx: commands.Context, target_user_id: int):
         if not self.is_user_allowed(ctx.author.id):
@@ -603,6 +616,7 @@ class Administration(commands.Cog):
 
 
     @commands.command(name="get_osavs_servers", help="Admin only: View paginated server list where O-SAVS is present")
+    @commands.guild_only()
     @is_admin_control_channel()
     async def get_osavs_servers(self, ctx: commands.Context):
         if not self.bot.guilds:
@@ -622,6 +636,7 @@ class Administration(commands.Cog):
 
 
     @commands.command(name="invite_me_osavs", help="Admin only: Generate single-use invite for specified guild ID")
+    @commands.guild_only()
     @is_admin_control_channel()
     async def invite_me_osavs(self, ctx: commands.Context, server_id: int):
         guild = self.bot.get_guild(server_id)
@@ -675,10 +690,9 @@ class Administration(commands.Cog):
 
 
     @commands.command(name="commands", help="Admin only: See what all the admin commands are")
+    @commands.guild_only()
+    @is_admin_control_channel()
     async def commands_cmd(self, ctx: commands.Context):
-        if not self.is_user_allowed(ctx.author.id):
-            return
-
         embed = Embed(
             title="O-SAVS Administrator Commands",
             description=(
