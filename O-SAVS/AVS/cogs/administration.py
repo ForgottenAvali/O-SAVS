@@ -161,20 +161,6 @@ class Administration(commands.Cog):
             )
             return
 
-        if ctx.guild.id != SUPPORT_SERVER_ID:
-            await ctx.send(
-                "❌ This command can only be used in the support server.",
-                delete_after=10
-            )
-            return
-
-        if ctx.channel.id != ADMIN_CONTROL_CHANNEL_ID:
-            await ctx.send(
-                f"❌ This command can only be used in <#{ADMIN_CONTROL_CHANNEL_ID}>.",
-                delete_after=10
-            )
-            return
-
         vrc_user = await get_vrchat_user(vrchat_id)
         if not vrc_user:
             embed = Embed(
@@ -268,20 +254,6 @@ class Administration(commands.Cog):
             )
             return
 
-        if ctx.guild.id != SUPPORT_SERVER_ID:
-            await ctx.send(
-                "❌ This command can only be used in the support server.",
-                delete_after=10
-            )
-            return
-
-        if ctx.channel.id != ADMIN_CONTROL_CHANNEL_ID:
-            await ctx.send(
-                f"❌ This command can only be used in <#{ADMIN_CONTROL_CHANNEL_ID}>.",
-                delete_after=10
-            )
-            return
-
         original_error = getattr(error, "original", error)
 
         if isinstance(original_error, commands.MissingRequiredArgument):
@@ -308,20 +280,6 @@ class Administration(commands.Cog):
         if ctx.guild is None:
             await ctx.send(
                 "❌ This command cannot be used in Direct Messages.",
-                delete_after=10
-            )
-            return
-
-        if ctx.guild.id != SUPPORT_SERVER_ID:
-            await ctx.send(
-                "❌ This command can only be used in the support server.",
-                delete_after=10
-            )
-            return
-
-        if ctx.channel.id != ADMIN_CONTROL_CHANNEL_ID:
-            await ctx.send(
-                f"❌ This command can only be used in <#{ADMIN_CONTROL_CHANNEL_ID}>.",
                 delete_after=10
             )
             return
@@ -426,20 +384,6 @@ class Administration(commands.Cog):
         if ctx.guild is None:
             await ctx.send(
                 "❌ This command cannot be used in Direct Messages.",
-                delete_after=10
-            )
-            return
-
-        if ctx.guild.id != SUPPORT_SERVER_ID:
-            await ctx.send(
-                "❌ This command can only be used in the support server.",
-                delete_after=10
-            )
-            return
-
-        if ctx.channel.id != ADMIN_CONTROL_CHANNEL_ID:
-            await ctx.send(
-                f"❌ This command can only be used in <#{ADMIN_CONTROL_CHANNEL_ID}>.",
                 delete_after=10
             )
             return
