@@ -25,7 +25,8 @@ Collected data is used solely to:
 
 ## 4. Data Retention & Deletion
 - **User Unlinking:** If a user is unlinked, their record is permanently deleted from the active verification database.
-- **Data Removal Requests:** Users may request complete data removal at any time by opening a ticket in the [Noodle's Nexus](https://discord.gg/PeXzxBeUcB) support server.
+- **Data Removal Requests:** Users may request complete removal of their linked account data at any time by opening a ticket in the [Noodle's Nexus](https://discord.gg/PeXzxBeUcB) support server.
+- **Moderation & Sanction Exception:** Global sanction records (Discord User IDs, reason codes, timestamps, and moderator IDs for globally banned accounts) are retained indefinitely to enforce system-wide security, prevent ban evasion, and protect participating communities. Data removal requests will not erase active global sanction records.
 - **Server Removal:** When O-SAVS leaves a server, server configuration settings are scheduled for automatic purge.
 
 ## 5. Third-Party Services
