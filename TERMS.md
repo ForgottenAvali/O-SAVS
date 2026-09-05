@@ -21,7 +21,7 @@ By inviting, configuring, or using O-SAVS ("the Bot") in your Discord server, or
 - **Appeals:** Users who believe a global ban was issued in error may file an appeal by joining the [Noodle's Nexus](https://discord.gg/PeXzxBeUcB) support server. Decisions made by O-SAVS administration regarding global bans are final.
 
 ## 4. Service Availability & Modification
-- O-SAVS is provided on an **"AS IS" and "AS AVAILABLE"** basis without warranties of any kind.
+- O-SAVS is provided on an **"AS IS"** and **"AS AVAILABLE"** basis without warranties of any kind.
 - The developer and/or administrators reserve the right to modify, suspend, or terminate bot operations, or revoke access to specific users/servers violating these terms, at any time without prior notice.
 
 ## 5. License & Commercial Use
