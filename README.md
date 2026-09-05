@@ -23,7 +23,7 @@ O-SAVS is a global Discord age-verification bot designed to integrate seamlessly
 
 O-SAVS utilizes **SQLite (`aiosqlite`)** with text-based Snowflake column schemas to prevent precision loss across 64-bit Discord IDs.
 
-- **`server_settings`**: Stores guild configuration (`server_id`, `verified_role`, `verify_channel`, `verification_logs`, `av_start_code`).
+- **`server_settings`**: Stores guild configuration (`server_id`, `verified_role`, `verify_channel`, `verification_logs`, `av_start_code`, `required_role`).
 - **`verified_users`**: Maps Discord IDs (`discord_id`) to VRChat User IDs (`vrchat_id`).
 - **`banned_users`**: Stores global user ban records (`discord_id`, `reason`, `moderator_id`, `timestamp`).
 
