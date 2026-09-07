@@ -116,7 +116,7 @@ class Administration(commands.Cog):
 
     async def send_verify_log(self, guild: discord.Guild, action: str, member: discord.Member, vrchat_id: str, operator: discord.User, reason: Optional[str] = None):
         settings = await get_server_settings(guild.id)
-        log_channel_id = settings.get("log_channel")
+        log_channel_id = settings.get("verification_logs")
         if not log_channel_id:
             return
 
