@@ -10,7 +10,7 @@
       <sub>Discord: <code>forgotten_avali</code></sub>
     </td>
     <td align="center" colspan="3" width="50%">
-      <img src="assets/team/kanokochan.png" width="150" alt="Kanokochan Avatar" /><br />
+      <img src="https://cdn.discordapp.com/attachments/1112118702834470914/1547424660579291298/VRChat_2026-08-15_04-38-20.038_2560x1440.png?ex=6aa35f04&is=6aa20d84&hm=da057f08cc113ae2e86c9da0869931621ea23076ddb14ae7b420dc0b424feba2&" width="150" alt="Kanokochan Avatar" /><br />
       <b>Kanokochan</b><br />
       <sub>Administrator</sub><br /><br />
       <sub>VRC: <a href="https://vrchat.com/home/user/usr_2ade7881-1831-4d14-abb3-b3b636c00c95"><b>Kanokochan</b></a></sub><br />
