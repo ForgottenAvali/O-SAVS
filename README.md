@@ -1,5 +1,6 @@
 # O-SAVS (Open-Source Age Verification System)
 
+[![Invite Bot](https://img.shields.io/badge/Invite%20Bot-O--SAVS-24292F?style=for-the-badge&logo=discord&logoColor=white)](https://discord.com/oauth2/authorize?client_id=1516450694109073439)
 [![Discord](https://img.shields.io/badge/Discord-Noodle's%20Nexus-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/PeXzxBeUcB)
 [![Ko-fi](https://img.shields.io/badge/Ko--fi-Support%20Me-F16061?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/forgottenavali)
 
