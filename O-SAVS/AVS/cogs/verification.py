@@ -233,7 +233,7 @@ class PrefixModal(ui.Modal, title="Custom Verification Prefix"):
         label="Verification Code Prefix",
         placeholder="AVS-",
         default="AVS-",
-        max_length=15,
+        max_length=7,
         required=True
     )
 
