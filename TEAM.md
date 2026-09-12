@@ -6,7 +6,7 @@
       <b>ForgottenAvali</b><br />
       <sub>Developer / Maintainer</sub><br /><br />
       <sub>VRC: <a href="https://vrchat.com/home/user/usr_3ff00b98-2df1-493b-95f1-fd05cf99dbac"><b>NoodleTheAvali</b></a></sub><br />
-      <sub>Discord: <code>forgotten_avali</code></sub>
+      <sub>Discord: <code>forgotten_avali</code> / <code>forgotten_avali_backup</code></sub>
     </td>
   </tr>
   
