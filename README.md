@@ -1,8 +1,14 @@
-# O-SAVS (Open-Source Age Verification System)
+<div align="center">
+  <img src="https://cdn.discordapp.com/attachments/1112118702834470914/1548402237431226548/OSAVSBanner.png?ex=6aa6ed75&is=6aa59bf5&hm=5816b0b3f7aa44a6b99dc4dac20eba6a2b9244f2b44cb7f4cc1e13131cfc0369&" alt="O-SAVS Banner" width="100%" />
 
-[![Invite Bot](https://img.shields.io/badge/Invite-O--SAVS-24292F?style=for-the-badge&logo=discord&logoColor=white)](https://discord.com/oauth2/authorize?client_id=1516450694109073439)
-[![Discord](https://img.shields.io/badge/Join-Noodle's%20Nexus-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/PeXzxBeUcB)
-[![Ko-fi](https://img.shields.io/badge/Ko--fi-Support%20Me-F16061?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/forgottenavali)
+  <br /><br />
+
+  [![Invite Bot](https://img.shields.io/badge/Invite-O--SAVS-24292F?style=for-the-badge&logo=discord&logoColor=white)](https://discord.com/oauth2/authorize?client_id=1516450694109073439)
+  [![Discord](https://img.shields.io/badge/Join-Noodle's%20Nexus-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/PeXzxBeUcB)
+  [![Ko-fi](https://img.shields.io/badge/Ko--fi-Support%20Me-F16061?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/forgottenavali)
+</div>
+
+<br />
 
 O-SAVS is a global Discord age-verification bot designed to integrate seamlessly with VRChat profiles. It allows server administrators to restrict adult spaces by ensuring members have verified their 18+ status on VRChat. Once a user is verified in one server running O-SAVS, their status automatically syncs across all mutual servers operating the bot.
 
