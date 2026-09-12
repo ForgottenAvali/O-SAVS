@@ -1,7 +1,7 @@
 <div align="center">
   <img src="https://cdn.discordapp.com/attachments/1112118702834470914/1548402237431226548/OSAVSBanner.png?ex=6aa6ed75&is=6aa59bf5&hm=5816b0b3f7aa44a6b99dc4dac20eba6a2b9244f2b44cb7f4cc1e13131cfc0369&" alt="O-SAVS Banner" width="100%" />
 
-  <br /><br />
+  <br />
 
   [![Invite Bot](https://img.shields.io/badge/Invite-O--SAVS-24292F?style=for-the-badge&logo=discord&logoColor=white)](https://discord.com/oauth2/authorize?client_id=1516450694109073439)
   [![Discord](https://img.shields.io/badge/Join-Noodle's%20Nexus-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/PeXzxBeUcB)
