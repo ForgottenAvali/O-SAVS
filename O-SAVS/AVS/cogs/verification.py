@@ -101,8 +101,8 @@ class BioCheckView(ui.View):
                 )
                 
                 log_reason = (
-                    "Initial profile verification via VRChat bio/status code" if is_origin 
-                    else f"Global Verification Sync (Verified via {interaction.guild.name})"
+                    "Initial profile verification via code" if is_origin 
+                    else "Global Verification Sync"
                 )
 
                 try:
