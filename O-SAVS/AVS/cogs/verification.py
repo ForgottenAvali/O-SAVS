@@ -72,7 +72,7 @@ class BioCheckView(ui.View):
 
         await add_verified_user(interaction.user.id, self.user_id)
 
-        role_added = False
+        origin_role_added = False
 
         for guild in self.bot.guilds:
             member = guild.get_member(interaction.user.id)
@@ -94,14 +94,21 @@ class BioCheckView(ui.View):
             role = guild.get_role(role_id)
             if role and role not in member.roles:
                 is_origin = (guild.id == interaction.guild_id)
+                
                 audit_reason = (
                     "O-SAVS Automated Verification" if is_origin 
                     else "O-SAVS Auto-Role: Global Verification Sync"
                 )
+                
+                log_reason = (
+                    "Initial profile verification via VRChat bio/status code" if is_origin 
+                    else f"Global Verification Sync (Verified via {interaction.guild.name})"
+                )
 
                 try:
                     await member.add_roles(role, reason=audit_reason)
-                    role_added = True
+                    if is_origin:
+                        origin_role_added = True
                 except discord.Forbidden:
                     logging.error(f"[Verify] Missing permissions to assign role in guild {guild.id}")
                 except discord.HTTPException as e:
@@ -114,7 +121,7 @@ class BioCheckView(ui.View):
                         member=member,
                         vrchat_id=self.user_id,
                         operator=interaction.user if is_origin else self.bot.user,
-                        reason=audit_reason
+                        reason=log_reason
                     )
                 except Exception as e:
                     logging.error(f"[Verify Log Error - {guild.id}] {e}")
@@ -128,12 +135,20 @@ class BioCheckView(ui.View):
 
         self.stop()
 
-        await interaction.followup.send(
-            "✅ **Verification complete!**\n"
-            f"You have been age verified in all servers using O-SAVS including **{interaction.guild.name}**.\n"
-            "You may now remove the verification code from your VRChat profile.",
-            ephemeral=True
-        )
+        if origin_role_added:
+            success_msg = (
+                "✅ **Verification complete!**\n"
+                f"You have been age verified in **{interaction.guild.name}** and synced across all eligible O-SAVS servers.\n"
+                "You may now remove the verification code from your VRChat profile."
+            )
+        else:
+            success_msg = (
+                "✅ **Account Linked!**\n"
+                "Your VRChat age verification has been recorded globally. "
+                f"If you did not receive the role in **{interaction.guild.name}**, ensure you meet any required role prerequisites."
+            )
+
+        await interaction.followup.send(success_msg, ephemeral=True)
 
 
 class ConfirmCheck(ui.View):
