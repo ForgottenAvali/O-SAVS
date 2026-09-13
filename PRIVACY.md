@@ -1,6 +1,6 @@
 # O-SAVS Privacy Policy
 
-Last Updated: September 2, 2026
+Last Updated: September 13, 2026
 
 O-SAVS ("the Bot") is committed to protecting user privacy and maintaining transparency regarding data collection, storage, and usage.
 
@@ -14,7 +14,7 @@ To provide global age-verification functionality, O-SAVS stores the following mi
 ## 2. Information We DO NOT Collect
 - **Personal Identification Documents:** We do not request, collect, or store real names, IDs, passports, driver's licenses, or facial images.
 - **Message Content:** We do not read, log, or store chat messages in any Discord server.
-- **VRChat Account Credentials:** Authentication tokens and login details are restricted to the bot's host environment and are never stored alongside user records.
+- **VRChat Account Credentials:** O-SAVS never requests, accesses, or stores user VRChat account credentials, passwords, or login tokens. Verification relies strictly on publicly accessible profile details linked via your VRChat User ID.
 
 ## 3. How We Use Data
 Collected data is used solely to:
