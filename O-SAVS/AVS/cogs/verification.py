@@ -81,29 +81,43 @@ class BioCheckView(ui.View):
 
             settings = await get_server_settings(guild.id)
             role_id = settings.get("verified_role")
+            required_role_id = settings.get("required_role")
+
             if not role_id:
                 continue
 
+            if required_role_id:
+                req_role = guild.get_role(required_role_id)
+                if req_role and req_role not in member.roles:
+                    continue
+
             role = guild.get_role(role_id)
             if role and role not in member.roles:
+                is_origin = (guild.id == interaction.guild_id)
+                audit_reason = (
+                    "O-SAVS Automated Verification" if is_origin 
+                    else "O-SAVS Auto-Role: Global Verification Sync"
+                )
+
                 try:
-                    await member.add_roles(role, reason="O-SAVS Automated Verification")
+                    await member.add_roles(role, reason=audit_reason)
                     role_added = True
                 except discord.Forbidden:
                     logging.error(f"[Verify] Missing permissions to assign role in guild {guild.id}")
                 except discord.HTTPException as e:
                     logging.error(f"[Verify] HTTP error assigning role in guild {guild.id}: {e}")
 
-            try:
-                await self.cog.send_verify_log(
-                    guild=guild,
-                    action="User Verified",
-                    member=member,
-                    vrchat_id=self.user_id,
-                    operator=interaction.user
-                )
-            except Exception as e:
-                logging.error(f"[Verify Log Error - {guild.id}] {e}")
+                try:
+                    await self.cog.send_verify_log(
+                        guild=guild,
+                        action="User Verified",
+                        member=member,
+                        vrchat_id=self.user_id,
+                        operator=interaction.user if is_origin else self.bot.user,
+                        reason=audit_reason
+                    )
+                except Exception as e:
+                    logging.error(f"[Verify Log Error - {guild.id}] {e}")
 
         await self.cog.send_global_log(
             action="User Verified",
