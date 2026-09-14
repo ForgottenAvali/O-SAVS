@@ -41,7 +41,7 @@ async def init_db():
 
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS banned_users (
-                discord_id TEXT PRIMARY KEY,
+                target_id TEXT PRIMARY KEY,
                 reason TEXT NOT NULL,
                 moderator_id TEXT NOT NULL,
                 timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -191,26 +191,27 @@ async def get_total_verified_users(exclude_ids: Optional[list[int | str]] = None
                 return row[0] if row else 0
 
 
-async def is_banned(discord_id: int | str) -> bool:
+async def is_banned(target_id: int | str) -> bool:
     async with aiosqlite.connect(DB_PATH) as conn:
         async with conn.execute(
-            "SELECT 1 FROM banned_users WHERE discord_id = ?", (str(discord_id),)
+            "SELECT 1 FROM banned_users WHERE target_id = ?", (str(target_id).strip(),)
         ) as cursor:
             row = await cursor.fetchone()
             return row is not None
 
 
-async def get_banned_user(discord_id: int | str) -> Optional[dict]:
+async def get_banned_user(target_id: int | str) -> Optional[dict]:
     async with aiosqlite.connect(DB_PATH) as conn:
         conn.row_factory = aiosqlite.Row
         async with conn.execute(
-            "SELECT * FROM banned_users WHERE discord_id = ?", (str(discord_id),)
+            "SELECT * FROM banned_users WHERE target_id = ?", (str(target_id).strip(),)
         ) as cursor:
             row = await cursor.fetchone()
             if row:
                 data = dict(row)
+                raw_target = data["target_id"]
                 return {
-                    "discord_id": safe_int(data["discord_id"]),
+                    "target_id": safe_int(raw_target) if raw_target.isdigit() else raw_target,
                     "reason": data["reason"],
                     "moderator_id": safe_int(data["moderator_id"]),
                     "timestamp": data["timestamp"]
@@ -218,25 +219,24 @@ async def get_banned_user(discord_id: int | str) -> Optional[dict]:
             return None
 
 
-async def add_banned_user(discord_id: int | str, reason: str, moderator_id: int | str):
-    clean_user = safe_int(discord_id)
+async def add_banned_user(target_id: int | str, reason: str, moderator_id: int | str):
     clean_mod = safe_int(moderator_id)
     
-    target_user = str(clean_user) if clean_user is not None else str(discord_id)
+    target_key = str(target_id).strip()
     target_mod = str(clean_mod) if clean_mod is not None else str(moderator_id)
 
     async with aiosqlite.connect(DB_PATH) as conn:
         await conn.execute(
-            "INSERT OR REPLACE INTO banned_users (discord_id, reason, moderator_id) VALUES (?, ?, ?)",
-            (target_user, reason, target_mod)
+            "INSERT OR REPLACE INTO banned_users (target_id, reason, moderator_id) VALUES (?, ?, ?)",
+            (target_key, reason, target_mod)
         )
         await conn.commit()
 
 
-async def remove_banned_user(discord_id: int | str) -> bool:
+async def remove_banned_user(target_id: int | str) -> bool:
     async with aiosqlite.connect(DB_PATH) as conn:
         async with conn.execute(
-            "DELETE FROM banned_users WHERE discord_id = ?", (str(discord_id),)
+            "DELETE FROM banned_users WHERE target_id = ?", (str(target_id).strip(),)
         ) as cursor:
             await conn.commit()
             return cursor.rowcount > 0
