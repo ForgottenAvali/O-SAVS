@@ -55,4 +55,4 @@ pip install discord.py aiosqlite aiohttp vrchatapi
 * [Meet the O-SAVS Team](TEAM.md) - Find contact info and roles for the development, administration, and support staff.
 * [License](LICENSE) - PolyForm Noncommercial License 1.0.0
    * You are free to use, modify, and host this bot for non-commercial community use. Commercial hosting, selling, or monetization of this software is strictly prohibited.
-   * The bot is hosted 24/7 by ForgottenAvali and can be added to your server for free in [Noodle's Nexus](https://discord.gg/PeXzxBeUcB)
+   * The bot is hosted 24/7 by ForgottenAvali and can be added to your server for free in [Noodle's Nexus](https://discord.gg/PeXzxBeUcB) or through the `Invite O-SAVS` button above.
