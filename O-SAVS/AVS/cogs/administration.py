@@ -9,6 +9,7 @@ from discord.ext import commands
 
 from data.vrchat import get_vrchat_user
 from data.database import (
+    get_all_verified_users,
     add_verified_user,
     remove_verified_user,
     get_vrchat_id_from_discord,
@@ -87,6 +88,27 @@ class ServerPaginatorView(discord.ui.View):
 class Administration(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+
+
+    async def resolve_target(self, target_input: str) -> tuple[Optional[int], Optional[str]]:
+        target_input = target_input.strip()
+
+        if target_input.isdigit() and 16 <= len(target_input) <= 22:
+            discord_id = int(target_input)
+            vrchat_id = await get_vrchat_id_from_discord(discord_id)
+            return discord_id, vrchat_id
+
+        vrchat_id = target_input
+
+        all_verified = await get_all_verified_users()
+        discord_id = next((d_id for d_id, v_id in all_verified if v_id.lower() == vrchat_id.lower()), None)
+
+        if not discord_id:
+            vrc_user = await get_vrchat_user(vrchat_id)
+            if vrc_user:
+                vrchat_id = vrc_user.get("id", vrchat_id)
+
+        return discord_id, vrchat_id
 
 
     def is_user_allowed(self, user_id: int) -> bool:
@@ -402,92 +424,80 @@ class Administration(commands.Cog):
             await ctx.send(embed=embed)
 
 
-    @commands.command(name="ban_user", help="Admin only: Globally ban a user ID, unlink their VRChat ID, and strip roles")
-    async def ban_user_cmd(self, ctx: commands.Context, target_user_id: int, *, reason: str):
-        if not self.is_user_allowed(ctx.author.id):
-            await ctx.send(
-                "❌ This command can only be used by O-SAVS Administration.",
-                delete_after=10
-            )
+    @commands.command(name="ban_user", help="Admin only: Globally ban a Discord user ID or VRChat user ID (including legacy IDs)")
+    async def ban_user_cmd(self, ctx: commands.Context, target_input: str, *, reason: str):
+        if not self.is_user_allowed(ctx.author.id) or ctx.guild is None:
+            return
+        if ctx.guild.id != SUPPORT_SERVER_ID or ctx.channel.id != ADMIN_CONTROL_CHANNEL_ID:
             return
 
-        if ctx.guild is None:
-            await ctx.send(
-                "❌ This command cannot be used in Direct Messages.",
-                delete_after=10
-            )
-            return
+        discord_id, vrchat_id = await self.resolve_target(target_input)
 
-        if ctx.guild.id != SUPPORT_SERVER_ID:
-            await ctx.send(
-                "❌ This command can only be used in the support server.",
-                delete_after=10
-            )
-            return
-
-        if ctx.channel.id != ADMIN_CONTROL_CHANNEL_ID:
-            await ctx.send(
-                f"❌ This command can only be used in <#{ADMIN_CONTROL_CHANNEL_ID}>.",
-                delete_after=10
-            )
-            return
-
-        if await is_banned(target_user_id):
+        if not discord_id and not vrchat_id:
             embed = Embed(
-                title="❌ Already Banned",
-                description=f"User ID `{target_user_id}` is already globally banned.",
+                title="❌ Invalid Target",
+                description="Target could not be resolved to a valid Discord User ID or VRChat User ID.",
                 color=discord.Color.red()
             )
             return await ctx.send(embed=embed)
 
-        target_user = await self.get_or_fetch_user(target_user_id)
-        vrchat_id = await get_vrchat_id_from_discord(target_user_id)
+        target_key = discord_id or vrchat_id
+
+        if await is_banned(target_key) or (vrchat_id and await is_banned(vrchat_id)):
+            embed = Embed(
+                title="❌ Already Banned",
+                description=f"Target `{target_input}` is already globally banned.",
+                color=discord.Color.red()
+            )
+            return await ctx.send(embed=embed)
 
         await add_banned_user(
-            discord_id=target_user_id,
+            target_id=target_key,
             reason=reason,
             moderator_id=ctx.author.id
         )
-        await remove_verified_user(target_user_id)
 
         removed_count = 0
         did_not_have_count = 0
         error_summary = []
 
-        for guild in self.bot.guilds:
-            member = guild.get_member(target_user_id)
-            if not member:
-                continue
+        if discord_id:
+            await remove_verified_user(discord_id)
 
-            settings = await get_server_settings(guild.id)
-            role_id = settings.get("verified_role")
-            if not role_id:
-                continue
+            for guild in self.bot.guilds:
+                member = guild.get_member(discord_id)
+                if not member:
+                    continue
 
-            role = guild.get_role(role_id)
-            if role:
-                if role in member.roles:
-                    try:
-                        await member.remove_roles(role, reason="Global Ban Enforced")
-                        removed_count += 1
-                    except discord.Forbidden:
-                        error_summary.append(f"• **{guild.name}:** Missing permissions to remove role")
-                    except discord.HTTPException as e:
-                        error_summary.append(f"• **{guild.name}:** API error (`{e.status}`): `{e.text}`")
-                else:
-                    did_not_have_count += 1
+                settings = await get_server_settings(guild.id)
+                role_id = settings.get("verified_role")
+                if not role_id:
+                    continue
 
-            if vrchat_id:
-                await self.send_verify_log(
-                    guild=guild,
-                    action="Global User Ban",
-                    member=member,
-                    vrchat_id=vrchat_id,
-                    operator=ctx.author,
-                    reason="Global Ban Enforced"
-                )
+                role = guild.get_role(role_id)
+                if role:
+                    if role in member.roles:
+                        try:
+                            await member.remove_roles(role, reason="Global Ban Enforced")
+                            removed_count += 1
+                        except discord.Forbidden:
+                            error_summary.append(f"• **{guild.name}:** Missing permissions to remove role")
+                        except discord.HTTPException as e:
+                            error_summary.append(f"• **{guild.name}:** API error (`{e.status}`): `{e.text}`")
+                    else:
+                        did_not_have_count += 1
 
-            await asyncio.sleep(0.5)
+                if vrchat_id:
+                    await self.send_verify_log(
+                        guild=guild,
+                        action="Global User Ban",
+                        member=member,
+                        vrchat_id=vrchat_id,
+                        operator=ctx.author,
+                        reason="Global Ban Enforced"
+                    )
+
+                await asyncio.sleep(0.5)
 
         summary_parts = []
         if removed_count > 0:
@@ -500,7 +510,8 @@ class Administration(commands.Cog):
         if error_summary:
             summary_parts.extend(error_summary)
 
-        user_tag = f"{target_user.name} (`{target_user_id}`)" if target_user else f"`{target_user_id}`"
+        target_user = await self.get_or_fetch_user(discord_id) if discord_id else None
+        user_tag = f"{target_user.name} (`{discord_id}`)" if target_user else f"`{discord_id or 'Unlinked'}`"
 
         embed = Embed(
             title="🚫 Global Ban Enforced",
@@ -548,10 +559,7 @@ class Administration(commands.Cog):
         original_error = getattr(error, "original", error)
 
         if isinstance(original_error, commands.MissingRequiredArgument):
-            embed = Embed(title="⚠️ Invalid Command Usage", description="Usage: `.ban_user <discord_user_id> <reason>`", color=discord.Color.gold())
-            await ctx.send(embed=embed)
-        elif isinstance(original_error, commands.BadArgument):
-            embed = Embed(title="❌ Invalid Argument", description="Target User ID must be a numeric Discord integer ID.", color=discord.Color.red())
+            embed = Embed(title="⚠️ Invalid Command Usage", description="Usage: `.ban_user <discord_user_id or vrchat_user_id> <reason>`", color=discord.Color.gold())
             await ctx.send(embed=embed)
         else:
             logging.error(f"[Ban Error] {original_error}", exc_info=original_error)
@@ -559,46 +567,31 @@ class Administration(commands.Cog):
             await ctx.send(embed=embed)
 
 
-    @commands.command(name="unban_user", help="Admin only: Remove a user from the global ban list")
-    async def unban_user_cmd(self, ctx: commands.Context, target_user_id: int, *, reason: str):
-        if not self.is_user_allowed(ctx.author.id):
-            await ctx.send(
-                "❌ This command can only be used by O-SAVS Administration.",
-                delete_after=10
-            )
+    @commands.command(name="unban_user", help="Admin only: Remove a user from global ban list via Discord or VRChat ID (including legacy IDs)")
+    async def unban_user_cmd(self, ctx: commands.Context, target_input: str, *, reason: str):
+        if not self.is_user_allowed(ctx.author.id) or ctx.guild is None:
+            return
+        if ctx.guild.id != SUPPORT_SERVER_ID or ctx.channel.id != ADMIN_CONTROL_CHANNEL_ID:
             return
 
-        if ctx.guild is None:
-            await ctx.send(
-                "❌ This command cannot be used in Direct Messages.",
-                delete_after=10
-            )
-            return
+        discord_id, vrchat_id = await self.resolve_target(target_input)
 
-        if ctx.guild.id != SUPPORT_SERVER_ID:
-            await ctx.send(
-                "❌ This command can only be used in the support server.",
-                delete_after=10
-            )
-            return
+        unbanned = False
+        for key in [discord_id, vrchat_id, target_input]:
+            if key and await remove_banned_user(key):
+                unbanned = True
+                break
 
-        if ctx.channel.id != ADMIN_CONTROL_CHANNEL_ID:
-            await ctx.send(
-                f"❌ This command can only be used in <#{ADMIN_CONTROL_CHANNEL_ID}>.",
-                delete_after=10
-            )
-            return
-
-        if not await remove_banned_user(target_user_id):
+        if not unbanned:
             embed = Embed(
                 title="❌ Not Blacklisted",
-                description=f"User ID `{target_user_id}` is not currently globally banned.",
+                description=f"Target `{target_input}` is not currently globally banned.",
                 color=discord.Color.red()
             )
             return await ctx.send(embed=embed)
 
-        target_user = await self.get_or_fetch_user(target_user_id)
-        user_tag = f"{target_user.name} (`{target_user_id}`)" if target_user else f"`{target_user_id}`"
+        target_user = await self.get_or_fetch_user(discord_id) if discord_id else None
+        user_tag = f"{target_user.name} (`{discord_id}`)" if target_user else f"`{target_input}`"
 
         embed = Embed(
             title="✅ Global Ban Removed",
@@ -644,10 +637,7 @@ class Administration(commands.Cog):
         original_error = getattr(error, "original", error)
 
         if isinstance(original_error, commands.MissingRequiredArgument):
-            embed = Embed(title="⚠️ Invalid Command Usage", description="Usage: `.unban_user <discord_user_id> <reason>`", color=discord.Color.gold())
-            await ctx.send(embed=embed)
-        elif isinstance(original_error, commands.BadArgument):
-            embed = Embed(title="❌ Invalid Argument", description="Target User ID must be a numeric Discord integer ID.", color=discord.Color.red())
+            embed = Embed(title="⚠️ Invalid Command Usage", description="Usage: `.unban_user <discord_user_id or vrchat_user_id> <reason>`", color=discord.Color.gold())
             await ctx.send(embed=embed)
         else:
             logging.error(f"[Unban Error] {original_error}", exc_info=original_error)
@@ -655,42 +645,26 @@ class Administration(commands.Cog):
             await ctx.send(embed=embed)
 
 
-    @commands.command(name="get_user_ban", help="Admin only: Check if a Discord user is globally banned and view ban details")
-    async def get_user_ban_cmd(self, ctx: commands.Context, target_user_id: int):
-        if not self.is_user_allowed(ctx.author.id):
-            await ctx.send(
-                "❌ This command can only be used by O-SAVS Administration.",
-                delete_after=10
-            )
+    @commands.command(name="get_user_ban", help="Admin only: Check global ban record by Discord or VRChat ID")
+    async def get_user_ban_cmd(self, ctx: commands.Context, target_input: str):
+        if not self.is_user_allowed(ctx.author.id) or ctx.guild is None:
+            return
+        if ctx.guild.id != SUPPORT_SERVER_ID or ctx.channel.id != ADMIN_CONTROL_CHANNEL_ID:
             return
 
-        if ctx.guild is None:
-            await ctx.send(
-                "❌ This command cannot be used in Direct Messages.",
-                delete_after=10
-            )
-            return
-
-        if ctx.guild.id != SUPPORT_SERVER_ID:
-            await ctx.send(
-                "❌ This command can only be used in the support server.",
-                delete_after=10
-            )
-            return
-
-        if ctx.channel.id != ADMIN_CONTROL_CHANNEL_ID:
-            await ctx.send(
-                f"❌ This command can only be used in <#{ADMIN_CONTROL_CHANNEL_ID}>.",
-                delete_after=10
-            )
-            return
-
-        ban_info = await get_banned_user(target_user_id)
+        discord_id, vrchat_id = await self.resolve_target(target_input)
+        
+        ban_info = None
+        for key in [discord_id, vrchat_id, target_input]:
+            if key:
+                ban_info = await get_banned_user(key)
+                if ban_info:
+                    break
 
         if not ban_info:
             embed = Embed(
                 title="✅ No Ban Record Found",
-                description=f"User ID `{target_user_id}` is **not** globally banned.",
+                description=f"Target `{target_input}` is **not** globally banned.",
                 color=discord.Color.green()
             )
             return await ctx.send(embed=embed)
@@ -710,10 +684,24 @@ class Administration(commands.Cog):
             except ValueError:
                 pass
 
-        target_user = await self.get_or_fetch_user(target_user_id)
+        vrc_user = await get_vrchat_user(vrchat_id)
+        username = vrc_user.get("username", "Unknown User") if vrc_user else "Unknown User"
+
+        target_user = await self.get_or_fetch_user(discord_id) if discord_id else None
         mod_user = await self.get_or_fetch_user(moderator_id) if moderator_id else None
 
-        user_tag = f"{target_user.name} (`{target_user_id}`)" if target_user else f"`{target_user_id}`"
+        target_lines = []
+        if target_user:
+            target_lines.append(f"**Discord:** {target_user.name} (`{discord_id}`)")
+        elif discord_id:
+            target_lines.append(f"**Discord ID:** `{discord_id}`")
+            
+        if vrchat_id:
+            target_lines.append(f"**VRChat:** [{username}](https://vrchat.com/home/user/{vrchat_id}) (`{vrchat_id}`)")
+        elif not discord_id:
+            target_lines.append(f"**Input Key:** `{target_input}`")
+
+        target_display = "\n".join(target_lines)
         mod_tag = f"{mod_user.name} (`{moderator_id}`)" if mod_user else (f"`{moderator_id}`" if moderator_id else "Unknown")
 
         embed = Embed(
@@ -721,13 +709,12 @@ class Administration(commands.Cog):
             color=discord.Color.red(),
             timestamp=discord.utils.utcnow()
         )
-        embed.add_field(name="Target User", value=user_tag, inline=False)
-        embed.add_field(name="Moderator", value=mod_tag, inline=True)
+        embed.add_field(name="Target User", value=target_display, inline=False)
+        embed.add_field(name="Moderator", value=mod_tag, inline=False)
+        embed.add_field(name="Reason", value=reason, inline=False)
 
         if created_at:
             embed.add_field(name="Ban Date", value=f"<t:{int(created_at.timestamp())}:F>" if isinstance(created_at, datetime) else f"`{created_at}`", inline=True)
-
-        embed.add_field(name="Reason", value=reason, inline=False)
 
         await ctx.send(embed=embed)
 
@@ -764,10 +751,7 @@ class Administration(commands.Cog):
         original_error = getattr(error, "original", error)
 
         if isinstance(original_error, commands.MissingRequiredArgument):
-            embed = Embed(title="⚠️ Invalid Command Usage", description="Usage: `.get_user_ban <discord_user_id>`", color=discord.Color.gold())
-            await ctx.send(embed=embed)
-        elif isinstance(original_error, commands.BadArgument):
-            embed = Embed(title="❌ Invalid Argument", description="Target User ID must be a numeric Discord integer ID.", color=discord.Color.red())
+            embed = Embed(title="⚠️ Invalid Command Usage", description="Usage: `.get_user_ban <discord_user_id or vrchat_user_id>`", color=discord.Color.gold())
             await ctx.send(embed=embed)
         else:
             logging.error(f"[Get Ban Error] {original_error}", exc_info=original_error)
@@ -992,9 +976,9 @@ class Administration(commands.Cog):
             description=(
                 ".link (Usage: `.link <discord_user_id> <vrchat_user_id> [reason]`)\n"
                 ".unlink (Usage: `.unlink <discord_user_id> [reason]`)\n"
-                ".ban_user (Usage: `.ban_user <discord_user_id> <reason>`)\n"
-                ".unban_user (Usage: `.unban_user <discord_user_id> <reason>`)\n"
-                ".get_user_ban (Usage: `.get_user_ban <discord_user_id>`)\n"
+                ".ban_user (Usage: `.ban_user <discord_user_id or vrchat_user_id> <reason>`)\n"
+                ".unban_user (Usage: `.unban_user <discord_user_id or vrchat_user_id> <reason>`)\n"
+                ".get_user_ban (Usage: `.get_user_ban <discord_user_id or vrchat_user_id>`)\n"
                 ".get_osavs_servers (Usage: `.get_osavs_servers`)\n"
                 ".invite_me_osavs (Usage: `.invite_me_osavs <discord_server_id>`)"
             ),
