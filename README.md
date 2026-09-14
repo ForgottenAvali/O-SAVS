@@ -32,7 +32,7 @@ O-SAVS utilizes **SQLite (`aiosqlite`)** with text-based Snowflake column schema
 
 - **`server_settings`**: Stores guild configuration (`server_id`, `verified_role`, `verify_channel`, `verification_logs`, `av_start_code`, `required_role`).
 - **`verified_users`**: Maps Discord IDs (`discord_id`) to VRChat User IDs (`vrchat_id`).
-- **`banned_users`**: Stores global user ban records (`discord_id`, `reason`, `moderator_id`, `timestamp`).
+- **`banned_users`**: Stores global user ban records (`target_id` (Discord ID or VRChat User ID), `reason`, `moderator_id`, `timestamp`).
 
 ---
 
