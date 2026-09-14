@@ -202,7 +202,7 @@ class VRChatUsername(ui.Modal, title="VRChat Verification"):
                 ephemeral=True
             )
 
-        banned_user = await is_banned(modal_interaction.user.id)
+        banned_disc_user = await is_banned(modal_interaction.user.id)
         if banned_user:
             return await modal_interaction.followup.send(
                 f"❌ Your Discord account was banned by the administration team for O-SAVS.\n"
@@ -214,6 +214,14 @@ class VRChatUsername(ui.Modal, title="VRChat Verification"):
 
         id_pattern = r"usr_[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
         match = re.search(id_pattern, user_input, re.IGNORECASE) or re.search(r"usr_[a-fA-F0-9\-]{20,}", user_input)
+
+        banned_vrc_user = await is_banned(user_input)
+        if banned_user:
+            return await modal_interaction.followup.send(
+                f"❌ Your VRChat account was banned by the administration team for O-SAVS.\n"
+                "If you believe this ban was issued in error you may appeal by joining the [Noodle's Nexus](https://discord.gg/PeXzxBeUcB) support server.",
+                ephemeral=True
+            )
 
         if not match:
             invalid_embed = Embed(
