@@ -37,18 +37,18 @@
       <sub>Discord: <code>twinrandom</code></sub>
     </td>
     <td align="center" colspan="2" width="334">
-      <img src="Placeholder" width="140" alt="Placeholder Avatar" /><br />
-      <b>Placeholder</b><br />
+      <img src="https://cdn.discordapp.com/attachments/1112118702834470914/1549435809374150706/OSAVS-Unknown.png?ex=6aaab00c&is=6aa95e8c&hm=8bd51d8b8d4402fd24345c9e0cfe3f6c23a4d1e86706cb51705b907b7ee2223e&" width="150" alt="Unknown Avatar" /><br />
+      <b>???</b><br />
       <sub>Support Team</sub><br /><br />
-      <sub>VRC: <a href="https://vrchat.com/home/user/usr_f6ea7342-bd15-40a4-9770-c507563fc32f"><b>Placeholder</b></a></sub><br />
-      <sub>Discord: <code>Placeholder</code></sub>
+      <sub>VRC: <a href="https://vrchat.com/home/user/???"><b>???</b></a></sub><br />
+      <sub>Discord: <code>???</code></sub>
     </td>
     <td align="center" colspan="2" width="333">
-      <img src="Placeholder" width="140" alt="Placeholder Avatar" /><br />
-      <b>Placeholder</b><br />
+      <img src="https://cdn.discordapp.com/attachments/1112118702834470914/1549435809374150706/OSAVS-Unknown.png?ex=6aaab00c&is=6aa95e8c&hm=8bd51d8b8d4402fd24345c9e0cfe3f6c23a4d1e86706cb51705b907b7ee2223e&" width="150" alt="Unknown Avatar" /><br />
+      <b>???</b><br />
       <sub>Support Team</sub><br /><br />
-      <sub>VRC: <a href="https://vrchat.com/home/user/usr_f6ea7342-bd15-40a4-9770-c507563fc32f"><b>Placeholder</b></a></sub><br />
-      <sub>Discord: <code>Placeholder</code></sub>
+      <sub>VRC: <a href="https://vrchat.com/home/user/???"><b>???</b></a></sub><br />
+      <sub>Discord: <code>???</code></sub>
     </td>
   </tr>
 
