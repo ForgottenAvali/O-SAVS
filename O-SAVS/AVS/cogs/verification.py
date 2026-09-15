@@ -109,10 +109,10 @@ class BioCheckView(ui.View):
                     await member.add_roles(role, reason=audit_reason)
                     if is_origin:
                         origin_role_added = True
-                except discord.Forbidden:
-                    logging.error(f"[Verify] Missing permissions to assign role in guild {guild.id}")
+                except discord.Forbidden as e:
+                    logging.error(f"[Verify Log Error - {guild.id}] {e}")
                 except discord.HTTPException as e:
-                    logging.error(f"[Verify] HTTP error assigning role in guild {guild.id}: {e}")
+                    logging.error(f"[Verify Log Error - {guild.id}] {e}")
 
                 try:
                     await self.cog.send_verify_log(
@@ -425,8 +425,8 @@ class SetupWizardView(ui.View):
         )
         try:
             await target_log_channel.send(embed=thank_you_embed)
-        except discord.Forbidden:
-            logging.error(f"[Setup] Lacking permissions to send thank you embed in {target_log_channel.id}")
+        except discord.Forbidden as e:
+            logging.error(f"[Setup Log Error - {guild.id}] {e}")
 
         panel_embed = Embed(
             title="VRChat 18+ Verification",
@@ -456,7 +456,6 @@ class SetupWizardView(ui.View):
                 ephemeral=True
             )
 
-        # Sync existing members
         all_verified = await get_all_verified_users()
         synced_count = 0
 
@@ -478,8 +477,8 @@ class SetupWizardView(ui.View):
                         reason="O-SAVS setup: Syncing existing global verification"
                     )
                     await asyncio.sleep(0.5)
-                except discord.Forbidden:
-                    logging.error(f"[Setup] Failed to grant role to {member.id} due to permissions.")
+                except discord.Forbidden as e:
+                    logging.error(f"[Setup Log Error - {guild.id}] {e}")
 
         self.stop()
         for item in self.children:
@@ -519,7 +518,7 @@ class AgeVerify(commands.Cog):
             try:
                 channel = await self.bot.fetch_channel(GLOBAL_LOG_CHANNEL_ID)
             except (discord.NotFound, discord.HTTPException) as e:
-                logging.error(f"[Global Log Error] Failed to fetch channel `{GLOBAL_LOG_CHANNEL_ID}`: {e}")
+                logging.error(f"[Global Log Error] {e}")
                 return
 
         if not isinstance(channel, discord.TextChannel):
@@ -551,7 +550,7 @@ class AgeVerify(commands.Cog):
         try:
             await channel.send(embed=embed)
         except (discord.Forbidden, discord.HTTPException) as e:
-            logging.error(f"[Global Log Error] Failed to post log: {e}")
+            logging.error(f"[Global Log Error] {e}")
 
 
     async def cog_load(self):
@@ -593,19 +592,19 @@ class AgeVerify(commands.Cog):
                 await log_channel.send(embed=embed)
                 await asyncio.sleep(0.5)
                 break
-            except discord.Forbidden:
-                logging.error(f"[Log Dispatch Failed - {guild.id}] Missing permissions to send messages in channel {log_channel_id}.")
+            except discord.Forbidden as e:
+                logging.error(f"[Dispatch Log Error - {guild.id}] {e}")
                 break
             except discord.HTTPException as e:
                 if e.status == 429:
                     retry_after = getattr(e, "retry_after", 1)
-                    logging.warning(f"[Log Dispatch Rate Limited] Retrying in {retry_after}s for guild {guild.id}")
+                    logging.warning(f"[Dispatch Log Rate Limited - {guild.id}] Retrying in {retry_after}s: {e}")
                     await asyncio.sleep(retry_after)
                 else:
-                    logging.error(f"[Log Dispatch Error - {guild.id}] HTTP {e.status}: {e.text}")
+                    logging.error(f"[Dispatch Log Error - {guild.id}] {e}")
                     break
             except Exception as e:
-                logging.error(f"[Log Dispatch Failed - {guild.id}] {e}")
+                logging.error(f"[Dispatch Log Error - {guild.id}] {e}")
                 break
 
 
@@ -696,11 +695,11 @@ class AgeVerify(commands.Cog):
         try:
             removed = await delete_server_settings(guild.id)
             if removed:
-                logging.info(f"[Guild Remove] Removed settings for guild: {guild.name} ({guild.id})")
+                logging.info(f"[Guild Remove Log - {guild.id}] Removed settings for {guild.name}")
             else:
-                logging.info(f"[Guild Remove] No settings record found to delete for guild: {guild.name} ({guild.id})")
+                logging.info(f"[Guild Remove Log - {guild.id}] No settings record found to delete for {guild.name}")
         except Exception as e:
-            logging.error(f"[Guild Remove Error - {guild.id}] Failed to delete settings: {e}")
+            logging.error(f"[Guild Remove Log Error - {guild.id}] {e}")
 
 
     @commands.Cog.listener()
@@ -730,12 +729,11 @@ class AgeVerify(commands.Cog):
 
         try:
             await member.add_roles(role, reason="O-SAVS Auto-Role: Existing global verification")
-            logging.info(f"[Member Join] Automatically verified {member} ({member.id}) in {member.guild.name}")
-        except discord.Forbidden:
-            logging.error(f"[Member Join] Missing permissions to assign role in {member.guild.name} ({member.guild.id})")
+        except discord.Forbidden as e:
+            logging.error(f"[Member Join Log Error - {member.guild.id}] {e}")
             return
         except discord.HTTPException as e:
-            logging.error(f"[Member Join] HTTP error assigning role in {member.guild.name} ({member.guild.id}): {e}")
+            logging.error(f"[Member Join Log Error - {member.guild.id}] {e}")
             return
 
         try:
@@ -778,7 +776,6 @@ class AgeVerify(commands.Cog):
 
             try:
                 await after.add_roles(verified_role, reason="O-SAVS Auto-Role: Required role acquired")
-                logging.info(f"[Member Update] Granted verified role to {after} ({after.id}) after acquiring required role")
 
                 await self.send_verify_log(
                     guild=after.guild,
@@ -788,19 +785,19 @@ class AgeVerify(commands.Cog):
                     operator=self.bot.user,
                     reason="Acquired Required Role (Global Verification)"
                 )
-            except discord.Forbidden:
-                logging.error(f"[Member Update] Missing permissions in {after.guild.name}")
+            except discord.Forbidden as e:
+                logging.error(f"[Member Update Log Error - {after.guild.id}] {e}")
             except discord.HTTPException as e:
-                logging.error(f"[Member Update] HTTP error in {after.guild.name}: {e}")
+                logging.error(f"[Member Update Log Error - {after.guild.id}] {e}")
 
 
     async def sync_offline_verifications(self):
         await self.bot.wait_until_ready()
-        logging.info("[Startup Sync] Starting startup verification role sync")
+        logging.info("[Startup Sync Log] Starting startup verification role sync")
 
         all_verified = await get_all_verified_users()
         if not all_verified:
-            logging.info("[Startup Sync] No verified users found in database")
+            logging.info("[Startup Sync Log] No verified users found in database")
             return
 
         verified_map = {discord_id: vrchat_id for discord_id, vrchat_id in all_verified}
@@ -844,14 +841,14 @@ class AgeVerify(commands.Cog):
                         )
                         
                         await asyncio.sleep(0.5)
-                    except discord.Forbidden:
-                        logging.warning(f"[Startup Sync Error - {guild.id}] Missing permissions in {guild.name} for {member}")
+                    except discord.Forbidden as e:
+                        logging.warning(f"[Startup Sync Log Error - {guild.id}] {e}")
                         error_count += 1
                     except discord.HTTPException as e:
-                        logging.error(f"[Startup Sync Error - {guild.id}] HTTP Error in {guild.name} for {member}: {e}")
+                        logging.error(f"[Startup Sync Log Error - {guild.id}] {e}")
                         error_count += 1
 
-        logging.info(f"[Startup Sync] Complete! Granted roles to {synced_count} member(s). Errors: {error_count}")
+        logging.info(f"[Startup Sync Log] Complete! Granted roles to {synced_count} member(s). Errors: {error_count}")
 
 
 async def setup(bot: commands.Bot):
