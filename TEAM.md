@@ -27,6 +27,31 @@
     </td>
   </tr>
 
+
+  <tr>
+    <td align="center" colspan="2" width="333">
+      <img src="https://cdn.discordapp.com/attachments/1112118702834470914/1549234195401015336/VRChat_2026-09-14_20-37-02.960_2560x1440.png?ex=6aa9f447&is=6aa8a2c7&hm=3cb340c0cad0b17f7e6dc6517faf2442773cc76e1ddd5bf8c86ac5b1bf85730a&" width="150" alt="TwinRandom Avatar" /><br />
+      <b>Acageofthemind</b><br />
+      <sub>Support Team</sub><br /><br />
+      <sub>VRC: <a href="https://vrchat.com/home/user/usr_90416d39-b4bc-468d-9958-5866a19f3a6c"><b>Acageofthemind</b></a></sub><br />
+      <sub>Discord: <code>twinrandom</code></sub>
+    </td>
+    <td align="center" colspan="2" width="334">
+      <img src="Placeholder" width="140" alt="Placeholder Avatar" /><br />
+      <b>Placeholder</b><br />
+      <sub>Support Team</sub><br /><br />
+      <sub>VRC: <a href="https://vrchat.com/home/user/usr_f6ea7342-bd15-40a4-9770-c507563fc32f"><b>Placeholder</b></a></sub><br />
+      <sub>Discord: <code>Placeholder</code></sub>
+    </td>
+    <td align="center" colspan="2" width="333">
+      <img src="Placeholder" width="140" alt="Placeholder Avatar" /><br />
+      <b>Placeholder</b><br />
+      <sub>Support Team</sub><br /><br />
+      <sub>VRC: <a href="https://vrchat.com/home/user/usr_f6ea7342-bd15-40a4-9770-c507563fc32f"><b>Placeholder</b></a></sub><br />
+      <sub>Discord: <code>Placeholder</code></sub>
+    </td>
+  </tr>
+
   <tr>
     <td align="center" colspan="6" width="1000">
       <sub>Interested in joining the team? Apply in <a href="https://discord.gg/PeXzxBeUcB"><b>Noodle's Nexus</b></a></sub>
