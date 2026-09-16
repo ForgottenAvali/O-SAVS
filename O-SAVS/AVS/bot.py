@@ -1,29 +1,23 @@
 import os, discord, asyncio, logging, itertools
 
-
 from dotenv import load_dotenv
 from discord.ext import commands, tasks
-
 
 from cogs import verification, administration
 from data.vrchat import login_vrc
 from data.database import init_db, get_total_verified_users
 from data.lock import ensure_single_instance, cleanup_instance
 
-
 logging.basicConfig(
     level=logging.INFO,
     format="%(message)s"
 )
 
-
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix=".", intents=intents)
 
-
 load_dotenv()
 TOKEN = os.getenv("BOT_TOKEN")
-
 
 status_index = 0
 NOODLENEXUS_SERVER = 1543888548296392775
@@ -43,7 +37,6 @@ async def on_ready():
 
     if not update_status.is_running():
         update_status.start()
-
 
 @tasks.loop(seconds=30)
 async def update_status():
@@ -65,7 +58,6 @@ async def update_status():
         activity=discord.CustomActivity(name=current_status)
     )
 
-
 async def start_bot():
     ensure_single_instance()
     try:
@@ -83,7 +75,6 @@ async def start_bot():
         if not bot.is_closed():
             await bot.close()
         print("[System] Bot has been shut down.")
-
 
 if __name__ == "__main__":
     try:
