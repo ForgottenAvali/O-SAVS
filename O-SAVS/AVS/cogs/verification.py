@@ -203,7 +203,7 @@ class VRChatUsername(ui.Modal, title="VRChat Verification"):
             )
 
         banned_disc_user = await is_banned(modal_interaction.user.id)
-        if banned_user:
+        if banned_disc_user:
             return await modal_interaction.followup.send(
                 f"❌ Your Discord account was banned by the administration team for O-SAVS.\n"
                 "If you believe this ban was issued in error you may appeal by joining the [Noodle's Nexus](https://discord.gg/PeXzxBeUcB) support server.",
@@ -216,7 +216,7 @@ class VRChatUsername(ui.Modal, title="VRChat Verification"):
         match = re.search(id_pattern, user_input, re.IGNORECASE) or re.search(r"usr_[a-fA-F0-9\-]{20,}", user_input)
 
         banned_vrc_user = await is_banned(user_input)
-        if banned_user:
+        if banned_vrc_user:
             return await modal_interaction.followup.send(
                 f"❌ Your VRChat account was banned by the administration team for O-SAVS.\n"
                 "If you believe this ban was issued in error you may appeal by joining the [Noodle's Nexus](https://discord.gg/PeXzxBeUcB) support server.",
@@ -502,7 +502,7 @@ class SetupWizardView(ui.View):
         await interaction.followup.send("✅ Server setup completed successfully!", ephemeral=True)
 
 
-class AgeVerify(commands.Cog):
+class Verification(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self._has_synced = False
@@ -852,4 +852,4 @@ class AgeVerify(commands.Cog):
 
 
 async def setup(bot: commands.Bot):
-    await bot.add_cog(AgeVerify(bot))
+    await bot.add_cog(Verification(bot))
