@@ -17,14 +17,10 @@ VRCUSER = os.getenv("VRC_USER")
 VRCPASS = os.getenv("VRC_PASS")
 CONTACT = os.getenv("CONTACT")
 
-encoded_user = quote(VRCUSER) if VRCUSER else None
-encoded_pass = quote(VRCPASS) if VRCPASS else None
-encoded_contact = quote(CONTACT) if CONTACT else None
 
-
-config = vrchatapi.Configuration(username=encoded_user, password=encoded_pass)
+config = vrchatapi.Configuration(username=VRCUSER, password=VRCPASS)
 client = vrchatapi.ApiClient(config)
-client.user_agent = f"O-SAVS/1.0.0 (contact: {encoded_contact})"
+client.user_agent = f"O-SAVS/1.0.0 (contact: {CONTACT})"
 
 
 auth_api = authentication_api.AuthenticationApi(client)
@@ -99,6 +95,7 @@ async def login_vrc():
                             lambda: auth_api.verify2_fa_email_code(TwoFactorEmailCode(code=code))
                         )
                         user = await loop.run_in_executor(None, auth_api.get_current_user)
+
                     elif "totp" in factors:
                         code = input("[VRChat] Enter your VRChat Authenticator code: ")
                         await loop.run_in_executor(None, lambda: auth_api.verify2_fa({"code": code}))
@@ -125,7 +122,7 @@ async def get_vrchat_user(user_id: str) -> dict | None:
         loop = asyncio.get_running_loop()
         result = await loop.run_in_executor(
             None,
-            lambda: users_api_instance.get_user(user_id)
+            lambda: users_api_instance.get_public_profile(user_id)
         )
 
         username = getattr(result, "display_name", None) or getattr(result, "username", "Unknown")
