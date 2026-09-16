@@ -1,11 +1,9 @@
 import logging, discord, asyncio, os, json
 
-
 from typing import Optional
 from datetime import datetime, timezone
 from discord import Embed
 from discord.ext import commands
-
 
 from data.vrchat import get_vrchat_user
 from data.database import (
@@ -19,7 +17,6 @@ from data.database import (
     remove_banned_user,
     get_banned_user,
 )
-
 
 ADMIN_USERS = os.path.join(os.path.dirname(__file__), "..", "utils", "administrator_user_ids.json")
 SUPPORT_SERVER_ID = 1543888548296392775
@@ -36,11 +33,9 @@ class ServerPaginatorView(discord.ui.View):
         self.total_pages = max(1, (len(guilds) + per_page - 1) // per_page)
         self.update_button_states()
 
-
     def update_button_states(self):
         self.prev_button.disabled = (self.current_page == 0)
         self.next_button.disabled = (self.current_page >= self.total_pages - 1)
-
 
     def create_embed(self) -> discord.Embed:
         start_idx = self.current_page * self.per_page
@@ -61,13 +56,11 @@ class ServerPaginatorView(discord.ui.View):
         embed.set_footer(text=f"Page {self.current_page + 1} of {self.total_pages}")
         return embed
 
-
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id != self.author_id:
             await interaction.response.send_message("❌ Only the command invoker can use these controls.", ephemeral=True)
             return False
         return True
-
 
     @discord.ui.button(label="◀ Previous", style=discord.ButtonStyle.secondary)
     async def prev_button(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -76,7 +69,6 @@ class ServerPaginatorView(discord.ui.View):
             self.update_button_states()
             await interaction.response.edit_message(embed=self.create_embed(), view=self)
 
-
     @discord.ui.button(label="Next ▶", style=discord.ButtonStyle.secondary)
     async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         if self.current_page < self.total_pages - 1:
@@ -84,11 +76,9 @@ class ServerPaginatorView(discord.ui.View):
             self.update_button_states()
             await interaction.response.edit_message(embed=self.create_embed(), view=self)
 
-
 class Administration(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-
 
     async def resolve_target(self, target_input: str) -> tuple[Optional[int], Optional[str]]:
         target_input = target_input.strip()
@@ -110,7 +100,6 @@ class Administration(commands.Cog):
 
         return discord_id, vrchat_id
 
-
     def is_user_allowed(self, user_id: int) -> bool:
         try:
             with open(ADMIN_USERS, "r", encoding="utf-8") as f:
@@ -120,11 +109,6 @@ class Administration(commands.Cog):
         except (FileNotFoundError, json.JSONDecodeError) as e:
             logging.error(f"[Administration] Error reading {ADMIN_USERS}: {e}")
             return False
-
-
-    async def cog_check(self, ctx: commands.Context) -> bool:
-        return self.is_user_allowed(ctx.author.id)
-
 
     async def get_or_fetch_user(self, user_id: int) -> Optional[discord.User]:
         user = self.bot.get_user(user_id)
@@ -165,7 +149,6 @@ class Administration(commands.Cog):
             await channel.send(embed=embed)
         except (discord.Forbidden, discord.HTTPException) as e:
             logging.error(f"[Audit Log Error] Failed to send log in {guild.name} ({guild.id}): {e}")
-
 
     @commands.command(name="link", help="Admin only: Force link a Discord user to a VRChat ID across all servers")
     async def link_cmd(self, ctx: commands.Context, target_user_id: int, vrchat_id: str, *, reason: Optional[str] = None):
@@ -288,7 +271,6 @@ class Administration(commands.Cog):
             logging.error(f"[Link Error] {original_error}", exc_info=original_error)
             embed = Embed(title="⚠️ Internal Error", description=f"`{original_error}`", color=discord.Color.red())
             await ctx.send(embed=embed)
-
 
     @commands.command(name="unlink", help="Admin only: Unlink a Discord user from their VRChat account across all servers")
     async def unlink_cmd(self, ctx: commands.Context, target_user_id: int, *, reason: Optional[str] = None):
@@ -422,7 +404,6 @@ class Administration(commands.Cog):
             logging.error(f"[Unlink Error] {original_error}", exc_info=original_error)
             embed = Embed(title="⚠️ Internal Error", description=f"`{original_error}`", color=discord.Color.red())
             await ctx.send(embed=embed)
-
 
     @commands.command(name="ban_user", help="Admin only: Globally ban a Discord user ID or VRChat user ID (including legacy IDs)")
     async def ban_user_cmd(self, ctx: commands.Context, target_input: str, *, reason: str):
@@ -566,7 +547,6 @@ class Administration(commands.Cog):
             embed = Embed(title="⚠️ Internal Error", description=f"`{original_error}`", color=discord.Color.red())
             await ctx.send(embed=embed)
 
-
     @commands.command(name="unban_user", help="Admin only: Remove a user from global ban list via Discord or VRChat ID (including legacy IDs)")
     async def unban_user_cmd(self, ctx: commands.Context, target_input: str, *, reason: str):
         if not self.is_user_allowed(ctx.author.id) or ctx.guild is None:
@@ -643,7 +623,6 @@ class Administration(commands.Cog):
             logging.error(f"[Unban Error] {original_error}", exc_info=original_error)
             embed = Embed(title="⚠️ Internal Error", description=f"`{original_error}`", color=discord.Color.red())
             await ctx.send(embed=embed)
-
 
     @commands.command(name="get_user_ban", help="Admin only: Check global ban record by Discord or VRChat ID")
     async def get_user_ban_cmd(self, ctx: commands.Context, target_input: str):
@@ -758,7 +737,6 @@ class Administration(commands.Cog):
             embed = Embed(title="⚠️ Internal Error", description=f"`{original_error}`", color=discord.Color.red())
             await ctx.send(embed=embed)
 
-
     @commands.command(name="get_osavs_servers", help="Admin only: View paginated server list where O-SAVS is present")
     async def get_osavs_servers(self, ctx: commands.Context):
         if not self.is_user_allowed(ctx.author.id):
@@ -831,7 +809,6 @@ class Administration(commands.Cog):
             logging.error(f"[Get Servers Error] {original_error}", exc_info=original_error)
             embed = Embed(title="⚠️ Internal Error", description=f"`{original_error}`", color=discord.Color.red())
             await ctx.send(embed=embed)
-
 
     @commands.command(name="invite_me_osavs", help="Admin only: Generate single-use invite for specified guild ID")
     async def invite_me_osavs(self, ctx: commands.Context, server_id: int):
@@ -940,7 +917,6 @@ class Administration(commands.Cog):
             embed = Embed(title="⚠️ Internal Error", description=f"`{original_error}`", color=discord.Color.red())
             await ctx.send(embed=embed)
 
-
     @commands.command(name="commands", help="Admin only: See what all the admin commands are")
     async def commands_cmd(self, ctx: commands.Context):
         if not self.is_user_allowed(ctx.author.id):
@@ -987,7 +963,6 @@ class Administration(commands.Cog):
         )
 
         await ctx.send(embed=embed)
-
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Administration(bot))
