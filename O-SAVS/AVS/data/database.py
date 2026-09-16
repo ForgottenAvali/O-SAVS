@@ -1,8 +1,6 @@
 import os, aiosqlite
 
-
 from typing import Optional
-
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "..", "utils", "database.db")
 
@@ -17,7 +15,6 @@ def safe_int(value: Optional[str | int]) -> Optional[int]:
         return int(val_str)
     except ValueError:
         return None
-
 
 async def init_db():
     async with aiosqlite.connect(DB_PATH) as conn:
@@ -49,7 +46,6 @@ async def init_db():
         """)
         await conn.commit()
 
-
 async def get_server_settings(guild_id: int | str) -> dict:
     async with aiosqlite.connect(DB_PATH) as conn:
         conn.row_factory = aiosqlite.Row
@@ -75,7 +71,6 @@ async def get_server_settings(guild_id: int | str) -> dict:
                 "av_start_code": "AVS-",
                 "required_role": None
             }
-
 
 async def save_server_settings(
     guild_id: int | str, 
@@ -115,7 +110,6 @@ async def save_server_settings(
         ))
         await conn.commit()
 
-
 async def delete_server_settings(guild_id: int | str) -> bool:
     async with aiosqlite.connect(DB_PATH) as conn:
         async with conn.execute(
@@ -123,7 +117,6 @@ async def delete_server_settings(guild_id: int | str) -> bool:
         ) as cursor:
             await conn.commit()
             return cursor.rowcount > 0
-
 
 async def get_vrchat_id_from_discord(discord_id: int | str) -> Optional[str]:
     async with aiosqlite.connect(DB_PATH) as conn:
@@ -133,7 +126,6 @@ async def get_vrchat_id_from_discord(discord_id: int | str) -> Optional[str]:
             row = await cursor.fetchone()
             return row[0] if row else None
 
-
 async def is_vrchat_id_verified(vrchat_id: str) -> bool:
     async with aiosqlite.connect(DB_PATH) as conn:
         async with conn.execute(
@@ -141,7 +133,6 @@ async def is_vrchat_id_verified(vrchat_id: str) -> bool:
         ) as cursor:
             row = await cursor.fetchone()
             return row is not None
-
 
 async def get_all_verified_users() -> list[tuple[int, str]]:
     async with aiosqlite.connect(DB_PATH) as conn:
@@ -154,7 +145,6 @@ async def get_all_verified_users() -> list[tuple[int, str]]:
                     results.append((parsed_id, row[1]))
             return results
 
-
 async def add_verified_user(discord_id: int | str, vrchat_id: str):
     clean_id = safe_int(discord_id)
     target_id = str(clean_id) if clean_id is not None else str(discord_id)
@@ -166,7 +156,6 @@ async def add_verified_user(discord_id: int | str, vrchat_id: str):
         )
         await conn.commit()
 
-
 async def remove_verified_user(discord_id: int | str) -> bool:
     async with aiosqlite.connect(DB_PATH) as conn:
         async with conn.execute(
@@ -174,7 +163,6 @@ async def remove_verified_user(discord_id: int | str) -> bool:
         ) as cursor:
             await conn.commit()
             return cursor.rowcount > 0
-
 
 async def get_total_verified_users(exclude_ids: Optional[list[int | str]] = None) -> int:
     async with aiosqlite.connect(DB_PATH) as conn:
@@ -190,7 +178,6 @@ async def get_total_verified_users(exclude_ids: Optional[list[int | str]] = None
                 row = await cursor.fetchone()
                 return row[0] if row else 0
 
-
 async def is_banned(target_id: int | str) -> bool:
     async with aiosqlite.connect(DB_PATH) as conn:
         async with conn.execute(
@@ -198,7 +185,6 @@ async def is_banned(target_id: int | str) -> bool:
         ) as cursor:
             row = await cursor.fetchone()
             return row is not None
-
 
 async def get_banned_user(target_id: int | str) -> Optional[dict]:
     async with aiosqlite.connect(DB_PATH) as conn:
@@ -218,7 +204,6 @@ async def get_banned_user(target_id: int | str) -> Optional[dict]:
                 }
             return None
 
-
 async def add_banned_user(target_id: int | str, reason: str, moderator_id: int | str):
     clean_mod = safe_int(moderator_id)
     
@@ -231,7 +216,6 @@ async def add_banned_user(target_id: int | str, reason: str, moderator_id: int |
             (target_key, reason, target_mod)
         )
         await conn.commit()
-
 
 async def remove_banned_user(target_id: int | str) -> bool:
     async with aiosqlite.connect(DB_PATH) as conn:
