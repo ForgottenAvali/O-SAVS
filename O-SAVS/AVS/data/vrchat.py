@@ -1,31 +1,21 @@
 import os, asyncio, logging, vrchatapi, json, http.cookiejar
 
-
 from vrchatapi.api import authentication_api, users_api
 from vrchatapi.models.two_factor_email_code import TwoFactorEmailCode
 from vrchatapi.exceptions import UnauthorizedException
-
-
 from dotenv import load_dotenv
-
-
-from urllib.parse import quote
-
 
 load_dotenv()
 VRCUSER = os.getenv("VRC_USER")
 VRCPASS = os.getenv("VRC_PASS")
 CONTACT = os.getenv("CONTACT")
 
-
 config = vrchatapi.Configuration(username=VRCUSER, password=VRCPASS)
 client = vrchatapi.ApiClient(config)
 client.user_agent = f"O-SAVS/1.0.0 (contact: {CONTACT})"
 
-
 auth_api = authentication_api.AuthenticationApi(client)
 users_api_instance = users_api.UsersApi(client)
-
 
 AUTH_TOKEN_FILE = os.path.join(os.path.dirname(__file__), "..", "utils", "vrc_auth_token.json")
 
@@ -115,7 +105,6 @@ async def login_vrc():
 
         logging.error(f"[VRChat] Login failed: {e}")
         raise
-
 
 async def get_vrchat_user(user_id: str) -> dict | None:
     try:

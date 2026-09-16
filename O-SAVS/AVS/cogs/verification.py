@@ -1,11 +1,9 @@
-import random, string, asyncio, re, logging, discord
-
+import random, discord, string, asyncio, re, logging
 
 from typing import Optional
 from datetime import datetime, timezone
 from discord import app_commands, Interaction, ui, ButtonStyle, Embed
 from discord.ext import commands
-
 
 from data.vrchat import get_vrchat_user
 from data.database import (
@@ -19,19 +17,12 @@ from data.database import (
     is_banned
 )
 
-
 GLOBAL_LOG_CHANNEL_ID = 1544746956264443904
 
 
 def generate_code(prefix: str = "AVS-") -> str:
     clean_prefix = prefix.strip() if prefix else "AVS-"
     return clean_prefix + "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
-
-
-def is_verification_log_channel(channel_name: str) -> bool:
-    clean_name = re.sub(r"[^a-zA-Z0-9]", "", channel_name).lower()
-    return "verification" in clean_name and "log" in clean_name
-
 
 class BioCheckView(ui.View):
     def __init__(self, bot: commands.Bot, cog: commands.Cog, user_id: str, code: str, settings: dict):
@@ -41,7 +32,6 @@ class BioCheckView(ui.View):
         self.user_id = user_id
         self.code = code
         self.settings = settings
-
 
     @ui.button(label="I've updated my profile", style=ButtonStyle.success)
     async def check_bio(self, interaction: Interaction, button: ui.Button):
@@ -109,9 +99,7 @@ class BioCheckView(ui.View):
                     await member.add_roles(role, reason=audit_reason)
                     if is_origin:
                         origin_role_added = True
-                except discord.Forbidden as e:
-                    logging.error(f"[Verify Log Error - {guild.id}] {e}")
-                except discord.HTTPException as e:
+                except (discord.Forbidden, discord.HTTPException) as e:
                     logging.error(f"[Verify Log Error - {guild.id}] {e}")
 
                 try:
@@ -150,19 +138,15 @@ class BioCheckView(ui.View):
 
         await interaction.followup.send(success_msg, ephemeral=True)
 
-
 class ConfirmCheck(ui.View):
     def __init__(self, bot: commands.Bot, cog: commands.Cog):
         super().__init__(timeout=None)
         self.bot = bot
         self.cog = cog
 
-
     @ui.button(label="Age Verify", style=ButtonStyle.primary, custom_id="ageverify_start")
     async def verify_button(self, interaction: Interaction, button: ui.Button):
-        modal = VRChatUsername(self.bot, self.cog, interaction)
-        await interaction.response.send_modal(modal)
-
+        await interaction.response.send_modal(VRChatUsername())
 
 class VRChatUsername(ui.Modal, title="VRChat Verification"):
     userID = ui.TextInput(
@@ -173,13 +157,8 @@ class VRChatUsername(ui.Modal, title="VRChat Verification"):
         max_length=128
     )
 
-
-    def __init__(self, bot: commands.Bot, cog: commands.Cog, interaction: Interaction):
+    def __init__(self):
         super().__init__(timeout=None)
-        self.bot = bot
-        self.cog = cog
-        self.interaction = interaction
-
 
     async def on_submit(self, modal_interaction: Interaction):
         await modal_interaction.response.defer(ephemeral=True)
@@ -202,26 +181,15 @@ class VRChatUsername(ui.Modal, title="VRChat Verification"):
                 ephemeral=True
             )
 
-        banned_disc_user = await is_banned(modal_interaction.user.id)
-        if banned_disc_user:
+        if await is_banned(modal_interaction.user.id):
             return await modal_interaction.followup.send(
-                f"❌ Your Discord account was banned by the administration team for O-SAVS.\n"
+                "❌ Your Discord account was banned by the administration team for O-SAVS.\n"
                 "If you believe this ban was issued in error you may appeal by joining the [Noodle's Nexus](https://discord.gg/PeXzxBeUcB) support server.",
                 ephemeral=True
             )
 
         user_input = self.userID.value.strip()
-
-        id_pattern = r"usr_[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
-        match = re.search(id_pattern, user_input, re.IGNORECASE) or re.search(r"usr_[a-fA-F0-9\-]{20,}", user_input)
-
-        banned_vrc_user = await is_banned(user_input)
-        if banned_vrc_user:
-            return await modal_interaction.followup.send(
-                f"❌ Your VRChat account was banned by the administration team for O-SAVS.\n"
-                "If you believe this ban was issued in error you may appeal by joining the [Noodle's Nexus](https://discord.gg/PeXzxBeUcB) support server.",
-                ephemeral=True
-            )
+        match = re.search(r"usr_[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}", user_input, re.IGNORECASE)
 
         if not match:
             invalid_embed = Embed(
@@ -238,20 +206,27 @@ class VRChatUsername(ui.Modal, title="VRChat Verification"):
 
         clean_id = match.group(0)
 
+        if await is_banned(clean_id):
+            return await modal_interaction.followup.send(
+                "❌ Your VRChat account was banned by the administration team for O-SAVS.\n"
+                "If you believe this ban was issued in error you may appeal by joining the [Noodle's Nexus](https://discord.gg/PeXzxBeUcB) support server.",
+                ephemeral=True
+            )
+
         if await is_vrchat_id_verified(clean_id):
             return await modal_interaction.followup.send(
                 f"❌ The VRChat account (`{clean_id}`) is already linked to another Discord user.",
                 ephemeral=True
             )
 
-        settings = await get_server_settings(modal_interaction.guild_id)
         prefix = settings.get("av_start_code") or "AVS-"
         code = generate_code(prefix)
 
         user_data = await get_vrchat_user(clean_id)
         username = user_data.get("username", "Unknown User") if user_data else "Unknown User"
 
-        view = BioCheckView(self.bot, self.cog, clean_id, code, settings)
+        cog = modal_interaction.client.get_cog("Verification")
+        view = BioCheckView(modal_interaction.client, cog, clean_id, code, settings)
 
         start_embed = Embed(
             title=f"🔐 Verification for `{username}`",
@@ -264,7 +239,6 @@ class VRChatUsername(ui.Modal, title="VRChat Verification"):
 
         await modal_interaction.followup.send(embed=start_embed, view=view, ephemeral=True)
 
-
 class PrefixModal(ui.Modal, title="Custom Verification Prefix"):
     prefix_input = ui.TextInput(
         label="Verification Code Prefix",
@@ -274,11 +248,9 @@ class PrefixModal(ui.Modal, title="Custom Verification Prefix"):
         required=True
     )
 
-
     def __init__(self, wizard_view: "SetupWizardView"):
         super().__init__()
         self.wizard_view = wizard_view
-
 
     async def on_submit(self, interaction: Interaction):
         val = self.prefix_input.value.strip() or "AVS-"
@@ -286,7 +258,6 @@ class PrefixModal(ui.Modal, title="Custom Verification Prefix"):
             val += "-"
         self.wizard_view.selected_prefix = val
         await self.wizard_view.update_wizard(interaction)
-
 
 class SetupWizardView(ui.View):
     def __init__(self, bot: commands.Bot, cog: commands.Cog, author: discord.Member, log_channel: discord.TextChannel):
@@ -301,13 +272,11 @@ class SetupWizardView(ui.View):
         self.selected_channel: Optional[discord.TextChannel] = None
         self.selected_prefix: str = "AVS-"
 
-
     async def interaction_check(self, interaction: Interaction) -> bool:
         if interaction.user.id != self.author.id:
             await interaction.response.send_message("❌ Only the command invoker can control this wizard.", ephemeral=True)
             return False
         return True
-
 
     def build_embed(self) -> Embed:
         embed = Embed(
@@ -332,7 +301,6 @@ class SetupWizardView(ui.View):
 
         return embed
 
-
     async def update_wizard(self, interaction: Interaction):
         for item in self.children:
             if isinstance(item, ui.Button) and item.custom_id == "finish_setup":
@@ -341,8 +309,7 @@ class SetupWizardView(ui.View):
         embed = self.build_embed()
         await interaction.response.edit_message(embed=embed, view=self)
 
-
-    @ui.select(cls=ui.RoleSelect, placeholder="Step 1: Choose Verified Role (Given upon verification)...", min_values=1, max_values=1, row=0)
+    @ui.select(cls=ui.RoleSelect, placeholder="Step 1: Choose Verified Role...", min_values=1, max_values=1, row=0)
     async def select_role(self, interaction: Interaction, select: ui.RoleSelect):
         role = select.values[0]
         bot_top_role = interaction.guild.me.top_role
@@ -356,19 +323,16 @@ class SetupWizardView(ui.View):
         self.selected_role = role
         await self.update_wizard(interaction)
 
-
     @ui.select(cls=ui.RoleSelect, placeholder="Step 2: Choose Required Role to Verify...", min_values=1, max_values=1, row=1)
     async def select_required_role(self, interaction: Interaction, select: ui.RoleSelect):
         self.required_role = select.values[0]
         await self.update_wizard(interaction)
 
-
     @ui.select(cls=ui.ChannelSelect, placeholder="Step 3: Choose Verification Channel...", channel_types=[discord.ChannelType.text], min_values=1, max_values=1, row=2)
     async def select_channel(self, interaction: Interaction, select: ui.ChannelSelect):
-        selected_app_channel = select.values[0]
-        text_channel = interaction.guild.get_channel(selected_app_channel.id)
+        text_channel = select.values[0]
 
-        if not text_channel or not isinstance(text_channel, discord.TextChannel):
+        if not isinstance(text_channel, discord.TextChannel):
             return await interaction.response.send_message(
                 "❌ Could not resolve that text channel. Please try again.", 
                 ephemeral=True
@@ -377,17 +341,14 @@ class SetupWizardView(ui.View):
         self.selected_channel = text_channel
         await self.update_wizard(interaction)
 
-
     @ui.button(label="Clear Pre-Role", style=ButtonStyle.secondary, row=3)
     async def clear_pre_role(self, interaction: Interaction, button: ui.Button):
         self.required_role = None
         await self.update_wizard(interaction)
 
-
     @ui.button(label="Set Custom Prefix", style=ButtonStyle.secondary, row=3)
     async def set_prefix(self, interaction: Interaction, button: ui.Button):
         await interaction.response.send_modal(PrefixModal(self))
-
 
     @ui.button(label="Complete Setup", style=ButtonStyle.success, disabled=True, custom_id="finish_setup", row=3)
     async def finish_setup(self, interaction: Interaction, button: ui.Button):
@@ -501,13 +462,11 @@ class SetupWizardView(ui.View):
         await interaction.message.edit(embed=final_embed, view=self)
         await interaction.followup.send("✅ Server setup completed successfully!", ephemeral=True)
 
-
 class Verification(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self._has_synced = False
         self.bot.add_view(ConfirmCheck(bot, self))
-
 
     async def send_global_log(self, action: str, user: discord.User | discord.Member, vrchat_id: str, origin_guild: Optional[discord.Guild] = None, reason: Optional[str] = None):
         if not GLOBAL_LOG_CHANNEL_ID:
@@ -552,12 +511,10 @@ class Verification(commands.Cog):
         except (discord.Forbidden, discord.HTTPException) as e:
             logging.error(f"[Global Log Error] {e}")
 
-
     async def cog_load(self):
         if self.bot.is_ready() and not self._has_synced:
             self._has_synced = True
             self.bot.loop.create_task(self.sync_offline_verifications())
-
 
     async def send_verify_log(self, guild: discord.Guild, action: str, member: discord.Member, vrchat_id: str, operator: Optional[discord.User | discord.Member] = None, reason: Optional[str] = None):
         settings = await get_server_settings(guild.id)
@@ -607,17 +564,6 @@ class Verification(commands.Cog):
                 logging.error(f"[Dispatch Log Error - {guild.id}] {e}")
                 break
 
-
-    async def get_or_fetch_user(self, user_id: int) -> Optional[discord.User]:
-        user = self.bot.get_user(user_id)
-        if user:
-            return user
-        try:
-            return await self.bot.fetch_user(user_id)
-        except (discord.NotFound, discord.HTTPException):
-            return None
-
-
     @app_commands.command(name="setup", description="Interactive setup wizard for configuring O-SAVS in your server")
     @app_commands.default_permissions(administrator=True)
     async def setup_cmd(self, interaction: Interaction):
@@ -642,10 +588,7 @@ class Verification(commands.Cog):
             )
         }
 
-        target_log_channel = next(
-            (c for c in guild.text_channels if is_verification_log_channel(c.name)), 
-            None
-        )
+        target_log_channel = discord.utils.get(guild.text_channels, name="verification-logs")
 
         if target_log_channel:
             try:
@@ -689,7 +632,6 @@ class Verification(commands.Cog):
                 ephemeral=True
             )
 
-
     @commands.Cog.listener()
     async def on_guild_remove(self, guild: discord.Guild):
         try:
@@ -700,7 +642,6 @@ class Verification(commands.Cog):
                 logging.info(f"[Guild Remove Log - {guild.id}] No settings record found to delete for {guild.name}")
         except Exception as e:
             logging.error(f"[Guild Remove Log Error - {guild.id}] {e}")
-
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
@@ -729,10 +670,7 @@ class Verification(commands.Cog):
 
         try:
             await member.add_roles(role, reason="O-SAVS Auto-Role: Existing global verification")
-        except discord.Forbidden as e:
-            logging.error(f"[Member Join Log Error - {member.guild.id}] {e}")
-            return
-        except discord.HTTPException as e:
+        except (discord.Forbidden, discord.HTTPException) as e:
             logging.error(f"[Member Join Log Error - {member.guild.id}] {e}")
             return
 
@@ -747,7 +685,6 @@ class Verification(commands.Cog):
             )
         except Exception as e:
             logging.error(f"[Member Join Log Error - {member.guild.id}] {e}")
-
 
     @commands.Cog.listener()
     async def on_member_update(self, before: discord.Member, after: discord.Member):
@@ -785,11 +722,8 @@ class Verification(commands.Cog):
                     operator=self.bot.user,
                     reason="Acquired Required Role (Global Verification)"
                 )
-            except discord.Forbidden as e:
+            except (discord.Forbidden, discord.HTTPException) as e:
                 logging.error(f"[Member Update Log Error - {after.guild.id}] {e}")
-            except discord.HTTPException as e:
-                logging.error(f"[Member Update Log Error - {after.guild.id}] {e}")
-
 
     async def sync_offline_verifications(self):
         await self.bot.wait_until_ready()
@@ -828,7 +762,7 @@ class Verification(commands.Cog):
                         continue
 
                     try:
-                        await member.add_roles(role, reason="O-SAVS Startup Sync: Granting role to offline verified user")
+                        await member.add_roles(role, reason="O-SAVS Startup Sync: Granting role to verified user")
                         synced_count += 1
                         
                         await self.send_verify_log(
@@ -841,15 +775,11 @@ class Verification(commands.Cog):
                         )
                         
                         await asyncio.sleep(0.5)
-                    except discord.Forbidden as e:
+                    except (discord.Forbidden, discord.HTTPException) as e:
                         logging.warning(f"[Startup Sync Log Error - {guild.id}] {e}")
-                        error_count += 1
-                    except discord.HTTPException as e:
-                        logging.error(f"[Startup Sync Log Error - {guild.id}] {e}")
                         error_count += 1
 
         logging.info(f"[Startup Sync Log] Complete! Granted roles to {synced_count} member(s). Errors: {error_count}")
-
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Verification(bot))

@@ -2,6 +2,7 @@ import os, sys, tempfile, psutil
 
 LOCK_FILE = os.path.join(tempfile.gettempdir(), "O-SAVS.pid")
 
+
 def ensure_single_instance():
     current_pid = os.getpid()
 
@@ -28,7 +29,6 @@ def ensure_single_instance():
         f.write(str(current_pid))
 
 def cleanup_instance():
-    """Removes the lock file on exit."""
     if os.path.exists(LOCK_FILE):
         try:
             os.remove(LOCK_FILE)
