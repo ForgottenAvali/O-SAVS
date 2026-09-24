@@ -1,6 +1,6 @@
 # O-SAVS Privacy Policy
 
-Last Updated: September 13, 2026
+Last Updated: September 24, 2026
 
 O-SAVS ("the Bot") is committed to protecting user privacy and maintaining transparency regarding data collection, storage, and usage.
 
@@ -10,6 +10,7 @@ To provide global age-verification functionality, O-SAVS stores the following mi
 - **VRChat User ID:** Stored as text to map verified status between Discord and VRChat accounts.
 - **Server Settings & Metadata:** Guild IDs, role IDs, log channel IDs, server names, member counts, and custom verification prefix codes configured by server administrators.
 - **Global Sanction Records:** Discord User IDs or VRChat User IDs, internal reason codes, timestamps, and moderator IDs for globally banned accounts to enforce system-wide exclusions.
+- **Admin Action Logs:** Timestamps, the acting administrator's dashboard username, the action taken, the target Discord/VRChat ID, and any reason provided, recorded for every action performed through the Admin Dashboard.
 
 ## 2. Information We DO NOT Collect
 - **Personal Identification Documents:** We do not request, collect, or store real names, IDs, passports, driver's licenses, or facial images.
@@ -20,8 +21,8 @@ To provide global age-verification functionality, O-SAVS stores the following mi
 Collected data is used solely to:
 - Verify that a Discord account is linked to a VRChat profile containing a valid verification code.
 - Automatically assign verified 18+ roles across mutual Discord servers operating O-SAVS.
-- Maintain global ban lists and audit administrative actions (`.link`, `.unlink`, `.ban_user`, `.unban_user`, `.get_user_ban`, `.get_osavs_servers`, `.invite_me_osavs`) to protect participating communities from unauthorized or unsafe access.
-- Perform system health audits, verify server setup permissions, and enable authorized bot administration through restricted administrative channels.
+- Maintain global ban lists and audit administrative actions (linking, unlinking, banning, unbanning, ban lookups, server audits, and temporary support invites) performed through the official O-SAVS Admin Dashboard to protect participating communities from unauthorized or unsafe access.
+- Perform system health audits, verify server setup permissions, and enable authorized bot administration through the restricted, credentialed O-SAVS Admin Dashboard.
 
 ## 4. Data Retention & Deletion
 - **User Unlinking:** If a user is unlinked, their record is permanently deleted from the active verification database.
