@@ -1,6 +1,6 @@
 # O-SAVS Terms of Service
 
-*Last Updated: September 10, 2026*
+*Last Updated: September 24, 2026*
 
 By inviting, configuring, or using O-SAVS ("the Bot") in your Discord server, or by verifying through the Bot as an end-user, you agree to the following terms:
 
