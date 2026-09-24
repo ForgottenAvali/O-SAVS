@@ -7,18 +7,15 @@ DB_PATH = os.path.join(os.path.dirname(__file__), "admin_app.db")
 
 async def init_db():
     async with aiosqlite.connect(DB_PATH) as conn:
-        await conn.execute(
-            """
+        await conn.execute("""
             CREATE TABLE IF NOT EXISTS admin_accounts (
                 username TEXT PRIMARY KEY,
                 password_hash TEXT NOT NULL,
                 salt TEXT NOT NULL,
-                discord_id INTEGER
+                discord_id TEXT
             )
-            """
-        )
-        await conn.execute(
-            """
+            """)
+        await conn.execute("""
             CREATE TABLE IF NOT EXISTS action_log (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 timestamp TEXT NOT NULL,
@@ -28,8 +25,7 @@ async def init_db():
                 reason TEXT,
                 result_summary TEXT
             )
-            """
-        )
+        """)
         await conn.commit()
 
 def _hash_password_sync(password: str, salt_hex: str) -> str:
@@ -41,10 +37,11 @@ async def _hash_password(password: str, salt_hex: str) -> str:
 async def create_account(username: str, password: str, discord_id: int = None):
     salt = secrets.token_hex(16)
     pw_hash = await _hash_password(password, salt)
+    discord_id_str = str(discord_id) if discord_id is not None else None
     async with aiosqlite.connect(DB_PATH) as conn:
         await conn.execute(
             "INSERT INTO admin_accounts (username, password_hash, salt, discord_id) VALUES (?, ?, ?, ?)",
-            (username, pw_hash, salt, discord_id),
+            (username, pw_hash, salt, discord_id_str),
         )
         await conn.commit()
 
@@ -60,7 +57,10 @@ async def verify_login(username: str, password: str):
             return None
         if await _hash_password(password, row["salt"]) != row["password_hash"]:
             return None
-        return {"username": row["username"], "discord_id": row["discord_id"]}
+
+        raw_discord_id = row["discord_id"]
+        discord_id = int(raw_discord_id) if raw_discord_id is not None else None
+        return {"username": row["username"], "discord_id": discord_id}
 
 async def log_action(actor_username: str, action: str, target: str, reason: str, result_summary: str):
     async with aiosqlite.connect(DB_PATH) as conn:
