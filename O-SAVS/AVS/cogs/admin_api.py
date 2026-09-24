@@ -18,7 +18,6 @@ LOGIN_MAX_ATTEMPTS = 5
 LOGIN_LOCKOUT_SECONDS = 15 * 60
 
 _sessions: dict[str, dict] = {}
-
 _login_attempts: dict[str, dict] = {}
 
 
@@ -77,9 +76,10 @@ class AdminAPI(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.runner: web.AppRunner | None = None
-        db.init_db()
 
     async def cog_load(self):
+        await db.init_db()
+
         app = web.Application(middlewares=[error_middleware])
         app.add_routes(
             [
@@ -90,6 +90,8 @@ class AdminAPI(commands.Cog):
                 web.post("/api/unban", self.unban),
                 web.get("/api/ban_check", self.ban_check),
                 web.get("/api/logs", self.logs),
+                web.get("/api/servers", self.servers),
+                web.post("/api/server_invite", self.server_invite),
             ]
         )
         self.runner = web.AppRunner(app)
@@ -122,7 +124,7 @@ class AdminAPI(commands.Cog):
         username = body.get("username", "")
         password = body.get("password", "")
 
-        account = db.verify_login(username, password)
+        account = await db.verify_login(username, password)
         if not account:
             _record_failed_login(ip)
             return web.json_response({"success": False, "error": "Invalid credentials."}, status=401)
@@ -135,6 +137,30 @@ class AdminAPI(commands.Cog):
         token = _new_token(account["username"], account["discord_id"])
         return web.json_response({"success": True, "token": token, "username": account["username"]})
 
+    async def servers(self, request: web.Request):
+        self._require_auth(request)
+        servers_list = await admin_core.get_bot_servers(self.bot)
+        return web.json_response({"success": True, "servers": servers_list})
+
+    async def server_invite(self, request: web.Request):
+        session = self._require_auth(request)
+        try:
+            body = await request.json()
+            guild_id_raw = body.get("guild_id") or body.get("server_id")
+            if not guild_id_raw:
+                return web.json_response({"success": False, "error": "Missing server/guild ID."}, status=400)
+            guild_id = int(guild_id_raw)
+        except (ValueError, TypeError):
+            return web.json_response({"success": False, "error": "Invalid server ID format."}, status=400)
+
+        result = await admin_core.generate_and_send_invite(
+            self.bot,
+            guild_id=guild_id,
+            admin_discord_id=session.get("discord_id")
+        )
+        await db.log_action(session["username"], "invite_request", str(guild_id), None, str(result))
+        return web.json_response(result)
+
     async def link(self, request: web.Request):
         session = self._require_auth(request)
         body = await request.json()
@@ -145,7 +171,7 @@ class AdminAPI(commands.Cog):
         result = await admin_core.perform_link(
             self.bot, session["discord_id"], session["username"], target_user_id, vrchat_id, reason
         )
-        db.log_action(session["username"], "link", str(target_user_id), reason, str(result))
+        await db.log_action(session["username"], "link", str(target_user_id), reason, str(result))
         return web.json_response(result)
 
     async def unlink(self, request: web.Request):
@@ -157,7 +183,7 @@ class AdminAPI(commands.Cog):
         result = await admin_core.perform_unlink(
             self.bot, session["discord_id"], session["username"], target_user_id, reason
         )
-        db.log_action(session["username"], "unlink", str(target_user_id), reason, str(result))
+        await db.log_action(session["username"], "unlink", str(target_user_id), reason, str(result))
         return web.json_response(result)
 
     async def ban(self, request: web.Request):
@@ -167,7 +193,7 @@ class AdminAPI(commands.Cog):
         reason = str(body["reason"])
 
         result = await admin_core.perform_ban(self.bot, session["discord_id"], session["username"], target_input, reason)
-        db.log_action(session["username"], "ban", target_input, reason, str(result))
+        await db.log_action(session["username"], "ban", target_input, reason, str(result))
         return web.json_response(result)
 
     async def unban(self, request: web.Request):
@@ -177,7 +203,7 @@ class AdminAPI(commands.Cog):
         reason = str(body["reason"])
 
         result = await admin_core.perform_unban(self.bot, session["discord_id"], session["username"], target_input, reason)
-        db.log_action(session["username"], "unban", target_input, reason, str(result))
+        await db.log_action(session["username"], "unban", target_input, reason, str(result))
         return web.json_response(result)
 
     async def ban_check(self, request: web.Request):
@@ -189,7 +215,7 @@ class AdminAPI(commands.Cog):
     async def logs(self, request: web.Request):
         self._require_auth(request)
         query = request.query.get("q", "")
-        rows = db.search_logs(query)
+        rows = await db.search_logs(query)
         return web.json_response({"success": True, "logs": rows})
 
 async def setup(bot: commands.Bot):
