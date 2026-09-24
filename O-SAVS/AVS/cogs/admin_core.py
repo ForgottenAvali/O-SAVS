@@ -20,12 +20,12 @@ from data.database import (
 ADMIN_USERS = os.path.join(os.path.dirname(__file__), "..", "utils", "administrator_user_ids.json")
 
 
-def is_user_allowed(user_id: int) -> bool:
+def is_user_allowed(user_id) -> bool:
     try:
         with open(ADMIN_USERS, "r", encoding="utf-8") as f:
             data = json.load(f)
-            allowed_ids = data.get("allowed_user_ids", [])
-            return user_id in allowed_ids
+            allowed_ids = {str(uid) for uid in data.get("allowed_user_ids", [])}
+            return str(user_id) in allowed_ids
     except (FileNotFoundError, json.JSONDecodeError) as e:
         logging.error(f"[AdminCore] Error reading {ADMIN_USERS}: {e}")
         return False
@@ -57,6 +57,48 @@ async def get_or_fetch_user(bot: commands.Bot, user_id: int) -> Optional[discord
         return await bot.fetch_user(user_id)
     except (discord.NotFound, discord.HTTPException):
         return None
+
+async def get_bot_servers(bot: commands.Bot) -> list[dict]:
+    return [
+        {"id": guild.id, "name": guild.name, "member_count": guild.member_count}
+        for guild in bot.guilds
+    ]
+
+async def generate_and_send_invite(bot: commands.Bot, guild_id: int, admin_discord_id: Optional[int]) -> dict:
+    guild = bot.get_guild(guild_id)
+    if not guild:
+        return {"success": False, "error": f"Bot is not in a server with ID `{guild_id}`."}
+
+    if not admin_discord_id:
+        return {
+            "success": False,
+            "error": "Your dashboard account isn't linked to a Discord ID, so an invite can't be DMed to you.",
+        }
+
+    channel = next(
+        (c for c in guild.text_channels if c.permissions_for(guild.me).create_instant_invite),
+        None,
+    )
+    if not channel:
+        return {"success": False, "error": f"Bot doesn't have permission to create an invite in `{guild.name}`."}
+
+    try:
+        invite = await channel.create_invite(max_uses=1, max_age=300, reason="Admin dashboard server invite request")
+    except discord.Forbidden:
+        return {"success": False, "error": f"Missing permissions to create an invite in `{guild.name}`."}
+    except discord.HTTPException as e:
+        return {"success": False, "error": f"Discord API error creating invite: {e}"}
+
+    user = await get_or_fetch_user(bot, admin_discord_id)
+    if not user:
+        return {"success": False, "error": "Could not find your Discord account to send the invite."}
+
+    try:
+        await user.send(f"Here's your invite to **{guild.name}**: {invite.url}\n(This invite expires in 5 minutes, and is single use.)")
+    except discord.Forbidden:
+        return {"success": False, "error": "Could not DM you the invite -- check your Discord privacy settings."}
+
+    return {"success": True, "message": f"Invite to {guild.name} sent to your Discord DMs!"}
 
 async def send_verify_log(bot, guild, action, member, vrchat_id, operator_id, operator_name, reason=None):
     settings = await get_server_settings(guild.id)
