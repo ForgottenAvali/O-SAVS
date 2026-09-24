@@ -1,6 +1,6 @@
 # O-SAVS Privacy Policy
 
-Last Updated: September 24, 2026
+*Last Updated: September 24, 2026*
 
 O-SAVS ("the Bot") is committed to protecting user privacy and maintaining transparency regarding data collection, storage, and usage.
 
