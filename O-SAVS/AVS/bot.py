@@ -3,7 +3,7 @@ import os, discord, asyncio, logging, itertools
 from dotenv import load_dotenv
 from discord.ext import commands, tasks
 
-from cogs import verification, administration
+from cogs import verification, admin_api
 from data.vrchat import login_vrc
 from data.database import init_db, get_total_verified_users
 from data.lock import ensure_single_instance, cleanup_instance
@@ -28,7 +28,7 @@ async def on_ready():
     if not hasattr(bot, "initialized"):
         await init_db()
         await verification.setup(bot)
-        await administration.setup(bot)
+        await admin_api.setup(bot)
         await bot.tree.sync()
 
         bot.initialized = True
