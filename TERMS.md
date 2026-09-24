@@ -14,7 +14,7 @@ By inviting, configuring, or using O-SAVS ("the Bot") in your Discord server, or
 ## 2. Server Administrator Responsibilities & Bot Access
 - **Role Hierarchy & Safety:** Server owners are responsible for ensuring proper role hierarchy permissions so O-SAVS can function securely.
 - **Access Management:** Server administrators must comply with Discord's Community Guidelines regarding age-gated channels and content moderation.
-- **System Administration & Support Access:** The O-SAVS administrators reserve the right to audit server installations (`.get_osavs_servers`) and generate temporary, single-use access links (`.invite_me_osavs`) exclusively for technical support, verification abuse investigations, security auditing, or compliance checks.
+- **System Administration & Support Access:** The O-SAVS administrators reserve the right to audit server installations and generate temporary, single-use access links through the official O-SAVS Admin Dashboard, exclusively for technical support, verification abuse investigations, security auditing, or compliance checks.
 
 ## 3. Global Banning & System Exclusions
 - **Scope:** Global bans issued by O-SAVS administrators revoke verification status and block access across **all** participating Discord servers using the bot. Server-level administrators cannot override a global system ban within their own guilds.
