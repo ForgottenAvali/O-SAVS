@@ -20,15 +20,25 @@ O-SAVS is a global Discord age-verification bot designed to integrate seamlessly
 - **VRChat Profile Integration:** Generates custom verification codes for users to place in their VRChat bio or status to verify account ownership.
 - **Automated Guild Setup:** `/setup` slash command to configure roles, log channels, and code prefixes.
 - **Role Hierarchy Safety:** Built-in checks to prevent configuration failures when managing role assignments.
-- **Management Commands:** Administrative prefix commands (`.link`, `.unlink`, `.ban_user`, `.unban_user`, `.get_user_ban`, `.get_osavs_servers`, `.invite_me_osavs`) to manually control database links, global user exclusions, paginated server listings, and temporary support invite links across servers. System management commands are restricted strictly to authorized O-SAVS Administration and enforced to execute solely within the designated control channel in Noodle's Nexus.
+- **Admin Dashboard:** A standalone desktop application for O-SAVS Administration to manually manage account links, global user exclusions, server listings, and temporary support invite links. Access is restricted to authorized administrators via credentialed login, cross-checked against an internal allow-list of authorized Discord IDs.
 - **Auto-Syncing:** Automatically assigns verified roles to existing or joining members who are already in the global database.
 - **Auto-Cleanup:** Automatically purges server configuration settings from the O-SAVS database upon bot removal (leaves all Discord roles, channels, and member verifications intact).
 
 ---
 
-## Database Architecture
+## Admin Dashboard
 
-O-SAVS utilizes **SQLite (`aiosqlite`)** with text-based Snowflake column schemas to prevent precision loss across 64-bit Discord IDs.
+O-SAVS Administration manages the bot through a standalone desktop application rather than in-server commands, communicating with the bot over an authenticated internal HTTP API.
+
+- **Actions:** Link/unlink Discord-VRChat accounts, globally ban/unban a Discord or VRChat ID, and look up a target's ban status.
+- **Servers:** View every server the bot is currently in, with live member counts, and request a temporary, single-use invite for support/auditing purposes.
+- **Logs:** Search and review a full audit trail of every administrative action taken through the dashboard.
+
+Dashboard access requires a dashboard account **and** a linked Discord User ID present on O-SAVS Administration's internal allow-list; accounts without a linked, allow-listed ID cannot log in.
+
+---
+
+## Database Architecture
 
 - **`server_settings`**: Stores guild configuration (`server_id`, `verified_role`, `verify_channel`, `verification_logs`, `av_start_code`, `required_role`).
 - **`verified_users`**: Maps Discord IDs (`discord_id`) to VRChat User IDs (`vrchat_id`).
