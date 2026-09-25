@@ -15,6 +15,7 @@ from data.database import (
     add_banned_user,
     remove_banned_user,
     get_banned_user,
+    get_all_banned_users,
 )
 
 ADMIN_USERS = os.path.join(os.path.dirname(__file__), "..", "utils", "administrator_user_ids.json")
@@ -24,6 +25,9 @@ def is_user_allowed(user_id) -> bool:
     try:
         with open(ADMIN_USERS, "r", encoding="utf-8") as f:
             data = json.load(f)
+            # Compare as strings so this is immune to int/str/float type
+            # mismatches between the JSON list and whatever type user_id
+            # happens to arrive as.
             allowed_ids = {str(uid) for uid in data.get("allowed_user_ids", [])}
             return str(user_id) in allowed_ids
     except (FileNotFoundError, json.JSONDecodeError) as e:
@@ -64,6 +68,13 @@ async def get_bot_servers(bot: commands.Bot) -> list[dict]:
         for guild in bot.guilds
     ]
 
+async def get_all_linked_users() -> list[dict]:
+    all_verified = await get_all_verified_users()
+    return [{"discord_id": d_id, "vrchat_id": v_id} for d_id, v_id in all_verified]
+
+async def get_all_banned() -> list[dict]:
+    return await get_all_banned_users()
+
 async def generate_and_send_invite(bot: commands.Bot, guild_id: int, admin_discord_id: Optional[int]) -> dict:
     guild = bot.get_guild(guild_id)
     if not guild:
@@ -83,7 +94,7 @@ async def generate_and_send_invite(bot: commands.Bot, guild_id: int, admin_disco
         return {"success": False, "error": f"Bot doesn't have permission to create an invite in `{guild.name}`."}
 
     try:
-        invite = await channel.create_invite(max_uses=1, max_age=300, reason="Admin dashboard server invite request")
+        invite = await channel.create_invite(max_uses=1, max_age=3600, reason="Admin dashboard server invite request")
     except discord.Forbidden:
         return {"success": False, "error": f"Missing permissions to create an invite in `{guild.name}`."}
     except discord.HTTPException as e:
@@ -94,7 +105,7 @@ async def generate_and_send_invite(bot: commands.Bot, guild_id: int, admin_disco
         return {"success": False, "error": "Could not find your Discord account to send the invite."}
 
     try:
-        await user.send(f"Here's your invite to **{guild.name}**: {invite.url}\n(This invite expires in 5 minutes, and is single use.)")
+        await user.send(f"Here's your invite to **{guild.name}**: {invite.url}\n(Expires in 1 hour, single use.)")
     except discord.Forbidden:
         return {"success": False, "error": "Could not DM you the invite -- check your Discord privacy settings."}
 
