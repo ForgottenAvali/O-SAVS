@@ -7,6 +7,7 @@ from discord.ext import commands
 
 from cogs import admin_core
 from cogs import admin_app_db as db
+from cogs import admin_update
 
 TOKEN_TTL_HOURS = 12
 
@@ -92,6 +93,10 @@ class AdminAPI(commands.Cog):
                 web.get("/api/logs", self.logs),
                 web.get("/api/servers", self.servers),
                 web.post("/api/server_invite", self.server_invite),
+                web.get("/api/users", self.users),
+                web.get("/api/banned", self.banned),
+                web.get("/api/update/latest", self.update_latest),
+                web.get("/api/update/download", self.update_download),
             ]
         )
         self.runner = web.AppRunner(app)
@@ -141,6 +146,16 @@ class AdminAPI(commands.Cog):
         self._require_auth(request)
         servers_list = await admin_core.get_bot_servers(self.bot)
         return web.json_response({"success": True, "servers": servers_list})
+
+    async def users(self, request: web.Request):
+        self._require_auth(request)
+        linked = await admin_core.get_all_linked_users()
+        return web.json_response({"success": True, "users": linked})
+
+    async def banned(self, request: web.Request):
+        self._require_auth(request)
+        banned_list = await admin_core.get_all_banned()
+        return web.json_response({"success": True, "banned": banned_list})
 
     async def server_invite(self, request: web.Request):
         session = self._require_auth(request)
@@ -217,6 +232,37 @@ class AdminAPI(commands.Cog):
         query = request.query.get("q", "")
         rows = await db.search_logs(query)
         return web.json_response({"success": True, "logs": rows})
+
+    async def update_latest(self, request: web.Request):
+        self._require_auth(request)
+        result = await admin_update.get_latest_release()
+        return web.json_response(result)
+
+    async def update_download(self, request: web.Request):
+        self._require_auth(request)
+        asset_id_raw = request.query.get("asset_id", "")
+        if not asset_id_raw.isdigit():
+            return web.json_response({"success": False, "error": "Missing or invalid asset_id."}, status=400)
+
+        response = web.StreamResponse(
+            status=200,
+            headers={
+                "Content-Type": "application/octet-stream",
+                "Content-Disposition": "attachment; filename=update.exe",
+            },
+        )
+        await response.prepare(request)
+
+        async def _write(chunk: bytes):
+            await response.write(chunk)
+
+        try:
+            await admin_update.stream_release_asset(int(asset_id_raw), _write)
+        except Exception as e:
+            logging.error(f"[AdminAPI] Update download failed: {e}")
+
+        await response.write_eof()
+        return response
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(AdminAPI(bot))
