@@ -37,18 +37,18 @@
       <sub>Discord: <code>twinrandom</code></sub>
     </td>
     <td align="center" colspan="2" width="334">
-      <img src="https://github.com/ForgottenAvali/O-SAVS_Assets/blob/main/Coming%20Soon%20Icons/OSAVS-Unknown.png" width="150" alt="Unknown Avatar" /><br />
-      <b>???</b><br />
+      <img src="https://github.com/ForgottenAvali/O-SAVS_Assets/blob/main/Team%20Images/Voarex.png" width="150" alt="Voarex Avatar" /><br />
+      <b>Voarex</b><br />
       <sub>Support Team</sub><br /><br />
-      <sub>VRC: <a href="https://vrchat.com/home/user/???"><b>???</b></a></sub><br />
-      <sub>Discord: <code>???</code></sub>
+      <sub>VRC: <a href="https://vrchat.com/home/user/usr_b244ef5a-0b1c-43af-99a9-42fd339bcccb"><b>Voarex</b></a></sub><br />
+      <sub>Discord: <code>.voarex</code></sub>
     </td>
     <td align="center" colspan="2" width="333">
       <img src="https://github.com/ForgottenAvali/O-SAVS_Assets/blob/main/Coming%20Soon%20Icons/OSAVS-Unknown.png" width="150" alt="Unknown Avatar" /><br />
       <b>???</b><br />
       <sub>Support Team</sub><br /><br />
       <sub>VRC: <a href="https://vrchat.com/home/user/???"><b>???</b></a></sub><br />
-      <sub>Discord: <code>???</code></sub>
+      <sub>Discord: <code></code></sub>
     </td>
   </tr>
 
