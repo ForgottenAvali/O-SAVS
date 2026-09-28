@@ -48,7 +48,7 @@
       <b>???</b><br />
       <sub>Support Team</sub><br /><br />
       <sub>VRC: <a href="https://vrchat.com/home/user/???"><b>???</b></a></sub><br />
-      <sub>Discord: <code></code></sub>
+      <sub>Discord: <code>???</code></sub>
     </td>
   </tr>
 
