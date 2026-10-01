@@ -1,4 +1,4 @@
-import asyncio, aiosqlite, hashlib, os, secrets
+import asyncio, aiosqlite, hashlib, hmac, os, secrets
 
 from datetime import datetime, timezone
 
@@ -15,6 +15,12 @@ async def init_db():
                 discord_id TEXT
             )
             """)
+        async with conn.execute("PRAGMA table_info(admin_accounts)") as cursor:
+            existing_columns = {row[1] for row in await cursor.fetchall()}
+        if "auth_code_hash" not in existing_columns:
+            await conn.execute("ALTER TABLE admin_accounts ADD COLUMN auth_code_hash TEXT")
+        if "auth_code_salt" not in existing_columns:
+            await conn.execute("ALTER TABLE admin_accounts ADD COLUMN auth_code_salt TEXT")
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS action_log (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -34,16 +40,63 @@ def _hash_password_sync(password: str, salt_hex: str) -> str:
 async def _hash_password(password: str, salt_hex: str) -> str:
     return await asyncio.to_thread(_hash_password_sync, password, salt_hex)
 
-async def create_account(username: str, password: str, discord_id: int = None):
+async def create_account(username: str, password: str, discord_id: int = None, auth_code: str = None):
     salt = secrets.token_hex(16)
     pw_hash = await _hash_password(password, salt)
     discord_id_str = str(discord_id) if discord_id is not None else None
+
+    code_hash = code_salt = None
+    if auth_code:
+        code_salt = secrets.token_hex(16)
+        code_hash = await _hash_password(auth_code, code_salt)
+
     async with aiosqlite.connect(DB_PATH) as conn:
         await conn.execute(
-            "INSERT INTO admin_accounts (username, password_hash, salt, discord_id) VALUES (?, ?, ?, ?)",
-            (username, pw_hash, salt, discord_id_str),
+            """INSERT INTO admin_accounts
+               (username, password_hash, salt, discord_id, auth_code_hash, auth_code_salt)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (username, pw_hash, salt, discord_id_str, code_hash, code_salt),
         )
         await conn.commit()
+
+async def account_exists(username: str) -> bool:
+    async with aiosqlite.connect(DB_PATH) as conn:
+        async with conn.execute(
+            "SELECT 1 FROM admin_accounts WHERE username = ?", (username,)
+        ) as cursor:
+            return await cursor.fetchone() is not None
+
+async def set_auth_code(username: str, auth_code: str) -> bool:
+    """Sets or replaces an existing account's authorization code. Returns False if no such account."""
+    salt = secrets.token_hex(16)
+    code_hash = await _hash_password(auth_code, salt)
+    async with aiosqlite.connect(DB_PATH) as conn:
+        cursor = await conn.execute(
+            "UPDATE admin_accounts SET auth_code_hash = ?, auth_code_salt = ? WHERE username = ?",
+            (code_hash, salt, username),
+        )
+        await conn.commit()
+        return cursor.rowcount > 0
+
+async def has_auth_code(username: str) -> bool:
+    async with aiosqlite.connect(DB_PATH) as conn:
+        async with conn.execute(
+            "SELECT auth_code_hash FROM admin_accounts WHERE username = ?", (username,)
+        ) as cursor:
+            row = await cursor.fetchone()
+            return bool(row and row[0])
+
+async def verify_auth_code(username: str, auth_code: str) -> bool:
+    async with aiosqlite.connect(DB_PATH) as conn:
+        async with conn.execute(
+            "SELECT auth_code_hash, auth_code_salt FROM admin_accounts WHERE username = ?", (username,)
+        ) as cursor:
+            row = await cursor.fetchone()
+
+    if not row or not row[0] or not row[1]:
+        return False
+    candidate = await _hash_password(auth_code, row[1])
+    return hmac.compare_digest(candidate, row[0])
 
 async def verify_login(username: str, password: str):
     async with aiosqlite.connect(DB_PATH) as conn:
