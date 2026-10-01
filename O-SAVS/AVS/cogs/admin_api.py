@@ -9,7 +9,7 @@ from cogs import admin_core
 from cogs import admin_app_db as db
 from cogs import admin_update
 
-TOKEN_TTL_HOURS = 12
+TOKEN_TTL_DAYS = 7
 
 load_dotenv()
 API_HOST = os.getenv("ADMIN_API_HOST")
@@ -46,7 +46,7 @@ def _new_token(username, discord_id):
     _sessions[token] = {
         "username": username,
         "discord_id": discord_id,
-        "expires": datetime.now(timezone.utc) + timedelta(hours=TOKEN_TTL_HOURS),
+        "expires": datetime.now(timezone.utc) + timedelta(days=TOKEN_TTL_DAYS),
     }
     return token
 
@@ -93,8 +93,12 @@ class AdminAPI(commands.Cog):
                 web.get("/api/logs", self.logs),
                 web.get("/api/servers", self.servers),
                 web.post("/api/server_invite", self.server_invite),
+                web.post("/api/server_leave", self.server_leave),
+                web.post("/api/server_ban", self.server_ban),
+                web.post("/api/server_unban", self.server_unban),
                 web.get("/api/users", self.users),
                 web.get("/api/banned", self.banned),
+                web.get("/api/banned_servers", self.banned_servers),
                 web.get("/api/update/latest", self.update_latest),
                 web.get("/api/update/download", self.update_download),
             ]
@@ -104,6 +108,16 @@ class AdminAPI(commands.Cog):
         site = web.TCPSite(self.runner, API_HOST, API_PORT)
         await site.start()
         logging.info(f"[AdminAPI] Listening on {API_HOST}:{API_PORT}")
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        await admin_core.enforce_server_bans(self.bot)
+
+    @commands.Cog.listener()
+    async def on_guild_join(self, guild):
+        if await admin_core.is_server_banned(guild.id):
+            logging.info(f"[AdminAPI] Joined banned server {guild.name} ({guild.id}), leaving.")
+            await guild.leave()
 
     async def cog_unload(self):
         if self.runner:
@@ -157,6 +171,11 @@ class AdminAPI(commands.Cog):
         banned_list = await admin_core.get_all_banned()
         return web.json_response({"success": True, "banned": banned_list})
 
+    async def banned_servers(self, request: web.Request):
+        self._require_auth(request)
+        banned_list = await admin_core.get_all_banned_servers()
+        return web.json_response({"success": True, "banned_servers": banned_list})
+
     async def server_invite(self, request: web.Request):
         session = self._require_auth(request)
         try:
@@ -174,6 +193,71 @@ class AdminAPI(commands.Cog):
             admin_discord_id=session.get("discord_id")
         )
         await db.log_action(session["username"], "invite_request", str(guild_id), None, str(result))
+        return web.json_response(result)
+
+    async def server_leave(self, request: web.Request):
+        session = self._require_auth(request)
+        ip_key = f"leave:{_client_ip(request)}"
+        if _is_locked_out(ip_key):
+            return web.json_response(
+                {"success": False, "error": "Too many failed attempts. Try again in a few minutes."}, status=429
+            )
+
+        try:
+            body = await request.json()
+            guild_id = int(body.get("guild_id"))
+        except (ValueError, TypeError):
+            return web.json_response({"success": False, "error": "Invalid server ID format."}, status=400)
+
+        reason = str(body.get("reason", "")).strip()
+        auth_code = str(body.get("auth_code", ""))
+        if not reason:
+            return web.json_response({"success": False, "error": "A reason is required."}, status=400)
+
+        if not await db.has_auth_code(session["username"]):
+            return web.json_response(
+                {"success": False, "error": "Your account has no authorization code set. Ask the owner to set one."},
+                status=403,
+            )
+
+        if not await db.verify_auth_code(session["username"], auth_code):
+            _record_failed_login(ip_key)
+            await db.log_action(session["username"], "leave_server", str(guild_id), reason, "Denied: bad authorization code")
+            return web.json_response({"success": False, "error": "Invalid authorization code."}, status=403)
+
+        _clear_failed_logins(ip_key)
+        result = await admin_core.perform_leave_server(self.bot, guild_id)
+        await db.log_action(session["username"], "leave_server", str(guild_id), reason, str(result))
+        return web.json_response(result)
+
+    async def server_ban(self, request: web.Request):
+        session = self._require_auth(request)
+        try:
+            body = await request.json()
+            server_id = int(body.get("server_id"))
+        except (ValueError, TypeError):
+            return web.json_response({"success": False, "error": "Invalid server ID format."}, status=400)
+        reason = str(body.get("reason", "")).strip()
+        if not reason:
+            return web.json_response({"success": False, "error": "A reason is required."}, status=400)
+
+        result = await admin_core.perform_ban_server(self.bot, session["discord_id"], server_id, reason)
+        await db.log_action(session["username"], "ban_server", str(server_id), reason, str(result))
+        return web.json_response(result)
+
+    async def server_unban(self, request: web.Request):
+        session = self._require_auth(request)
+        try:
+            body = await request.json()
+            server_id = int(body.get("server_id"))
+        except (ValueError, TypeError):
+            return web.json_response({"success": False, "error": "Invalid server ID format."}, status=400)
+        reason = str(body.get("reason", "")).strip()
+        if not reason:
+            return web.json_response({"success": False, "error": "A reason is required."}, status=400)
+
+        result = await admin_core.perform_unban_server(server_id)
+        await db.log_action(session["username"], "unban_server", str(server_id), reason, str(result))
         return web.json_response(result)
 
     async def link(self, request: web.Request):
