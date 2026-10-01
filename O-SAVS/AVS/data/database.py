@@ -44,6 +44,15 @@ async def init_db():
                 timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         """)
+
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS banned_servers (
+                server_id TEXT PRIMARY KEY,
+                reason TEXT NOT NULL,
+                moderator_id TEXT,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
         await conn.commit()
 
 async def get_server_settings(guild_id: int | str) -> dict:
@@ -224,3 +233,45 @@ async def remove_banned_user(target_id: int | str) -> bool:
         ) as cursor:
             await conn.commit()
             return cursor.rowcount > 0
+
+async def is_server_banned(server_id: int | str) -> bool:
+    async with aiosqlite.connect(DB_PATH) as conn:
+        async with conn.execute(
+            "SELECT 1 FROM banned_servers WHERE server_id = ?", (str(server_id).strip(),)
+        ) as cursor:
+            row = await cursor.fetchone()
+            return row is not None
+
+async def add_banned_server(server_id: int | str, reason: str, moderator_id: Optional[int | str] = None):
+    async with aiosqlite.connect(DB_PATH) as conn:
+        await conn.execute(
+            "INSERT OR REPLACE INTO banned_servers (server_id, reason, moderator_id) VALUES (?, ?, ?)",
+            (str(server_id).strip(), reason, str(moderator_id) if moderator_id is not None else None)
+        )
+        await conn.commit()
+
+async def remove_banned_server(server_id: int | str) -> bool:
+    async with aiosqlite.connect(DB_PATH) as conn:
+        async with conn.execute(
+            "DELETE FROM banned_servers WHERE server_id = ?", (str(server_id).strip(),)
+        ) as cursor:
+            await conn.commit()
+            return cursor.rowcount > 0
+
+async def get_all_banned_users() -> list[dict]:
+    async with aiosqlite.connect(DB_PATH) as conn:
+        conn.row_factory = aiosqlite.Row
+        async with conn.execute(
+            "SELECT target_id, reason, moderator_id, timestamp FROM banned_users ORDER BY timestamp DESC"
+        ) as cursor:
+            rows = await cursor.fetchall()
+    return [dict(r) for r in rows]
+
+async def get_all_banned_servers() -> list[dict]:
+    async with aiosqlite.connect(DB_PATH) as conn:
+        conn.row_factory = aiosqlite.Row
+        async with conn.execute(
+            "SELECT server_id, reason, moderator_id, timestamp FROM banned_servers ORDER BY timestamp DESC"
+        ) as cursor:
+            rows = await cursor.fetchall()
+    return [dict(r) for r in rows]
