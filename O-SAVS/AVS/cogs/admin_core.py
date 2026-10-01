@@ -16,6 +16,10 @@ from data.database import (
     remove_banned_user,
     get_banned_user,
     get_all_banned_users,
+    is_server_banned,
+    add_banned_server,
+    remove_banned_server,
+    get_all_banned_servers,
 )
 
 ADMIN_USERS = os.path.join(os.path.dirname(__file__), "..", "utils", "administrator_user_ids.json")
@@ -64,7 +68,13 @@ async def get_or_fetch_user(bot: commands.Bot, user_id: int) -> Optional[discord
 
 async def get_bot_servers(bot: commands.Bot) -> list[dict]:
     return [
-        {"id": guild.id, "name": guild.name, "member_count": guild.member_count}
+        {
+            "id": guild.id,
+            "name": guild.name,
+            "member_count": guild.member_count,
+            # Shows the nickname server mods gave the bot, or its normal name if none is set.
+            "bot_name": guild.me.display_name if guild.me else bot.user.name,
+        }
         for guild in bot.guilds
     ]
 
@@ -110,6 +120,62 @@ async def generate_and_send_invite(bot: commands.Bot, guild_id: int, admin_disco
         return {"success": False, "error": "Could not DM you the invite -- check your Discord privacy settings."}
 
     return {"success": True, "message": f"Invite to {guild.name} sent to your Discord DMs!"}
+
+async def perform_leave_server(bot: commands.Bot, guild_id: int) -> dict:
+    guild = bot.get_guild(guild_id)
+    if not guild:
+        return {"success": False, "error": f"Bot is not in a server with ID `{guild_id}`."}
+
+    guild_name = guild.name
+    try:
+        await guild.leave()
+    except discord.HTTPException as e:
+        return {"success": False, "error": f"Discord API error leaving server: {e}"}
+
+    return {"success": True, "server_id": guild_id, "server_name": guild_name}
+
+async def perform_ban_server(bot: commands.Bot, operator_id, server_id: int, reason: str) -> dict:
+    if await is_server_banned(server_id):
+        return {"success": False, "error": f"Server `{server_id}` is already banned."}
+
+    await add_banned_server(server_id, reason, operator_id)
+
+    left = False
+    server_name = None
+    guild = bot.get_guild(server_id)
+    if guild:
+        server_name = guild.name
+        try:
+            await guild.leave()
+            left = True
+        except discord.HTTPException as e:
+            logging.error(f"[AdminCore] Failed to leave banned server {server_id}: {e}")
+
+    return {
+        "success": True,
+        "server_id": server_id,
+        "server_name": server_name,
+        "bot_was_in_server": guild is not None,
+        "left_server": left,
+    }
+
+async def perform_unban_server(server_id: int) -> dict:
+    if not await remove_banned_server(server_id):
+        return {"success": False, "error": f"Server `{server_id}` is not currently banned."}
+    return {"success": True, "server_id": server_id}
+
+async def enforce_server_bans(bot: commands.Bot) -> int:
+    """Leaves any server the bot is in that is on the ban list. Returns how many were left."""
+    count = 0
+    for guild in list(bot.guilds):
+        if await is_server_banned(guild.id):
+            try:
+                await guild.leave()
+                count += 1
+                logging.info(f"[AdminCore] Left banned server {guild.name} ({guild.id})")
+            except discord.HTTPException as e:
+                logging.error(f"[AdminCore] Failed to leave banned server {guild.id}: {e}")
+    return count
 
 async def send_verify_log(bot, guild, action, member, vrchat_id, operator_id, operator_name, reason=None):
     settings = await get_server_settings(guild.id)

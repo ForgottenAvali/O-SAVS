@@ -20,7 +20,7 @@ O-SAVS is a global Discord age-verification bot designed to integrate seamlessly
 - **VRChat Profile Integration:** Generates custom verification codes for users to place in their VRChat bio or status to verify account ownership.
 - **Automated Guild Setup:** `/setup` slash command to configure roles, log channels, and code prefixes.
 - **Role Hierarchy Safety:** Built-in checks to prevent configuration failures when managing role assignments.
-- **Admin Dashboard:** A standalone desktop application for O-SAVS Administration to manually manage account links, global user exclusions, server listings, and temporary support invite links. Access is restricted to authorized administrators via credentialed login, cross-checked against an internal allow-list of authorized Discord IDs.
+- **Admin Dashboard:** A standalone desktop application for O-SAVS Administration to manually manage account links, global user bans, server listings, server bans, and temporary support invite links. Access is restricted to authorized administrators via credentialed login, cross-checked against an internal allow-list of authorized Discord IDs.
 - **Auto-Syncing:** Automatically assigns verified roles to existing or joining members who are already in the global database.
 - **Auto-Cleanup:** Automatically purges server configuration settings from the O-SAVS database upon bot removal (leaves all Discord roles, channels, and member verifications intact).
 
@@ -30,11 +30,12 @@ O-SAVS is a global Discord age-verification bot designed to integrate seamlessly
 
 O-SAVS Administration manages the bot through a standalone desktop application rather than in-server commands, communicating with the bot over an authenticated internal HTTP API.
 
-- **Actions:** Link/unlink Discord-VRChat accounts, globally ban/unban a Discord or VRChat ID, and look up a target's ban status.
-- **Servers:** View every server the bot is currently in, with live member counts, and request a temporary, single-use invite for support/auditing purposes.
+- **Actions:** Link/unlink Discord-VRChat accounts, globally ban/unban a Discord or VRChat ID, and ban/unban entire servers. A banned server is left immediately, and the bot automatically leaves it again if it is ever re-added.
+- **Servers:** Switch between **Added Servers** and **Banned Servers**. Added Servers lists every server the bot is currently in, with live member counts and the bot's display name in each server, and allows administrators to request a temporary, single-use invite for support/auditing purposes or to have the bot leave a server. Leaving a server requires the administrator's personal authorization code and a stated reason. Banned Servers lists every banned server with its ban reason, the moderator responsible, and the time of the ban.
+- **Users:** Switch between **Linked Users** (Discord-VRChat account links) and **Banned Users** (global bans, with reason, moderator, and timestamp).
 - **Logs:** Search and review a full audit trail of every administrative action taken through the dashboard.
 
-Dashboard access requires a dashboard account **and** a linked Discord User ID present on O-SAVS Administration's internal allow-list; accounts without a linked, allow-listed ID cannot log in.
+Dashboard access requires a dashboard account **and** a linked Discord User ID present on O-SAVS Administration's internal allow-list; accounts without a linked, allow-listed ID cannot log in. Repeated failed login attempts are temporarily rate-limited, and sensitive actions such as leaving a server require an additional per-administrator authorization code. The dashboard checks for new releases and can update itself.
 
 ---
 
@@ -43,6 +44,7 @@ Dashboard access requires a dashboard account **and** a linked Discord User ID p
 - **`server_settings`**: Stores guild configuration (`server_id`, `verified_role`, `verify_channel`, `verification_logs`, `av_start_code`, `required_role`).
 - **`verified_users`**: Maps Discord IDs (`discord_id`) to VRChat User IDs (`vrchat_id`).
 - **`banned_users`**: Stores global user ban records (`target_id` (Discord ID or VRChat User ID), `reason`, `moderator_id`, `timestamp`).
+- **`banned_servers`**: Stores banned server records (`server_id`, `reason`, `moderator_id`, `timestamp`). The bot automatically leaves any server listed here.
 
 ---
 
@@ -54,7 +56,7 @@ Dashboard access requires a dashboard account **and** a linked Discord User ID p
 - Required Python libraries:
 
 ```bash
-pip install discord.py aiosqlite aiohttp vrchatapi
+pip install discord.py aiosqlite aiohttp python-dotenv vrchatapi
 ```
 
 ---
