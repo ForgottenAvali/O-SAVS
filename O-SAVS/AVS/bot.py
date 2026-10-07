@@ -3,7 +3,15 @@ import os, discord, asyncio, logging, itertools
 from dotenv import load_dotenv
 from discord.ext import commands, tasks
 
-from cogs import verification, admin_api
+from cogs import verification
+
+try:
+    from cogs import admin_api
+except ModuleNotFoundError as e:
+    if e.name != "cogs.admin_api":
+        raise
+    admin_api = None
+
 from data.vrchat import login_vrc
 from data.database import init_db, get_total_verified_users
 from data.lock import ensure_single_instance, cleanup_instance
@@ -28,7 +36,12 @@ async def on_ready():
     if not hasattr(bot, "initialized"):
         await init_db()
         await verification.setup(bot)
-        await admin_api.setup(bot)
+
+        if admin_api is not None:
+            await admin_api.setup(bot)
+        else:
+            print("[System] Admin API cog not found, running without it.")
+
         await bot.tree.sync()
 
         bot.initialized = True
