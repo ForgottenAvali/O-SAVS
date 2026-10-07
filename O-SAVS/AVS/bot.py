@@ -29,6 +29,7 @@ TOKEN = os.getenv("BOT_TOKEN")
 
 status_index = 0
 NOODLENEXUS_SERVER = 1543888548296392775
+BOT_ID = 1516450694109073439
 
 
 @bot.event
@@ -57,7 +58,7 @@ async def update_status():
 
     active_guilds = [g for g in bot.guilds if g.id != NOODLENEXUS_SERVER]
     server_count = len(active_guilds)
-    verified_count = await get_total_verified_users(exclude_ids=["1516450694109073439"])
+    verified_count = await get_total_verified_users(exclude_ids=[BOT_ID])
 
     statuses = [
         f"Verifying people in {server_count} servers!",
