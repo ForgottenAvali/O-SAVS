@@ -9,7 +9,7 @@
   [![Ko-fi](https://img.shields.io/badge/Ko--fi-Support%20Me-F16061?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/forgottenavali)
 
   ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white)
-  ![discord.py](https://img.shields.io/badge/discord.py-2.x-5865F2?style=flat-square)
+  ![discord.py](https://img.shields.io/badge/discord.py-2.7.1-5865F2?style=flat-square)
   ![vrchatapi](https://img.shields.io/pypi/v/vrchatapi?style=flat-square&label=vrchatapi&color=1F9D8B)
 </div>
 
