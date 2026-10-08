@@ -116,31 +116,13 @@ async def get_vrchat_user(user_id: str) -> dict | None:
 
         username = getattr(result, "display_name", None) or getattr(result, "username", "Unknown")
         verification = getattr(result, "age_verified")
+        bio = getattr(result, "bio", None)
+        status = getattr(result, "status_description")
 
         return {
             "id": getattr(result, "id", user_id),
             "username": username,
             "verification": verification,
-        }
-    except Exception as e:
-        logging.exception(f"[VRChat] Failed to fetch user from user id ({user_id})")
-        return None
-
-
-async def get_vrchat_profile(user_id: str) -> dict | None:
-    try:
-        loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(
-            None,
-            lambda: users_api_instance.get_private_profile(user_id)
-        )
-
-        bio = getattr(result, "bio", None)
-        status = getattr(result, "status_description")
-        print(f"{status} and {bio}")
-
-        return {
-            "id": getattr(result, "id", user_id),
             "bio": bio,
             "status": status
         }
