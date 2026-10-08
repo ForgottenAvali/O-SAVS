@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from discord import app_commands, Interaction, ui, ButtonStyle, Embed
 from discord.ext import commands
 
-from data.vrchat import get_vrchat_user
+from data.vrchat import get_vrchat_user, get_vrchat_profile
 from data.database import (
     get_server_settings,
     get_vrchat_id_from_discord,
@@ -38,6 +38,7 @@ class BioCheckView(ui.View):
         await interaction.response.defer(ephemeral=True)
 
         user_data = await get_vrchat_user(self.user_id)
+        user_bio = await get_vrchat_profile(self.user_id)
 
         if not user_data:
             return await interaction.followup.send(
@@ -45,8 +46,14 @@ class BioCheckView(ui.View):
                 ephemeral=True
             )
 
-        bio = user_data.get("bio", "") or ""
-        status = user_data.get("status", "") or ""
+        if not user_bio:
+            return await interaction.followup.send(
+                "❌ Failed to fetch VRChat status or description. Please verify your User ID or try again later.",
+                ephemeral=True
+            )
+
+        bio = user_bio.get("bio", "") or ""
+        status = user_bio.get("status", "") or ""
 
         if self.code not in bio and self.code not in status:
             return await interaction.followup.send(
