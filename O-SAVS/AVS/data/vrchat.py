@@ -117,14 +117,12 @@ async def get_vrchat_user(user_id: str) -> dict | None:
         username = getattr(result, "display_name", None) or getattr(result, "username", "Unknown")
         verification = getattr(result, "age_verified")
         bio = getattr(result, "bio", None)
-        status = getattr(result, "status_description")
 
         return {
             "id": getattr(result, "id", user_id),
             "username": username,
             "verification": verification,
             "bio": bio,
-            "status": status
         }
     except Exception as e:
         logging.exception(f"[VRChat] Failed to fetch user from user id ({user_id})")

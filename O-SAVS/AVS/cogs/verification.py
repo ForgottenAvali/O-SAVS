@@ -1,4 +1,4 @@
-import random, discord, string, asyncio, re, logging
+import random, discord, string, asyncio, re, logging, os, json, hashlib
 
 from typing import Optional
 from datetime import datetime, timezone
@@ -18,14 +18,67 @@ from data.database import (
 )
 
 GLOBAL_LOG_CHANNEL_ID = 1544746956264443904
+PANEL_STATE_FILE = os.path.join(os.path.dirname(__file__), "..", "utils", "panel_state.json")
 
 
 def generate_code(prefix: str = "AVS-") -> str:
     clean_prefix = prefix.strip() if prefix else "AVS-"
     return clean_prefix + "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
 
-class BioCheckView(ui.View):
-    def __init__(self, bot: commands.Bot, cog: commands.Cog, user_id: str, code: str, settings: dict):
+def sep() -> ui.Separator:
+    return ui.Separator(visible=True, spacing=discord.SeparatorSpacing.small)
+
+def static_layout(*items) -> ui.LayoutView:
+    view = ui.LayoutView(timeout=None)
+    for item in items:
+        view.add_item(item)
+    return view
+
+def notice(text: str) -> ui.LayoutView:
+    icon, _, body = text.partition(" ")
+    body = body.strip()
+    kinds = {
+        "❌": ("Error", discord.Color.red()),
+        "✅": ("Success", discord.Color.green()),
+        "⚠️": ("Warning", discord.Color.orange()),
+    }
+    title, colour = kinds.get(icon, ("Notice", discord.Color.blurple()))
+
+    first, _, rest = body.partition("\n")
+    bold = re.fullmatch(r"\*\*(.+)\*\*", first.strip())
+    if bold:
+        title, body = bold.group(1), rest.strip()
+
+    items = [ui.TextDisplay(f"# {icon} {title}")]
+    if body:
+        items += [sep(), ui.TextDisplay(body)]
+    return static_layout(ui.Container(*items, accent_colour=colour))
+
+def has_age_button(components) -> bool:
+    for comp in components:
+        if getattr(comp, "custom_id", None) == "ageverify_start":
+            return True
+
+        children = getattr(comp, "children", None)
+        if children and has_age_button(children):
+            return True
+
+        accessory = getattr(comp, "accessory", None)
+        if accessory is not None and has_age_button([accessory]):
+            return True
+
+    return False
+
+class BioCheckButton(ui.Button):
+    def __init__(self, bio_view: "BioCheckView"):
+        super().__init__(label="I've updated my profile", style=ButtonStyle.success)
+        self.bio_view = bio_view
+
+    async def callback(self, interaction: Interaction):
+        await self.bio_view.run_check(interaction)
+
+class BioCheckView(ui.LayoutView):
+    def __init__(self, bot: commands.Bot, cog: commands.Cog, user_id: str, code: str, settings: dict, username: str = "Unknown User"):
         super().__init__(timeout=300)
         self.bot = bot
         self.cog = cog
@@ -33,33 +86,33 @@ class BioCheckView(ui.View):
         self.code = code
         self.settings = settings
 
-    @ui.button(label="I've updated my profile", style=ButtonStyle.success)
-    async def check_bio(self, interaction: Interaction, button: ui.Button):
+        self.add_item(ui.Container(
+            ui.TextDisplay(f"# 🔐 Verification for `{username}`"),
+            ui.TextDisplay("-# VRCHAT PROFILE CHECK"),
+            sep(),
+            ui.Section(
+                ui.TextDisplay("Add the following code to your VRChat bio:"),
+                ui.TextDisplay(f"# `{code}`"),
+                ui.TextDisplay("Once updated, click the button to complete verification."),
+                accessory=BioCheckButton(self)
+            ),
+        ))
+
+    async def run_check(self, interaction: Interaction):
         await interaction.response.defer(ephemeral=True)
 
         user_data = await get_vrchat_user(self.user_id)
 
         if not user_data:
-            return await interaction.followup.send(
-                "❌ Failed to fetch VRChat profile data. Please verify your User ID or try again later.",
-                ephemeral=True
-            )
+            return await interaction.followup.send(view=notice("❌ Failed to fetch VRChat profile data. Please verify your User ID or try again later."), ephemeral=True)
 
         bio = user_data.get("bio", "") or ""
-        status = user_data.get("status", "") or ""
 
-
-        if self.code not in bio and self.code not in status:
-            return await interaction.followup.send(
-                "❌ Verification code was **not found** in your VRChat status or bio. Make sure you entered it correctly.",
-                ephemeral=True
-            )
+        if self.code not in bio:
+            return await interaction.followup.send(view=notice("❌ Verification code was **not found** in your VRChat bio. Make sure you entered it correctly."), ephemeral=True)
 
         if not user_data.get("verification"):
-            return await interaction.followup.send(
-                "❌ Your VRChat account is **not age verified**. Official VRChat 18+ verification is required.",
-                ephemeral=True
-            )
+            return await interaction.followup.send(view=notice("❌ Your VRChat account is **not age verified**. Official VRChat 18+ verification is required."), ephemeral=True)
 
         await add_verified_user(interaction.user.id, self.user_id)
 
@@ -137,17 +190,48 @@ class BioCheckView(ui.View):
                 f"If you did not receive the role in **{interaction.guild.name}**, ensure you meet any required role prerequisites."
             )
 
-        await interaction.followup.send(success_msg, ephemeral=True)
+        await interaction.followup.send(view=notice(success_msg), ephemeral=True)
 
-class ConfirmCheck(ui.View):
+class AgeVerifyButton(ui.Button):
+    def __init__(self):
+        super().__init__(label="Age Verify", style=ButtonStyle.primary, custom_id="ageverify_start")
+
+    async def callback(self, interaction: Interaction):
+        await interaction.response.send_modal(VRChatUsername())
+
+class ConfirmCheck(ui.LayoutView):
     def __init__(self, bot: commands.Bot, cog: commands.Cog):
         super().__init__(timeout=None)
         self.bot = bot
         self.cog = cog
 
-    @ui.button(label="Age Verify", style=ButtonStyle.primary, custom_id="ageverify_start")
-    async def verify_button(self, interaction: Interaction, button: ui.Button):
-        await interaction.response.send_modal(VRChatUsername())
+        self.add_item(ui.Container(
+            ui.TextDisplay("# VRChat 18+ Verification"),
+            ui.TextDisplay("-# O-SAVS · AGE VERIFICATION"),
+            sep(),
+            ui.TextDisplay("## About Verification"),
+            ui.TextDisplay(
+                "To age verify yourself, you must verify that your VRChat account is **age verified**."
+            ),
+        ))
+
+        self.add_item(ui.Container(
+            ui.Section(
+                ui.TextDisplay("## Start Verification"),
+                ui.TextDisplay("Click the **Age Verify** button to begin."),
+                accessory=AgeVerifyButton()
+            ),
+            sep(),
+            ui.TextDisplay("## Instructions"),
+            ui.TextDisplay(
+                "1. Sign into [vrchat.com](https://vrchat.com/home)\n"
+                "- Go to your profile and copy the link to it\n"
+                "- Click the Age Verify button and input the link you copied\n"
+                "- After clicking submit, we will give you a code; Input that code into your VRChat bio\n"
+                "- After inputting the code into your bio click the `I've updated my profile` button.\n"
+                "  - If you did it all correctly you will now be age verified in the server and any other server using O-SAVS"
+            ),
+        ))
 
 class VRChatUsername(ui.Modal, title="VRChat Verification"):
     userID = ui.TextInput(
@@ -169,56 +253,44 @@ class VRChatUsername(ui.Modal, title="VRChat Verification"):
         if required_role_id:
             req_role = modal_interaction.guild.get_role(required_role_id)
             if req_role and req_role not in modal_interaction.user.roles:
-                return await modal_interaction.followup.send(
-                    f"❌ You must have the {req_role.mention} role before you can age verify in this server.",
-                    ephemeral=True
-                )
+                return await modal_interaction.followup.send(view=notice(f"❌ You must have the {req_role.mention} role before you can age verify in this server."), ephemeral=True)
 
         existing_vrc_id = await get_vrchat_id_from_discord(modal_interaction.user.id)
         if existing_vrc_id:
-            return await modal_interaction.followup.send(
-                f"❌ Your Discord account is already linked to VRChat ID (`{existing_vrc_id}`).\n"
-                "If you need to unlink this account, you may join the [Noodle's Nexus](https://discord.gg/PeXzxBeUcB) support server.",
-                ephemeral=True
-            )
+            return await modal_interaction.followup.send(view=notice(f"❌ Your Discord account is already linked to VRChat ID (`{existing_vrc_id}`).\n"
+                "If you need to unlink this account, you may join the [Noodle's Nexus](https://discord.gg/PeXzxBeUcB) support server."), ephemeral=True)
 
         if await is_banned(modal_interaction.user.id):
-            return await modal_interaction.followup.send(
-                "❌ Your Discord account was banned by the administration team for O-SAVS.\n"
-                "If you believe this ban was issued in error you may appeal by joining the [Noodle's Nexus](https://discord.gg/PeXzxBeUcB) support server.",
-                ephemeral=True
-            )
+            return await modal_interaction.followup.send(view=notice("❌ Your Discord account was banned by the administration team for O-SAVS.\n"
+                "If you believe this ban was issued in error you may appeal by joining the [Noodle's Nexus](https://discord.gg/PeXzxBeUcB) support server."), ephemeral=True)
 
         user_input = self.userID.value.strip()
         match = re.search(r"usr_[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}", user_input, re.IGNORECASE)
 
         if not match:
-            invalid_embed = Embed(
-                title="Invalid Input!",
-                description=(
-                    "Could not detect a valid VRChat User ID.\n"
-                    "Please paste your **profile link** (e.g. `https://vrchat.com/home/user/usr_...`) or raw **User ID** (`usr_...`).\n"
-                    "If you believe this is an error you may get assistance in the [Noodle's Nexus](https://discord.gg/PeXzxBeUcB) support server.\n\n"
-                    f"You entered: `{user_input}`"
-                ),
-                color=discord.Color.red()
+            invalid_layout = static_layout(
+                ui.Container(
+                    ui.TextDisplay("# Invalid Input!"),
+                    sep(),
+                    ui.TextDisplay(
+                        "Could not detect a valid VRChat User ID.\n"
+                        "Please paste your **profile link** (e.g. `https://vrchat.com/home/user/usr_...`) or raw **User ID** (`usr_...`).\n"
+                        "If you believe this is an error you may get assistance in the [Noodle's Nexus](https://discord.gg/PeXzxBeUcB) support server.\n\n"
+                        f"You entered: `{user_input}`"
+                    ),
+                    accent_colour=discord.Color.red()
+                )
             )
-            return await modal_interaction.followup.send(embed=invalid_embed, ephemeral=True)
+            return await modal_interaction.followup.send(view=invalid_layout, ephemeral=True)
 
         clean_id = match.group(0)
 
         if await is_banned(clean_id):
-            return await modal_interaction.followup.send(
-                "❌ Your VRChat account was banned by the administration team for O-SAVS.\n"
-                "If you believe this ban was issued in error you may appeal by joining the [Noodle's Nexus](https://discord.gg/PeXzxBeUcB) support server.",
-                ephemeral=True
-            )
+            return await modal_interaction.followup.send(view=notice("❌ Your VRChat account was banned by the administration team for O-SAVS.\n"
+                "If you believe this ban was issued in error you may appeal by joining the [Noodle's Nexus](https://discord.gg/PeXzxBeUcB) support server."), ephemeral=True)
 
         if await is_vrchat_id_verified(clean_id):
-            return await modal_interaction.followup.send(
-                f"❌ The VRChat account (`{clean_id}`) is already linked to another Discord user.",
-                ephemeral=True
-            )
+            return await modal_interaction.followup.send(view=notice(f"❌ The VRChat account (`{clean_id}`) is already linked to another Discord user."), ephemeral=True)
 
         prefix = settings.get("av_start_code") or "AVS-"
         code = generate_code(prefix)
@@ -227,18 +299,9 @@ class VRChatUsername(ui.Modal, title="VRChat Verification"):
         username = user_data.get("username", "Unknown User") if user_data else "Unknown User"
 
         cog = modal_interaction.client.get_cog("Verification")
-        view = BioCheckView(modal_interaction.client, cog, clean_id, code, settings)
+        view = BioCheckView(modal_interaction.client, cog, clean_id, code, settings, username)
 
-        start_embed = Embed(
-            title=f"🔐 Verification for `{username}`",
-            description=(
-                f"Add the following code to your VRChat status or bio: **`{code}`**\n\n"
-                "Once updated, click the button below to complete verification."
-            ),
-            color=discord.Color.blue()
-        )
-
-        await modal_interaction.followup.send(embed=start_embed, view=view, ephemeral=True)
+        await modal_interaction.followup.send(view=view, ephemeral=True)
 
 class PrefixModal(ui.Modal, title="Custom Verification Prefix"):
     prefix_input = ui.TextInput(
@@ -260,7 +323,81 @@ class PrefixModal(ui.Modal, title="Custom Verification Prefix"):
         self.wizard_view.selected_prefix = val
         await self.wizard_view.update_wizard(interaction)
 
-class SetupWizardView(ui.View):
+class WizardRoleSelect(ui.RoleSelect):
+    def __init__(self, wizard: "SetupWizardView", step: str):
+        placeholder = (
+            "Step 1: Choose Verified Role..." if step == "verified"
+            else "Step 2: Choose Required Role to Verify..."
+        )
+        current = wizard.selected_role if step == "verified" else wizard.required_role
+        super().__init__(
+            placeholder=placeholder,
+            min_values=1,
+            max_values=1,
+            default_values=[current] if current else []
+        )
+        self.wizard = wizard
+        self.step = step
+
+    async def callback(self, interaction: Interaction):
+        role = self.values[0]
+
+        if self.step == "verified":
+            bot_top_role = interaction.guild.me.top_role
+            if role >= bot_top_role:
+                return await interaction.response.send_message(view=notice(f"❌ I cannot assign {role.mention} because it is higher than or equal to my highest role ({bot_top_role.mention})."), ephemeral=True)
+            self.wizard.selected_role = role
+        else:
+            self.wizard.required_role = role
+
+        await self.wizard.update_wizard(interaction)
+
+class WizardChannelSelect(ui.ChannelSelect):
+    def __init__(self, wizard: "SetupWizardView"):
+        super().__init__(
+            placeholder="Step 3: Choose Verification Channel...",
+            channel_types=[discord.ChannelType.text],
+            min_values=1,
+            max_values=1,
+            default_values=[wizard.selected_channel] if wizard.selected_channel else []
+        )
+        self.wizard = wizard
+
+    async def callback(self, interaction: Interaction):
+        text_channel = interaction.guild.get_channel(self.values[0].id)
+
+        if not isinstance(text_channel, discord.TextChannel):
+            return await interaction.response.send_message(view=notice("❌ Could not resolve that text channel. Please try again."), ephemeral=True)
+
+        self.wizard.selected_channel = text_channel
+        await self.wizard.update_wizard(interaction)
+
+class ClearPreRoleButton(ui.Button):
+    def __init__(self, wizard: "SetupWizardView"):
+        super().__init__(label="Clear Pre-Role", style=ButtonStyle.secondary)
+        self.wizard = wizard
+
+    async def callback(self, interaction: Interaction):
+        self.wizard.required_role = None
+        await self.wizard.update_wizard(interaction)
+
+class SetPrefixButton(ui.Button):
+    def __init__(self, wizard: "SetupWizardView"):
+        super().__init__(label="Set Custom Prefix", style=ButtonStyle.secondary)
+        self.wizard = wizard
+
+    async def callback(self, interaction: Interaction):
+        await interaction.response.send_modal(PrefixModal(self.wizard))
+
+class FinishSetupButton(ui.Button):
+    def __init__(self, wizard: "SetupWizardView"):
+        super().__init__(label="Complete Setup", style=ButtonStyle.success, disabled=not wizard.is_ready())
+        self.wizard = wizard
+
+    async def callback(self, interaction: Interaction):
+        await self.wizard.finish_setup(interaction)
+
+class SetupWizardView(ui.LayoutView):
     def __init__(self, bot: commands.Bot, cog: commands.Cog, author: discord.Member, log_channel: discord.TextChannel):
         super().__init__(timeout=300)
         self.bot = bot
@@ -273,86 +410,70 @@ class SetupWizardView(ui.View):
         self.selected_channel: Optional[discord.TextChannel] = None
         self.selected_prefix: str = "AVS-"
 
+        self.build()
+
     async def interaction_check(self, interaction: Interaction) -> bool:
         if interaction.user.id != self.author.id:
-            await interaction.response.send_message("❌ Only the command invoker can control this wizard.", ephemeral=True)
+            await interaction.response.send_message(view=notice("❌ Only the command invoker can control this wizard."), ephemeral=True)
             return False
         return True
 
-    def build_embed(self) -> Embed:
-        embed = Embed(
-            title="⚙️ O-SAVS Interactive Setup",
-            description=f"Configure your server settings using the components below.\n\n**Log Channel Created:** {self.log_channel.mention}",
-            color=discord.Color.blue()
-        )
+    def is_ready(self) -> bool:
+        return bool(self.selected_role and self.selected_channel)
+
+    def build(self):
+        self.clear_items()
 
         role_str = self.selected_role.mention if self.selected_role else "❌ *Not selected*"
         req_role_str = self.required_role.mention if self.required_role else "🔹 *None (Optional)*"
         channel_str = self.selected_channel.mention if self.selected_channel else "❌ *Not selected*"
-        
-        embed.add_field(name="1. Verified Role (Required)", value=role_str, inline=False)
-        embed.add_field(name="2. Required Pre-Verification Role (Optional)", value=req_role_str, inline=False)
-        embed.add_field(name="3. Verification Panel Channel (Required)", value=channel_str, inline=False)
-        embed.add_field(name="4. Code Prefix (Optional)", value=f"`{self.selected_prefix}`", inline=False)
 
-        if self.selected_role and self.selected_channel:
-            embed.set_footer(text="All required settings configured! Click 'Complete Setup' to finalize.")
+        if self.is_ready():
+            footer = "All required settings configured! Click 'Complete Setup' to finalize."
         else:
-            embed.set_footer(text="Please select a verified role and verification channel to proceed.")
+            footer = "Please select a verified role and verification channel to proceed."
 
-        return embed
+        self.add_item(ui.Container(
+            ui.TextDisplay("# ⚙️ O-SAVS Interactive Setup"),
+            ui.TextDisplay("-# SERVER CONFIGURATION"),
+            sep(),
+            ui.TextDisplay(
+                "Configure your server settings using the components below.\n\n"
+                f"**Log Channel Created:** {self.log_channel.mention}"
+            ),
+        ))
+
+        self.add_item(ui.Container(
+            ui.TextDisplay(f"### 1. Verified Role (Required)\n{role_str}"),
+            ui.ActionRow(WizardRoleSelect(self, "verified")),
+            sep(),
+            ui.Section(
+                ui.TextDisplay(f"### 2. Required Pre-Verification Role (Optional)\n{req_role_str}"),
+                accessory=ClearPreRoleButton(self)
+            ),
+            ui.ActionRow(WizardRoleSelect(self, "required")),
+            sep(),
+            ui.TextDisplay(f"### 3. Verification Panel Channel (Required)\n{channel_str}"),
+            ui.ActionRow(WizardChannelSelect(self)),
+            sep(),
+            ui.Section(
+                ui.TextDisplay(f"### 4. Code Prefix (Optional)\n`{self.selected_prefix}`"),
+                accessory=SetPrefixButton(self)
+            ),
+        ))
+
+        self.add_item(ui.Container(
+            ui.Section(
+                ui.TextDisplay(f"### Finish\n{footer}"),
+                accessory=FinishSetupButton(self)
+            ),
+        ))
 
     async def update_wizard(self, interaction: Interaction):
-        for item in self.children:
-            if isinstance(item, ui.Button) and item.custom_id == "finish_setup":
-                item.disabled = not (self.selected_role and self.selected_channel)
+        self.build()
+        await interaction.response.edit_message(view=self)
 
-        embed = self.build_embed()
-        await interaction.response.edit_message(embed=embed, view=self)
-
-    @ui.select(cls=ui.RoleSelect, placeholder="Step 1: Choose Verified Role...", min_values=1, max_values=1, row=0)
-    async def select_role(self, interaction: Interaction, select: ui.RoleSelect):
-        role = select.values[0]
-        bot_top_role = interaction.guild.me.top_role
-
-        if role >= bot_top_role:
-            return await interaction.response.send_message(
-                f"❌ I cannot assign {role.mention} because it is higher than or equal to my highest role ({bot_top_role.mention}).",
-                ephemeral=True
-            )
-
-        self.selected_role = role
-        await self.update_wizard(interaction)
-
-    @ui.select(cls=ui.RoleSelect, placeholder="Step 2: Choose Required Role to Verify...", min_values=1, max_values=1, row=1)
-    async def select_required_role(self, interaction: Interaction, select: ui.RoleSelect):
-        self.required_role = select.values[0]
-        await self.update_wizard(interaction)
-
-    @ui.select(cls=ui.ChannelSelect, placeholder="Step 3: Choose Verification Channel...", channel_types=[discord.ChannelType.text], min_values=1, max_values=1, row=2)
-    async def select_channel(self, interaction: Interaction, select: ui.ChannelSelect):
-        text_channel = select.values[0]
-
-        if not isinstance(text_channel, discord.TextChannel):
-            return await interaction.response.send_message(
-                "❌ Could not resolve that text channel. Please try again.", 
-                ephemeral=True
-            )
-
-        self.selected_channel = text_channel
-        await self.update_wizard(interaction)
-
-    @ui.button(label="Clear Pre-Role", style=ButtonStyle.secondary, row=3)
-    async def clear_pre_role(self, interaction: Interaction, button: ui.Button):
-        self.required_role = None
-        await self.update_wizard(interaction)
-
-    @ui.button(label="Set Custom Prefix", style=ButtonStyle.secondary, row=3)
-    async def set_prefix(self, interaction: Interaction, button: ui.Button):
-        await interaction.response.send_modal(PrefixModal(self))
-
-    @ui.button(label="Complete Setup", style=ButtonStyle.success, disabled=True, custom_id="finish_setup", row=3)
-    async def finish_setup(self, interaction: Interaction, button: ui.Button):
+    async def finish_setup(self, interaction: Interaction):
         await interaction.response.defer(ephemeral=True)
 
         guild = interaction.guild
@@ -371,52 +492,37 @@ class SetupWizardView(ui.View):
             required_role=required_role.id if required_role else None
         )
 
-        thank_you_embed = Embed(
-            title="Thank you for using O-SAVS!",
-            description=(
-                "O-SAVS (Open-Source Age Verification System) configuration has been updated for this server.\n\n"
-                f"**Verified Role:** {verified_role.mention}\n"
-                f"**Required Pre-Role:** {required_role.mention if required_role else 'None'}\n"
-                f"**Verify Channel:** {verify_channel.mention}\n"
-                f"**Verification Logs:** {target_log_channel.mention}\n"
-                f"**Code Prefix:** `{prefix}`\n\n"
-                "Noodle would personally like to thank you for using O-SAVS, we hope you enjoy the system and if you have any issues and or suggestions feel free to reach out in [Noodle's Nexus](https://discord.gg/PeXzxBeUcB)!"
-            ),
-            color=discord.Color.blue(),
-            timestamp=datetime.now(timezone.utc)
+        thank_you_layout = static_layout(
+            ui.Container(
+                ui.TextDisplay("# Thank you for using O-SAVS!"),
+                ui.TextDisplay("-# CONFIGURATION UPDATED"),
+                sep(),
+                ui.TextDisplay(
+                    "O-SAVS (Open-Source Age Verification System) configuration has been updated for this server."
+                ),
+                ui.TextDisplay(
+                    f"**Verified Role:** {verified_role.mention}\n"
+                    f"**Required Pre-Role:** {required_role.mention if required_role else 'None'}\n"
+                    f"**Verify Channel:** {verify_channel.mention}\n"
+                    f"**Verification Logs:** {target_log_channel.mention}\n"
+                    f"**Code Prefix:** `{prefix}`"
+                ),
+                sep(),
+                ui.TextDisplay(
+                    "Noodle would personally like to thank you for using O-SAVS, we hope you enjoy the system and if you have any issues and or suggestions feel free to reach out in [Noodle's Nexus](https://discord.gg/PeXzxBeUcB)!"
+                ),
+                ui.TextDisplay(f"-# <t:{int(datetime.now(timezone.utc).timestamp())}:F>"),
+            )
         )
         try:
-            await target_log_channel.send(embed=thank_you_embed)
+            await target_log_channel.send(view=thank_you_layout)
         except discord.Forbidden as e:
             logging.error(f"[Setup Log Error - {guild.id}] {e}")
 
-        panel_embed = Embed(
-            title="VRChat 18+ Verification",
-            description=(
-                "To age verify yourself, you must verify that your VRChat account is **age verified**.\n\n"
-                "Click the **Age Verify** button below to begin."
-            ),
-            color=discord.Color.dark_grey()
-        )
-        panel_embed.add_field(
-            name="Instructions",
-            value=(
-                "1. Sign into [vrchat.com](https://vrchat.com/home)\n"
-                "- Go to your profile and copy the link to it\n"
-                "- Click the Age Verify button below and input the link you copied\n"
-                "- After clicking submit, we will give you a code; Input that code into your VRChat status or bio\n"
-                "- After inputting the code into your status or bio click the `I've updated my profile` button.\n"
-                "- If you did it all correctly you will now be age verified in the server and any other server using O-SAVS"
-            )
-        )
-
         try:
-            await verify_channel.send(embed=panel_embed, view=ConfirmCheck(self.bot, self.cog))
+            await verify_channel.send(view=ConfirmCheck(self.bot, self.cog))
         except discord.Forbidden:
-            return await interaction.followup.send(
-                f"⚠️ Settings saved, but lacked permissions to send panel in {verify_channel.mention}.",
-                ephemeral=True
-            )
+            return await interaction.followup.send(view=notice(f"⚠️ Settings saved, but lacked permissions to send panel in {verify_channel.mention}."), ephemeral=True)
 
         all_verified = await get_all_verified_users()
         synced_count = 0
@@ -443,25 +549,27 @@ class SetupWizardView(ui.View):
                     logging.error(f"[Setup Log Error - {guild.id}] {e}")
 
         self.stop()
-        for item in self.children:
-            item.disabled = True
 
-        final_embed = Embed(
-            title="✅ Setup Complete!",
-            description=(
-                f"O-SAVS is now active in **{guild.name}**!\n\n"
-                f"- **Log Channel:** {target_log_channel.mention}\n"
-                f"- **Panel Channel:** {verify_channel.mention}\n"
-                f"- **Verified Role:** {verified_role.mention}\n"
-                f"- **Required Pre-Role:** {required_role.mention if required_role else 'None'}\n"
-                f"- **Code Prefix:** `{prefix}`\n"
-                f"- **Synced Users:** `{synced_count}`"
-            ),
-            color=discord.Color.green()
+        final_layout = static_layout(
+            ui.Container(
+                ui.TextDisplay("# ✅ Setup Complete!"),
+                ui.TextDisplay("-# O-SAVS CONFIGURATION"),
+                sep(),
+                ui.TextDisplay(f"O-SAVS is now active in **{guild.name}**!"),
+                ui.TextDisplay(
+                    f"- **Log Channel:** {target_log_channel.mention}\n"
+                    f"- **Panel Channel:** {verify_channel.mention}\n"
+                    f"- **Verified Role:** {verified_role.mention}\n"
+                    f"- **Required Pre-Role:** {required_role.mention if required_role else 'None'}\n"
+                    f"- **Code Prefix:** `{prefix}`\n"
+                    f"- **Synced Users:** `{synced_count}`"
+                ),
+                accent_colour=discord.Colour.green()
+            )
         )
 
-        await interaction.message.edit(embed=final_embed, view=self)
-        await interaction.followup.send("✅ Server setup completed successfully!", ephemeral=True)
+        await interaction.message.edit(view=final_layout)
+        await interaction.followup.send(view=notice("✅ Server setup completed successfully!"), ephemeral=True)
 
 class Verification(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -516,6 +624,79 @@ class Verification(commands.Cog):
         if self.bot.is_ready() and not self._has_synced:
             self._has_synced = True
             self.bot.loop.create_task(self.sync_offline_verifications())
+            self.bot.loop.create_task(self.refresh_panels())
+
+    def load_panel_hash(self) -> Optional[str]:
+        try:
+            with open(PANEL_STATE_FILE, "r") as f:
+                return json.load(f).get("panel_hash")
+        except (FileNotFoundError, json.JSONDecodeError):
+            return None
+
+    def save_panel_hash(self, value: str):
+        try:
+            with open(PANEL_STATE_FILE, "w") as f:
+                json.dump({"panel_hash": value}, f)
+        except OSError as e:
+            logging.error(f"[Panel Refresh Error] Could not save panel state: {e}")
+
+    async def find_panel_message(self, channel: discord.TextChannel) -> Optional[discord.Message]:
+        async for message in channel.history(limit=100):
+            if message.author.id == self.bot.user.id and has_age_button(message.components):
+                return message
+        return None
+
+    async def refresh_panels(self):
+        await self.bot.wait_until_ready()
+
+        new_hash = hashlib.sha256(
+            json.dumps(ConfirmCheck(self.bot, self).to_components(), sort_keys=True).encode()
+        ).hexdigest()
+
+        if self.load_panel_hash() == new_hash:
+            logging.info("[Panel Refresh Log] Panel layout unchanged, nothing to update")
+            return
+
+        logging.info("[Panel Refresh Log] Panel layout changed, updating verification panels")
+
+        updated_count = 0
+        error_count = 0
+
+        for guild in self.bot.guilds:
+            settings = await get_server_settings(guild.id)
+            channel_id = settings.get("verify_channel")
+            if not channel_id:
+                continue
+
+            channel = guild.get_channel(channel_id)
+            if not isinstance(channel, discord.TextChannel):
+                continue
+
+            try:
+                message = await self.find_panel_message(channel)
+                if message is None:
+                    continue
+
+                if getattr(message.flags, "components_v2", False):
+                    try:
+                        await message.edit(view=ConfirmCheck(self.bot, self))
+                    except (discord.HTTPException, TypeError):
+                        await channel.send(view=ConfirmCheck(self.bot, self))
+                        await message.delete()
+                else:
+                    await channel.send(view=ConfirmCheck(self.bot, self))
+                    await message.delete()
+
+                updated_count += 1
+                await asyncio.sleep(1)
+            except (discord.Forbidden, discord.HTTPException) as e:
+                logging.error(f"[Panel Refresh Error - {guild.id}] {e}")
+                error_count += 1
+
+        if error_count == 0:
+            self.save_panel_hash(new_hash)
+
+        logging.info(f"[Panel Refresh Log] Complete! Updated {updated_count} panel(s). Errors: {error_count}")
 
     async def send_verify_log(self, guild: discord.Guild, action: str, member: discord.Member, vrchat_id: str, operator: Optional[discord.User | discord.Member] = None, reason: Optional[str] = None):
         settings = await get_server_settings(guild.id)
@@ -573,10 +754,7 @@ class Verification(commands.Cog):
         guild = interaction.guild
 
         if not guild.me.guild_permissions.manage_roles or not guild.me.guild_permissions.manage_channels:
-            return await interaction.followup.send(
-                "❌ I do not have the **Manage Roles** or **Manage Channels** permissions in this server.",
-                ephemeral=True
-            )
+            return await interaction.followup.send(view=notice("❌ I do not have the **Manage Roles** or **Manage Channels** permissions in this server."), ephemeral=True)
 
         log_overwrites = {
             guild.default_role: discord.PermissionOverwrite(read_messages=False, send_messages=False, view_channel=False),
@@ -589,7 +767,12 @@ class Verification(commands.Cog):
             )
         }
 
-        target_log_channel = discord.utils.get(guild.text_channels, name="verification-logs")
+        existing_settings = await get_server_settings(guild.id)
+        saved_log_id = existing_settings.get("verification_logs")
+        target_log_channel = guild.get_channel(saved_log_id) if saved_log_id else None
+
+        if not isinstance(target_log_channel, discord.TextChannel):
+            target_log_channel = discord.utils.get(guild.text_channels, name="verification-logs")
 
         if target_log_channel:
             try:
@@ -601,10 +784,7 @@ class Verification(commands.Cog):
                     reason="O-SAVS setup: Enforcing strict admin log access"
                 )
             except discord.Forbidden:
-                return await interaction.followup.send(
-                    f"⚠️ Found existing {target_log_channel.mention}, but lacked permissions to update access overrides.",
-                    ephemeral=True
-                )
+                return await interaction.followup.send(view=notice(f"⚠️ Found existing {target_log_channel.mention}, but lacked permissions to update access overrides."), ephemeral=True)
         else:
             try:
                 target_log_channel = await guild.create_text_channel(
@@ -613,25 +793,15 @@ class Verification(commands.Cog):
                     reason="O-SAVS setup: Dedicated verification log channel created"
                 )
             except discord.Forbidden:
-                return await interaction.followup.send(
-                    "❌ Missing permissions to create `#verification-logs`. Check my role permissions and try again.",
-                    ephemeral=True
-                )
+                return await interaction.followup.send(view=notice("❌ Missing permissions to create `#verification-logs`. Check my role permissions and try again."), ephemeral=True)
 
         wizard_view = SetupWizardView(self.bot, self, interaction.user, target_log_channel)
-        embed = wizard_view.build_embed()
 
         try:
-            wizard_msg = await target_log_channel.send(embed=embed, view=wizard_view)
-            await interaction.followup.send(
-                f"✅ `#verification-logs` configured! Please continue setup in {target_log_channel.mention}: {wizard_msg.jump_url}",
-                ephemeral=True
-            )
+            wizard_msg = await target_log_channel.send(view=wizard_view)
+            await interaction.followup.send(view=notice(f"✅ {target_log_channel.mention} configured! Please continue setup in {target_log_channel.mention}: {wizard_msg.jump_url}"), ephemeral=True)
         except discord.Forbidden:
-            await interaction.followup.send(
-                f"❌ Configured {target_log_channel.mention}, but lacked permission to send messages in it.",
-                ephemeral=True
-            )
+            await interaction.followup.send(view=notice(f"❌ Configured {target_log_channel.mention}, but lacked permission to send messages in it."), ephemeral=True)
 
     @commands.Cog.listener()
     async def on_guild_remove(self, guild: discord.Guild):
