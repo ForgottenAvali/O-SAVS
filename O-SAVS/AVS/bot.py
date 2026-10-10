@@ -1,20 +1,17 @@
-import os, discord, asyncio, logging, itertools
+import os, discord, asyncio, logging, itertools, importlib.util
 
 from dotenv import load_dotenv
 from discord.ext import commands, tasks
 
 from cogs import verification
-
-try:
-    from cogs import admin_api
-except ModuleNotFoundError as e:
-    if e.name != "cogs.admin_api":
-        raise
-    admin_api = None
-
 from data.vrchat import login_vrc
 from data.database import init_db, get_total_verified_users
 from data.lock import ensure_single_instance, cleanup_instance
+
+if importlib.util.find_spec("cogs.admin_api") is not None:
+    from cogs import admin_api
+else:
+    admin_api = None
 
 logging.basicConfig(
     level=logging.INFO,
