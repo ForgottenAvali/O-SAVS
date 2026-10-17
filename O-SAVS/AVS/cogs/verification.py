@@ -2,7 +2,7 @@ import random, discord, string, asyncio, re, logging, os, json, hashlib
 
 from typing import Optional
 from datetime import datetime, timezone
-from discord import app_commands, Interaction, ui, ButtonStyle, Embed
+from discord import app_commands, Interaction, ui, ButtonStyle
 from discord.ext import commands
 
 from data.vrchat import get_vrchat_user
@@ -54,6 +54,18 @@ def notice(text: str) -> ui.LayoutView:
         items += [sep(), ui.TextDisplay(body)]
     return static_layout(ui.Container(*items, accent_colour=colour))
 
+def log_layout(title: str, colour: discord.Colour, fields: list) -> ui.LayoutView:
+    details = "\n".join(f"**{name}:** {value}" for name, value in fields)
+    return static_layout(
+        ui.Container(
+            ui.TextDisplay(f"# {title}"),
+            ui.TextDisplay(f"-# <t:{int(discord.utils.utcnow().timestamp())}:F>"),
+            sep(),
+            ui.TextDisplay(details),
+            accent_colour=colour
+        )
+    )
+
 def has_age_button(components) -> bool:
     for comp in components:
         if getattr(comp, "custom_id", None) == "ageverify_start":
@@ -100,6 +112,26 @@ class BioCheckView(ui.LayoutView):
 
     async def run_check(self, interaction: Interaction):
         await interaction.response.defer(ephemeral=True)
+
+        if await is_banned(interaction.user.id):
+            self.stop()
+            return await interaction.followup.send(view=notice("❌ Your Discord account was banned by the administration team for O-SAVS.\n"
+                "If you believe this ban was issued in error you may appeal by joining the [Noodle's Nexus](https://discord.gg/PeXzxBeUcB) support server."), ephemeral=True)
+
+        if await is_banned(self.user_id):
+            self.stop()
+            return await interaction.followup.send(view=notice("❌ Your VRChat account was banned by the administration team for O-SAVS.\n"
+                "If you believe this ban was issued in error you may appeal by joining the [Noodle's Nexus](https://discord.gg/PeXzxBeUcB) support server."), ephemeral=True)
+
+        existing_vrc_id = await get_vrchat_id_from_discord(interaction.user.id)
+        if existing_vrc_id:
+            self.stop()
+            return await interaction.followup.send(view=notice(f"❌ Your Discord account is already linked to VRChat ID (`{existing_vrc_id}`).\n"
+                "If you need to unlink this account, you may join the [Noodle's Nexus](https://discord.gg/PeXzxBeUcB) support server."), ephemeral=True)
+
+        if await is_vrchat_id_verified(self.user_id):
+            self.stop()
+            return await interaction.followup.send(view=notice(f"❌ The VRChat account (`{self.user_id}`) is already linked to another Discord user."), ephemeral=True)
 
         user_data = await get_vrchat_user(self.user_id)
 
@@ -471,7 +503,7 @@ class SetupWizardView(ui.LayoutView):
 
     async def update_wizard(self, interaction: Interaction):
         self.build()
-        await interaction.response.edit_message(view=self)
+        await interaction.response.edit_message(view=self, allowed_mentions=discord.AllowedMentions.none())
 
     async def finish_setup(self, interaction: Interaction):
         await interaction.response.defer(ephemeral=True)
@@ -515,7 +547,7 @@ class SetupWizardView(ui.LayoutView):
             )
         )
         try:
-            await target_log_channel.send(view=thank_you_layout)
+            await target_log_channel.send(view=thank_you_layout, allowed_mentions=discord.AllowedMentions.none())
         except discord.Forbidden as e:
             logging.error(f"[Setup Log Error - {guild.id}] {e}")
 
@@ -568,7 +600,7 @@ class SetupWizardView(ui.LayoutView):
             )
         )
 
-        await interaction.message.edit(view=final_layout)
+        await interaction.message.edit(view=final_layout, allowed_mentions=discord.AllowedMentions.none())
         await interaction.followup.send(view=notice("✅ Server setup completed successfully!"), ephemeral=True)
 
 class Verification(commands.Cog):
@@ -595,28 +627,24 @@ class Verification(commands.Cog):
         vrc_user = await get_vrchat_user(vrchat_id)
         username = vrc_user.get("username", "Unknown User") if vrc_user else "Unknown User"
 
-        embed = Embed(
-            title=f"🌐 Global Audit: {action}",
-            color=discord.Color.purple(),
-            timestamp=discord.utils.utcnow()
-        )
-        embed.add_field(name="Discord User", value=f"{user.mention} (`{user.id}`)", inline=True)
-        embed.add_field(
-            name="VRChat Profile",
-            value=f"[{username}](https://vrchat.com/home/user/{vrchat_id}) (`{vrchat_id}`)",
-            inline=True
-        )
+        fields = [
+            ("Discord User", f"{user.mention} (`{user.id}`)"),
+            ("VRChat Profile", f"[{username}](https://vrchat.com/home/user/{vrchat_id}) (`{vrchat_id}`)"),
+        ]
 
         if origin_guild:
-            embed.add_field(name="Origin Server", value=f"**{origin_guild.name}** (`{origin_guild.id}`)", inline=False)
+            fields.append(("Origin Server", f"**{origin_guild.name}** (`{origin_guild.id}`)"))
         else:
-            embed.add_field(name="Origin Server", value="*Global Event / System Sync*", inline=False)
+            fields.append(("Origin Server", "*Global Event / System Sync*"))
 
         if reason:
-            embed.add_field(name="Reason", value=reason, inline=False)
+            fields.append(("Reason", reason))
 
         try:
-            await channel.send(embed=embed)
+            await channel.send(
+                view=log_layout(f"🌐 Global Audit: {action}", discord.Color.purple(), fields),
+                allowed_mentions=discord.AllowedMentions.none()
+            )
         except (discord.Forbidden, discord.HTTPException) as e:
             logging.error(f"[Global Log Error] {e}")
 
@@ -713,22 +741,24 @@ class Verification(commands.Cog):
 
         active_operator = operator or self.bot.user
 
-        embed = discord.Embed(
-            title=f"🛡️ {action}",
-            color=discord.Color.blue() if "Link" in action or "Verified" in action else discord.Color.orange(),
-            timestamp=discord.utils.utcnow()
-        )
-        embed.add_field(name="User", value=f"{member.mention} (`{member.id}`)", inline=True)
-        embed.add_field(name="VRChat Account", value=f"[{username}](https://vrchat.com/home/user/{vrchat_id}) (`{vrchat_id}`)", inline=True)
-        embed.add_field(name="Operator", value=f"{active_operator.mention} (`{active_operator.id}`)", inline=False)
+        fields = [
+            ("User", f"{member.mention} (`{member.id}`)"),
+            ("VRChat Account", f"[{username}](https://vrchat.com/home/user/{vrchat_id}) (`{vrchat_id}`)"),
+            ("Operator", f"{active_operator.mention} (`{active_operator.id}`)"),
+        ]
 
         if reason:
-            embed.add_field(name="Reason", value=reason, inline=False)
+            fields.append(("Reason", reason))
+
+        log_colour = discord.Color.blue() if "Link" in action or "Verified" in action else discord.Color.orange()
 
         max_retries = 3
         for attempt in range(max_retries):
             try:
-                await log_channel.send(embed=embed)
+                await log_channel.send(
+                    view=log_layout(f"🛡️ {action}", log_colour, fields),
+                    allowed_mentions=discord.AllowedMentions.none()
+                )
                 await asyncio.sleep(0.5)
                 break
             except discord.Forbidden as e:
@@ -798,7 +828,7 @@ class Verification(commands.Cog):
         wizard_view = SetupWizardView(self.bot, self, interaction.user, target_log_channel)
 
         try:
-            wizard_msg = await target_log_channel.send(view=wizard_view)
+            wizard_msg = await target_log_channel.send(view=wizard_view, allowed_mentions=discord.AllowedMentions.none())
             await interaction.followup.send(view=notice(f"✅ {target_log_channel.mention} configured! Please continue setup in {target_log_channel.mention}: {wizard_msg.jump_url}"), ephemeral=True)
         except discord.Forbidden:
             await interaction.followup.send(view=notice(f"❌ Configured {target_log_channel.mention}, but lacked permission to send messages in it."), ephemeral=True)
