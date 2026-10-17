@@ -176,16 +176,16 @@ async def remove_verified_user(discord_id: int | str) -> bool:
 async def get_total_verified_users(exclude_ids: Optional[list[int | str]] = None) -> int:
     async with aiosqlite.connect(DB_PATH) as conn:
         if exclude_ids:
-            formatted_ids = ",".join(f"'{x}'" for x in exclude_ids)
-            query = f"SELECT COUNT(*) FROM verified_users WHERE discord_id NOT IN ({formatted_ids})"
-            
-            async with conn.execute(query) as cursor:
-                row = await cursor.fetchone()
-                return row[0] if row else 0
+            placeholders = ",".join("?" for _ in exclude_ids)
+            query = f"SELECT COUNT(*) FROM verified_users WHERE discord_id NOT IN ({placeholders})"
+            params = tuple(str(x) for x in exclude_ids)
         else:
-            async with conn.execute("SELECT COUNT(*) FROM verified_users") as cursor:
-                row = await cursor.fetchone()
-                return row[0] if row else 0
+            query = "SELECT COUNT(*) FROM verified_users"
+            params = ()
+
+        async with conn.execute(query, params) as cursor:
+            row = await cursor.fetchone()
+            return row[0] if row else 0
 
 async def is_banned(target_id: int | str) -> bool:
     async with aiosqlite.connect(DB_PATH) as conn:
