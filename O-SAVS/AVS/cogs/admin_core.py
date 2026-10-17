@@ -29,9 +29,6 @@ def is_user_allowed(user_id) -> bool:
     try:
         with open(ADMIN_USERS, "r", encoding="utf-8") as f:
             data = json.load(f)
-            # Compare as strings so this is immune to int/str/float type
-            # mismatches between the JSON list and whatever type user_id
-            # happens to arrive as.
             allowed_ids = {str(uid) for uid in data.get("allowed_user_ids", [])}
             return str(user_id) in allowed_ids
     except (FileNotFoundError, json.JSONDecodeError) as e:
@@ -72,7 +69,6 @@ async def get_bot_servers(bot: commands.Bot) -> list[dict]:
             "id": guild.id,
             "name": guild.name,
             "member_count": guild.member_count,
-            # Shows the nickname server mods gave the bot, or its normal name if none is set.
             "bot_name": guild.me.display_name if guild.me else bot.user.name,
         }
         for guild in bot.guilds
@@ -165,7 +161,6 @@ async def perform_unban_server(server_id: int) -> dict:
     return {"success": True, "server_id": server_id}
 
 async def enforce_server_bans(bot: commands.Bot) -> int:
-    """Leaves any server the bot is in that is on the ban list. Returns how many were left."""
     count = 0
     for guild in list(bot.guilds):
         if await is_server_banned(guild.id):
