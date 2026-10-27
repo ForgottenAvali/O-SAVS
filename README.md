@@ -17,7 +17,7 @@
 
 <div align="center">
 
-O-SAVS is a global Discord age-verification bot designed to integrate seamlessly with VRChat profiles. It allows server administrators to restrict adult spaces by ensuring members have verified their 18+ status on VRChat. Once a user is verified in one server running O-SAVS, their status automatically syncs across all mutual servers operating the bot.
+O-SAVS (Open-Source Age Verification System) is a global Discord age-verification bot designed to integrate seamlessly with VRChat profiles. It allows server administrators to restrict adult spaces by ensuring members have verified their 18+ status on VRChat. Once a user is verified in one server running O-SAVS, their status automatically syncs across all mutual servers operating the bot.
 
 **Quick Links**<br />
 [Features](#features) · [Admin Dashboard](#admin-dashboard) · [Database](#database-architecture) · [Installation](#installation--host-setup) · [Team](#community--team) · [Legal](#legal--policies)
