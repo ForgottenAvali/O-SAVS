@@ -25,9 +25,16 @@ async def init_db():
                 verify_channel TEXT NOT NULL,
                 verification_logs TEXT NOT NULL,
                 av_start_code TEXT DEFAULT 'AVS-',
-                required_role TEXT
+                required_role TEXT,
+                language TEXT DEFAULT 'en'
             )
         """)
+
+        async with conn.execute("PRAGMA table_info(server_settings)") as cursor:
+            existing_columns = {row[1] for row in await cursor.fetchall()}
+        if "language" not in existing_columns:
+            await conn.execute("ALTER TABLE server_settings ADD COLUMN language TEXT DEFAULT 'en'")
+        await conn.execute("UPDATE server_settings SET language = 'en' WHERE language IS NULL")
 
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS verified_users (
@@ -77,7 +84,8 @@ async def get_server_settings(guild_id: int | str) -> dict:
                     "verify_channel": safe_int(data["verify_channel"]),
                     "verification_logs": safe_int(data["verification_logs"]),
                     "av_start_code": data["av_start_code"] or "AVS-",
-                    "required_role": safe_int(data["required_role"])
+                    "required_role": safe_int(data["required_role"]),
+                    "language": data.get("language") or "en"
                 }
             return {
                 "server_id": safe_int(guild_id),
@@ -85,7 +93,8 @@ async def get_server_settings(guild_id: int | str) -> dict:
                 "verify_channel": None,
                 "verification_logs": None,
                 "av_start_code": "AVS-",
-                "required_role": None
+                "required_role": None,
+                "language": "en"
             }
 
 async def save_server_settings(
@@ -94,7 +103,8 @@ async def save_server_settings(
     verify_channel: int | str, 
     verification_logs: int | str, 
     av_start_code: str,
-    required_role: Optional[int | str] = None
+    required_role: Optional[int | str] = None,
+    language: str = "en"
 ):
     formatted_prefix = av_start_code.strip() if av_start_code else "AVS-"
     if formatted_prefix and not formatted_prefix.endswith("-"):
@@ -114,15 +124,17 @@ async def save_server_settings(
                 verify_channel, 
                 verification_logs, 
                 av_start_code,
-                required_role
-            ) VALUES (?, ?, ?, ?, ?, ?)
+                required_role,
+                language
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
         """, (
             str(clean_guild_id) if clean_guild_id is not None else str(guild_id), 
             str(clean_verified_role) if clean_verified_role is not None else str(verified_role), 
             str(clean_verify_channel) if clean_verify_channel is not None else str(verify_channel), 
             str(clean_verification_logs) if clean_verification_logs is not None else str(verification_logs), 
             formatted_prefix,
-            str(clean_required_role) if clean_required_role is not None else None
+            str(clean_required_role) if clean_required_role is not None else None,
+            language or "en"
         ))
         await conn.commit()
 
