@@ -8,7 +8,7 @@ O-SAVS ("the Bot") is committed to protecting user privacy and maintaining trans
 To provide global age-verification functionality, O-SAVS stores the following minimal data in its database:
 - **Discord User ID:** Stored as text to uniquely identify users across participating servers.
 - **VRChat User ID:** Stored as text to map verified status between Discord and VRChat accounts.
-- **Server Settings & Metadata:** Guild IDs, role IDs, log channel IDs, server names, member counts, and custom verification prefix codes configured by server administrators.
+- **Server Settings & Metadata:** Guild IDs, role IDs, log channel IDs, required pre-role IDs, server names, member counts, default server language preferences, and custom verification prefix codes configured by server administrators.
 - **Global User Sanction Records:** Discord User IDs or VRChat User IDs, internal reason codes, timestamps, and moderator IDs for globally banned accounts to enforce system-wide exclusions.
 - **Global Server Sanction Records:** Server IDs, server names, internal reason codes, timestamps, and moderator IDs for globally banned servers, used to ensure the Bot leaves and does not rejoin those servers.
 - **Ban Evidence:** When a global ban of a user or server is being reviewed or issued, O-SAVS Administration may store message content related to that ban, along with the associated message, author, channel, and server IDs and timestamps. This applies only to content relevant to the ban (see Section 2).
@@ -21,7 +21,8 @@ To provide global age-verification functionality, O-SAVS stores the following mi
 
 ## 3. How We Use Data
 Collected data is used solely to:
-- Verify that a Discord account is linked to a VRChat profile containing a valid verification code.
+- Verify that a Discord account is linked to a VRChat profile containing a valid verification code and official VRChat 18+ verification status.
+- Render localized UI components, modals, buttons, and notices in the user's or server's preferred language.
 - Automatically assign verified 18+ roles across mutual Discord servers operating O-SAVS.
 - Maintain global user and server ban lists and audit administrative actions (linking, unlinking, banning, unbanning, ban lookups, server bans, server audits, and temporary support invites) performed through the official O-SAVS Admin Dashboard to protect participating communities from unauthorized or unsafe access.
 - Review, justify, and document global bans, including handling appeals and keeping a record of past cases, using Ban Evidence where it exists.
@@ -32,7 +33,7 @@ Collected data is used solely to:
 - **Data Removal Requests:** Users may request complete removal of their linked account data at any time by opening a ticket in the [Noodle's Nexus](https://discord.gg/PeXzxBeUcB) support server.
 - **Moderation & Sanction Exception:** Global user and server sanction records (IDs, server names, reason codes, timestamps, and moderator IDs) and any Ban Evidence attached to them are retained indefinitely to enforce system-wide security, prevent ban evasion, keep an accurate record of administrative decisions, and protect participating communities. Data removal requests will not erase global sanction records or the Ban Evidence supporting them.
 - **Lifted or Overturned Bans:** If a global ban is lifted or overturned on appeal, the related sanction record and Ban Evidence are still kept as a historical record of the case.
-- **Server Removal:** When O-SAVS leaves a server, server configuration settings are scheduled for automatic purge. Global server sanction records are not purged when the Bot leaves a banned server, so that the ban continues to be enforced.
+- **Server Removal:** When O-SAVS leaves a server, server configuration settings (including language preferences and channel mappings) are purged. Global server sanction records are not purged when the Bot leaves a banned server, so that the ban continues to be enforced.
 
 ## 5. Third-Party Services
 O-SAVS interacts directly with:
