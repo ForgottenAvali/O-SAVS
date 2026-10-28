@@ -1,18 +1,19 @@
 # O-SAVS Terms of Service
 
-*Last Updated: October 7, 2026*
+*Last Updated: October 28, 2026*
 
 By inviting, configuring, or using O-SAVS ("the Bot") in your Discord server, or by verifying through the Bot as an end-user, you agree to the following terms:
 
 ## 1. Acceptable Use
 - **Age Requirement:** O-SAVS is designed to restrict access to adult (18+) spaces. Users under the age of 18 are strictly prohibited from attempting to bypass verification systems.
-- **Account Ownership:** Users must only link Discord accounts and VRChat accounts that belong to them. Using another individual's VRChat profile to gain access to 18+ spaces may result in a global ban.
+- **Account Ownership:** Users must only link Discord accounts and VRChat accounts that belong to them. Using another individual's VRChat profile or public bio to gain access to 18+ spaces may result in a global ban.
 - **Safety & Conduct Standards:** Accounts found engaging in illegal activity, severe misconduct, or actions that violate Discord's Community Guidelines or VRChat's Terms of Service may be globally banned from using O-SAVS at the sole discretion of the O-SAVS Administration.
-- **No Exploitation:** Server administrators and users may not attempt to reverse-engineer, exploit, or abuse the bot's API integration or global database.
+- **No Exploitation:** Server administrators and users may not attempt to reverse-engineer, exploit, or abuse the bot's API integration, language dropdowns, or global database.
   - Users also may not attempt to link multiple Discord accounts to a single VRChat profile or use alternate accounts to bypass an existing global ban.
 
 ## 2. Server Administrator Responsibilities & Bot Access
-- **Role Hierarchy & Safety:** Server owners are responsible for ensuring proper role hierarchy permissions so O-SAVS can function securely.
+- **Role Hierarchy & Setup Permissions:** Server owners are responsible for ensuring O-SAVS has the required permissions (`Manage Roles`, `Manage Channels`, `Send Messages`, `Embed Links`, etc.) and that the bot's highest role is positioned above any verified roles.
+- **Language & Server Configuration:** Administrators are responsible for configuring default server languages and ensuring panel setups comply with community needs.
 - **Access Management:** Server administrators must comply with Discord's Community Guidelines regarding age-gated channels and content moderation.
 - **System Administration & Support Access:** The O-SAVS administrators reserve the right to audit server installations and generate temporary, single-use access links through the official O-SAVS Admin Dashboard, exclusively for technical support, verification abuse investigations, security auditing, or compliance checks.
 
