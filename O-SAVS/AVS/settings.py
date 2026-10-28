@@ -1,0 +1,4 @@
+PRIMARY_SERVER = YourServer
+GLOBAL_LOG_CHANNEL_ID = ChannelID_InPrimaryServer
+BOT_ID = YourBotID
+ADMIN_USER_IDS = []
