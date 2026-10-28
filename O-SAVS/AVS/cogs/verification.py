@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from discord import app_commands, Interaction, ui, ButtonStyle
 from discord.ext import commands
 
+from settings import PRIMARY_SERVER, GLOBAL_LOG_CHANNEL_ID
 from data.vrchat import get_vrchat_user
 from data.database import (
     get_server_settings,
@@ -14,10 +15,10 @@ from data.database import (
     save_server_settings,
     get_all_verified_users,
     delete_server_settings,
-    is_banned
+    is_banned,
+    get_maintenance_mode,
 )
 
-GLOBAL_LOG_CHANNEL_ID = 1544746956264443904
 PANEL_STATE_FILE = os.path.join(os.path.dirname(__file__), "..", "utils", "panel_state.json")
 
 
@@ -66,6 +67,21 @@ def log_layout(title: str, colour: discord.Colour, fields: list) -> ui.LayoutVie
         )
     )
 
+MAINTENANCE_NOTICE = (
+    "⚠️ **Under Maintenance**\n"
+    "O-SAVS is currently undergoing maintenance, so age verification is temporarily unavailable.\n"
+    "Please try again later. Updates are posted in the [Noodle's Nexus](https://discord.gg/PeXzxBeUcB) support server."
+)
+
+async def maintenance_blocked(interaction: Interaction) -> bool:
+    if not await get_maintenance_mode():
+        return False
+    if interaction.response.is_done():
+        await interaction.followup.send(view=notice(MAINTENANCE_NOTICE), ephemeral=True)
+    else:
+        await interaction.response.send_message(view=notice(MAINTENANCE_NOTICE), ephemeral=True)
+    return True
+
 def has_age_button(components) -> bool:
     for comp in components:
         if getattr(comp, "custom_id", None) == "ageverify_start":
@@ -87,6 +103,8 @@ class BioCheckButton(ui.Button):
         self.bio_view = bio_view
 
     async def callback(self, interaction: Interaction):
+        if await maintenance_blocked(interaction):
+            return
         await self.bio_view.run_check(interaction)
 
 class BioCheckView(ui.LayoutView):
@@ -229,6 +247,8 @@ class AgeVerifyButton(ui.Button):
         super().__init__(label="Age Verify", style=ButtonStyle.primary, custom_id="ageverify_start")
 
     async def callback(self, interaction: Interaction):
+        if await maintenance_blocked(interaction):
+            return
         await interaction.response.send_modal(VRChatUsername())
 
 class ConfirmCheck(ui.LayoutView):
@@ -278,6 +298,9 @@ class VRChatUsername(ui.Modal, title="VRChat Verification"):
         super().__init__(timeout=None)
 
     async def on_submit(self, modal_interaction: Interaction):
+        if await maintenance_blocked(modal_interaction):
+            return
+
         await modal_interaction.response.defer(ephemeral=True)
 
         settings = await get_server_settings(modal_interaction.guild_id)
@@ -607,10 +630,11 @@ class Verification(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self._has_synced = False
-        self.bot.add_view(ConfirmCheck(bot, self))
+        self._panel_view = ConfirmCheck(bot, self)
+        self.bot.add_view(self._panel_view)
 
     async def send_global_log(self, action: str, user: discord.User | discord.Member, vrchat_id: str, origin_guild: Optional[discord.Guild] = None, reason: Optional[str] = None):
-        if not GLOBAL_LOG_CHANNEL_ID:
+        if not GLOBAL_LOG_CHANNEL_ID or self.bot.get_guild(PRIMARY_SERVER) is None:
             return
 
         channel = self.bot.get_channel(GLOBAL_LOG_CHANNEL_ID)
@@ -621,7 +645,7 @@ class Verification(commands.Cog):
                 logging.error(f"[Global Log Error] {e}")
                 return
 
-        if not isinstance(channel, discord.TextChannel):
+        if not isinstance(channel, discord.TextChannel) or channel.guild.id != PRIMARY_SERVER:
             return
 
         vrc_user = await get_vrchat_user(vrchat_id)
@@ -651,8 +675,18 @@ class Verification(commands.Cog):
     async def cog_load(self):
         if self.bot.is_ready() and not self._has_synced:
             self._has_synced = True
-            self.bot.loop.create_task(self.sync_offline_verifications())
+
+            if not getattr(self.bot, "_startup_sync_done", False):
+                self.bot._startup_sync_done = True
+                self.bot.loop.create_task(self.sync_offline_verifications())
+
             self.bot.loop.create_task(self.refresh_panels())
+
+    def cog_unload(self):
+        try:
+            self.bot.remove_view(self._panel_view)
+        except Exception as e:
+            logging.warning(f"[Verification] Could not remove persistent panel view on unload: {e}")
 
     def load_panel_hash(self) -> Optional[str]:
         try:
