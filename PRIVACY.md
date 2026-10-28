@@ -1,11 +1,11 @@
 # O-SAVS Privacy Policy
 
-*Last Updated: October 7, 2026*
+*Last Updated: October 28, 2026*
 
 O-SAVS ("the Bot") is committed to protecting user privacy and maintaining transparency regarding data collection, storage, and usage.
 
 ## 1. Information We Collect
-To provide global age-verification functionality, O-SAVS stores the following minimal data in an encrypted database:
+To provide global age-verification functionality, O-SAVS stores the following minimal data in its database:
 - **Discord User ID:** Stored as text to uniquely identify users across participating servers.
 - **VRChat User ID:** Stored as text to map verified status between Discord and VRChat accounts.
 - **Server Settings & Metadata:** Guild IDs, role IDs, log channel IDs, server names, member counts, and custom verification prefix codes configured by server administrators.
