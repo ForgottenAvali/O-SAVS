@@ -4,21 +4,24 @@ from dotenv import load_dotenv
 from discord.ext import commands, tasks
 
 from cogs import verification
+from settings import PRIMARY_SERVER, BOT_ID
 from data.vrchat import login_vrc
-from data.database import init_db, get_total_verified_users
+from data.database import init_db, get_total_verified_users, get_maintenance_mode
 from data.lock import ensure_single_instance, cleanup_instance
 
-if importlib.util.find_spec("cogs.admin_api") is not None:
-    from cogs import admin_api
-else:
-    admin_api = None
+admin_cog = None
+for _name in ("admin_api", "admin_commands"):
+    if importlib.util.find_spec(f"cogs.{_name}") is not None:
+        admin_cog = importlib.import_module(f"cogs.{_name}")
+        break
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(message)s"
 )
 
-intents = discord.Intents.all()
+intents = discord.Intents.default()
+intents.members = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 load_dotenv()
@@ -26,8 +29,6 @@ TOKEN = os.getenv("BOT_TOKEN")
 
 status_index = 0
 last_verified_count = None
-NOODLENEXUS_SERVER = 1543888548296392775
-BOT_ID = 1516450694109073439
 
 
 @bot.event
@@ -36,14 +37,16 @@ async def on_ready():
         await init_db()
         await verification.setup(bot)
 
-        if admin_api is not None:
-            await admin_api.setup(bot)
-        else:
-            print("[System] Admin API cog not found, running without it.")
+        if admin_cog is not None:
+            await admin_cog.setup(bot)
 
         await bot.tree.sync()
 
         bot.initialized = True
+
+    if await get_maintenance_mode():
+        await bot.change_presence(status=discord.Status.invisible, activity=None)
+        print("[System] Maintenance mode is ON, appearing offline.")
 
     print(f"[Discord] Logged in as {bot.user}")
 
@@ -54,7 +57,10 @@ async def on_ready():
 async def update_status():
     global status_index, last_verified_count
 
-    active_guilds = [g for g in bot.guilds if g.id != NOODLENEXUS_SERVER]
+    if await get_maintenance_mode():
+        return
+
+    active_guilds = [g for g in bot.guilds if g.id != PRIMARY_SERVER]
     server_count = len(active_guilds)
 
     try:
@@ -76,6 +82,8 @@ async def update_status():
         return
 
     status_index += 1
+
+bot.status_task = update_status
 
 @update_status.before_loop
 async def before_update_status():
