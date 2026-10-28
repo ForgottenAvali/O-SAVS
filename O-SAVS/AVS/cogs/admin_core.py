@@ -20,8 +20,11 @@ from data.database import (
     add_banned_server,
     remove_banned_server,
     get_all_banned_servers,
+    get_maintenance_mode,
+    set_maintenance_mode,
 )
 
+VERIFICATION_EXTENSION = "cogs.verification"
 ADMIN_USERS = os.path.join(os.path.dirname(__file__), "..", "utils", "administrator_user_ids.json")
 
 
@@ -401,4 +404,59 @@ async def perform_get_ban(bot, target_input: str) -> dict:
         "reason": ban_info.get("reason", "No reason provided"),
         "moderator_id": ban_info.get("moderator_id"),
         "timestamp": ban_info.get("timestamp"),
+    }
+
+async def apply_maintenance_presence(bot: commands.Bot, enabled: bool):
+    if enabled:
+        await bot.change_presence(status=discord.Status.invisible, activity=None)
+        return
+
+    await bot.change_presence(status=discord.Status.online)
+    status_task = getattr(bot, "status_task", None)
+    if status_task is not None:
+        try:
+            status_task.restart()
+        except Exception as e:
+            logging.warning(f"[AdminCore] Could not restart status loop: {e}")
+
+async def reload_verification_cog(bot: commands.Bot) -> Optional[str]:
+    """Reloads the verification extension. Returns an error string on failure, None on success.
+    If the reload fails, discord.py rolls back and the old cog stays loaded."""
+    try:
+        try:
+            await bot.reload_extension(VERIFICATION_EXTENSION)
+        except commands.ExtensionNotLoaded:
+            await bot.load_extension(VERIFICATION_EXTENSION)
+    except commands.ExtensionError as e:
+        logging.error(f"[AdminCore] Failed to reload {VERIFICATION_EXTENSION}: {e}", exc_info=e)
+        cause = getattr(e, "original", None) or e
+        return f"{type(cause).__name__}: {cause}"
+    return None
+
+async def perform_set_maintenance(bot: commands.Bot, enabled: bool) -> dict:
+    if await get_maintenance_mode() == enabled:
+        return {"success": False, "error": f"Maintenance mode is already {'on' if enabled else 'off'}."}
+
+    if enabled:
+        await set_maintenance_mode(True)
+        await apply_maintenance_presence(bot, True)
+        return {
+            "success": True,
+            "maintenance": True,
+            "message": "Maintenance mode is ON. The bot now appears offline and the Age Verify button shows a maintenance notice.",
+        }
+
+    error = await reload_verification_cog(bot)
+    if error:
+        return {
+            "success": False,
+            "error": f"Verification cog failed to reload, so maintenance mode is still ON. Fix the error and try again.\n{error}",
+        }
+
+    await set_maintenance_mode(False)
+    await apply_maintenance_presence(bot, False)
+    return {
+        "success": True,
+        "maintenance": False,
+        "message": "Maintenance mode is OFF. The verification cog was reloaded and the panel check is running in the background.",
     }
