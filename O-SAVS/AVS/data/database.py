@@ -53,6 +53,13 @@ async def init_db():
                 timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         """)
+
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS bot_state (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            )
+        """)
         await conn.commit()
 
 async def get_server_settings(guild_id: int | str) -> dict:
@@ -275,3 +282,19 @@ async def get_all_banned_servers() -> list[dict]:
         ) as cursor:
             rows = await cursor.fetchall()
     return [dict(r) for r in rows]
+
+async def get_maintenance_mode() -> bool:
+    async with aiosqlite.connect(DB_PATH) as conn:
+        async with conn.execute(
+            "SELECT value FROM bot_state WHERE key = 'maintenance_mode'"
+        ) as cursor:
+            row = await cursor.fetchone()
+            return bool(row and row[0] == "1")
+
+async def set_maintenance_mode(enabled: bool):
+    async with aiosqlite.connect(DB_PATH) as conn:
+        await conn.execute(
+            "INSERT OR REPLACE INTO bot_state (key, value) VALUES ('maintenance_mode', ?)",
+            ("1" if enabled else "0",),
+        )
+        await conn.commit()
