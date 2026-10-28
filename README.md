@@ -42,10 +42,11 @@ O-SAVS (Open-Source Age Verification System) is a global Discord age-verificatio
 
 ## How It Works
 
-1. **Request.** A member selects **Age Verify** on a server's verification panel and submits their VRChat account. The bot issues a unique verification code.
-2. **Placement.** The member places the generated code in their VRChat bio or status.
-3. **Confirmation.** The bot confirms account ownership and links the member's Discord and VRChat accounts.
-4. **Assignment.** The verified role is assigned and synced across every participating server.
+1. **Request.** A member selects **Age Verify** on a server's verification panel and submits their VRChat account profile link or raw User ID (`usr_...`). The bot issues a unique verification code.
+2. **Placement.** The member places the generated verification code in their VRChat bio.
+3. **Confirmation.** The bot checks the member's VRChat public profile to confirm account ownership and verifies that the account holds official VRChat 18+ age verification status.
+4. **Assignment & Sync.** Upon verification, the verified role is assigned in the current server and automatically synced across all mutual servers running O-SAVS.
+5. **Localization.** Users can select their preferred language from the dropdown menu on the verification panel to complete the process in any of the 22 supported languages.
 
 ---
 
@@ -149,12 +150,18 @@ Used only when the Admin Dashboard API (`admin_api.py`) is installed.
 
 ## Installation & Host Setup
 
-### Prerequisites
+### Prerequisites & Permissions
 
 - **Python** 3.10 or higher.
-- **Discord Application** with a bot token and the **Server Members Intent** enabled in the Discord Developer Portal. No other privileged intents are required.
-- **Bot Permissions** to manage roles in each server the bot is added to.
+- **Discord Application** with a bot token and the **Server Members Intent** (`GatewayIntent.members`) enabled in the [Discord Developer Portal](https://discord.com/developers/applications).
+- **Bot Permissions** in each server the bot is added to:
+  - **Manage Roles** (`manage_roles`): Required to assign and remove verified roles across members.
+  - **Manage Channels** (`manage_channels`): Required during `/setup` to create and configure the `#verification-logs` channel with strict overrides.
+  - **Send Messages & View Channels**: Required to send panels, interact with users, and post logs.
+  - **Embed Links & Attach Files**: Required to render styled UI layouts and status notices.
 - **VRChat Account** that the bot uses to read public profiles. A dedicated account is recommended.
+
+> **Role Hierarchy Safety:** The bot's top role in your Discord server must be positioned **higher** than the verified role and required pre-roles it is configured to manage.
 
 ### 1. Install Dependencies
 
