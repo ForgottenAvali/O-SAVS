@@ -28,15 +28,25 @@ VERIFICATION_EXTENSION = "cogs.verification"
 ADMIN_USERS = os.path.join(os.path.dirname(__file__), "..", "utils", "administrator_user_ids.json")
 
 
-def is_user_allowed(user_id) -> bool:
+_allowed_ids: set[str] = set()
+
+def reload_admin_ids() -> Optional[str]:
+    """Re-reads administrator_user_ids.json into memory. Returns an error string on failure, None on success.
+    If the file can't be read, the previously loaded list is kept."""
+    global _allowed_ids
     try:
         with open(ADMIN_USERS, "r", encoding="utf-8") as f:
             data = json.load(f)
-            allowed_ids = {str(uid) for uid in data.get("allowed_user_ids", [])}
-            return str(user_id) in allowed_ids
-    except (FileNotFoundError, json.JSONDecodeError) as e:
+        _allowed_ids = {str(uid) for uid in data.get("allowed_user_ids", [])}
+    except (FileNotFoundError, json.JSONDecodeError, OSError, AttributeError) as e:
         logging.error(f"[AdminCore] Error reading {ADMIN_USERS}: {e}")
-        return False
+        return f"{type(e).__name__}: {e}"
+    return None
+
+def is_user_allowed(user_id) -> bool:
+    return str(user_id) in _allowed_ids
+
+reload_admin_ids()
 
 async def resolve_target(target_input: str) -> tuple[Optional[int], Optional[str]]:
     target_input = target_input.strip()
@@ -453,10 +463,15 @@ async def perform_set_maintenance(bot: commands.Bot, enabled: bool) -> dict:
             "error": f"Verification cog failed to reload, so maintenance mode is still ON. Fix the error and try again.\n{error}",
         }
 
+    admin_error = reload_admin_ids()
+
     await set_maintenance_mode(False)
     await apply_maintenance_presence(bot, False)
-    return {
-        "success": True,
-        "maintenance": False,
-        "message": "Maintenance mode is OFF. The verification cog was reloaded and the panel check is running in the background.",
-    }
+
+    message = "Maintenance mode is OFF. The verification cog was reloaded and the panel check is running in the background."
+    if admin_error:
+        message += f"\n⚠️ Admin list could not be reloaded, keeping the previous list: {admin_error}"
+    else:
+        message += f"\nAdmin list reloaded ({len(_allowed_ids)} admin(s))."
+
+    return {"success": True, "maintenance": False, "message": message}
