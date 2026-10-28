@@ -101,6 +101,8 @@ class AdminAPI(commands.Cog):
                 web.get("/api/banned_servers", self.banned_servers),
                 web.get("/api/update/latest", self.update_latest),
                 web.get("/api/update/download", self.update_download),
+                web.get("/api/maintenance", self.maintenance_status),
+                web.post("/api/maintenance", self.maintenance_set),
             ]
         )
         self.runner = web.AppRunner(app)
@@ -258,6 +260,45 @@ class AdminAPI(commands.Cog):
 
         result = await admin_core.perform_unban_server(server_id)
         await db.log_action(session["username"], "unban_server", str(server_id), reason, str(result))
+        return web.json_response(result)
+
+    async def maintenance_status(self, request: web.Request):
+        self._require_auth(request)
+        return web.json_response({"success": True, "maintenance": await admin_core.get_maintenance_mode()})
+
+    async def maintenance_set(self, request: web.Request):
+        session = self._require_auth(request)
+        ip_key = f"maintenance:{_client_ip(request)}"
+        if _is_locked_out(ip_key):
+            return web.json_response(
+                {"success": False, "error": "Too many failed attempts. Try again in a few minutes."}, status=429
+            )
+
+        try:
+            body = await request.json()
+            enabled = body.get("enabled")
+            if not isinstance(enabled, bool):
+                raise ValueError("enabled must be a boolean")
+        except (ValueError, TypeError, AttributeError):
+            return web.json_response({"success": False, "error": "Invalid request."}, status=400)
+
+        auth_code = str(body.get("auth_code", ""))
+        action = "maintenance_on" if enabled else "maintenance_off"
+
+        if not await db.has_auth_code(session["username"]):
+            return web.json_response(
+                {"success": False, "error": "Your account has no authorization code set. Ask the owner to set one."},
+                status=403,
+            )
+
+        if not await db.verify_auth_code(session["username"], auth_code):
+            _record_failed_login(ip_key)
+            await db.log_action(session["username"], action, "bot", None, "Denied: bad authorization code")
+            return web.json_response({"success": False, "error": "Invalid authorization code."}, status=403)
+
+        _clear_failed_logins(ip_key)
+        result = await admin_core.perform_set_maintenance(self.bot, enabled)
+        await db.log_action(session["username"], action, "bot", None, str(result))
         return web.json_response(result)
 
     async def link(self, request: web.Request):
