@@ -7,6 +7,7 @@ from discord.ext import commands
 
 from settings import PRIMARY_SERVER, GLOBAL_LOG_CHANNEL_ID
 from data.vrchat import get_vrchat_user
+from data.languages import LANGUAGES, SITE, DEFAULT_LANGUAGE, get_language, get_start_text, get_buttons, localize, get_bio_panel_text, get_panel_subtitle, get_text, get_notice_titles
 from data.database import (
     get_server_settings,
     get_vrchat_id_from_discord,
@@ -35,15 +36,16 @@ def static_layout(*items) -> ui.LayoutView:
         view.add_item(item)
     return view
 
-def notice(text: str) -> ui.LayoutView:
+def notice(text: str, language=None) -> ui.LayoutView:
     icon, _, body = text.partition(" ")
     body = body.strip()
-    kinds = {
-        "❌": ("Error", discord.Color.red()),
-        "✅": ("Success", discord.Color.green()),
-        "⚠️": ("Warning", discord.Color.orange()),
-    }
-    title, colour = kinds.get(icon, ("Notice", discord.Color.blurple()))
+    kind = {"❌": "error", "✅": "success", "⚠": "warning"}.get(icon.rstrip("️"))
+    colour = {
+        "error": discord.Color.red(),
+        "success": discord.Color.green(),
+        "warning": discord.Color.orange(),
+    }.get(kind, discord.Color.blurple())
+    title = get_notice_titles(language).get(kind, "Notice")
 
     first, _, rest = body.partition("\n")
     bold = re.fullmatch(r"\*\*(.+)\*\*", first.strip())
@@ -67,19 +69,18 @@ def log_layout(title: str, colour: discord.Colour, fields: list) -> ui.LayoutVie
         )
     )
 
-MAINTENANCE_NOTICE = (
-    "⚠️ **Under Maintenance**\n"
-    "O-SAVS is currently undergoing maintenance, so age verification is temporarily unavailable.\n"
-    "Please try again later. Updates are posted in the [Noodle's Nexus](https://discord.gg/PeXzxBeUcB) support server."
-)
+MAINTENANCE_NOTICE = get_text("maintenance", DEFAULT_LANGUAGE)
 
-async def maintenance_blocked(interaction: Interaction) -> bool:
+async def maintenance_blocked(interaction: Interaction, language: Optional[str] = None) -> bool:
     if not await get_maintenance_mode():
         return False
+    if language is None and interaction.guild_id:
+        language = (await get_server_settings(interaction.guild_id)).get("language")
+    view = notice(get_text("maintenance", language), language)
     if interaction.response.is_done():
-        await interaction.followup.send(view=notice(MAINTENANCE_NOTICE), ephemeral=True)
+        await interaction.followup.send(view=view, ephemeral=True)
     else:
-        await interaction.response.send_message(view=notice(MAINTENANCE_NOTICE), ephemeral=True)
+        await interaction.response.send_message(view=view, ephemeral=True)
     return True
 
 def has_age_button(components) -> bool:
@@ -98,12 +99,12 @@ def has_age_button(components) -> bool:
     return False
 
 class BioCheckButton(ui.Button):
-    def __init__(self, bio_view: "BioCheckView"):
-        super().__init__(label="I've updated my profile", style=ButtonStyle.success)
+    def __init__(self, bio_view: "BioCheckView", language: str = DEFAULT_LANGUAGE):
+        super().__init__(label=get_buttons(language)[1], style=ButtonStyle.success)
         self.bio_view = bio_view
 
     async def callback(self, interaction: Interaction):
-        if await maintenance_blocked(interaction):
+        if await maintenance_blocked(interaction, self.bio_view.language):
             return
         await self.bio_view.run_check(interaction)
 
@@ -115,54 +116,62 @@ class BioCheckView(ui.LayoutView):
         self.user_id = user_id
         self.code = code
         self.settings = settings
+        self.username = username
+        self.language = settings.get("language") or DEFAULT_LANGUAGE
+
+        self.build()
+
+    def build(self):
+        self.clear_items()
+
+        title, subtitle, instruction, after = get_bio_panel_text(self.language, self.username)
 
         self.add_item(ui.Container(
-            ui.TextDisplay(f"# 🔐 Verification for `{username}`"),
-            ui.TextDisplay("-# VRCHAT PROFILE CHECK"),
+            ui.TextDisplay(f"# 🔐 {title}"),
+            ui.TextDisplay(f"-# {subtitle}"),
             sep(),
             ui.Section(
-                ui.TextDisplay("Add the following code to your VRChat bio:"),
-                ui.TextDisplay(f"# `{code}`"),
-                ui.TextDisplay("Once updated, click the button to complete verification."),
-                accessory=BioCheckButton(self)
+                ui.TextDisplay(instruction),
+                ui.TextDisplay(f"# `{self.code}`"),
+                ui.TextDisplay(after),
+                accessory=BioCheckButton(self, self.language)
             ),
         ))
 
     async def run_check(self, interaction: Interaction):
         await interaction.response.defer(ephemeral=True)
 
+        language = self.language
+
         if await is_banned(interaction.user.id):
             self.stop()
-            return await interaction.followup.send(view=notice("❌ Your Discord account was banned by the administration team for O-SAVS.\n"
-                "If you believe this ban was issued in error you may appeal by joining the [Noodle's Nexus](https://discord.gg/PeXzxBeUcB) support server."), ephemeral=True)
+            return await interaction.followup.send(view=notice(get_text("banned_discord", language), language), ephemeral=True)
 
         if await is_banned(self.user_id):
             self.stop()
-            return await interaction.followup.send(view=notice("❌ Your VRChat account was banned by the administration team for O-SAVS.\n"
-                "If you believe this ban was issued in error you may appeal by joining the [Noodle's Nexus](https://discord.gg/PeXzxBeUcB) support server."), ephemeral=True)
+            return await interaction.followup.send(view=notice(get_text("banned_vrchat", language), language), ephemeral=True)
 
         existing_vrc_id = await get_vrchat_id_from_discord(interaction.user.id)
         if existing_vrc_id:
             self.stop()
-            return await interaction.followup.send(view=notice(f"❌ Your Discord account is already linked to VRChat ID (`{existing_vrc_id}`).\n"
-                "If you need to unlink this account, you may join the [Noodle's Nexus](https://discord.gg/PeXzxBeUcB) support server."), ephemeral=True)
+            return await interaction.followup.send(view=notice(get_text("linked_discord", language, vrc_id=existing_vrc_id), language), ephemeral=True)
 
         if await is_vrchat_id_verified(self.user_id):
             self.stop()
-            return await interaction.followup.send(view=notice(f"❌ The VRChat account (`{self.user_id}`) is already linked to another Discord user."), ephemeral=True)
+            return await interaction.followup.send(view=notice(get_text("linked_vrchat", language, vrc_id=self.user_id), language), ephemeral=True)
 
         user_data = await get_vrchat_user(self.user_id)
 
         if not user_data:
-            return await interaction.followup.send(view=notice("❌ Failed to fetch VRChat profile data. Please verify your User ID or try again later."), ephemeral=True)
+            return await interaction.followup.send(view=notice(get_text("fetch_failed", language), language), ephemeral=True)
 
         bio = user_data.get("bio", "") or ""
 
         if self.code not in bio:
-            return await interaction.followup.send(view=notice("❌ Verification code was **not found** in your VRChat bio. Make sure you entered it correctly."), ephemeral=True)
+            return await interaction.followup.send(view=notice(get_text("code_missing", language), language), ephemeral=True)
 
         if not user_data.get("verification"):
-            return await interaction.followup.send(view=notice("❌ Your VRChat account is **not age verified**. Official VRChat 18+ verification is required."), ephemeral=True)
+            return await interaction.followup.send(view=notice(get_text("not_age_verified", language), language), ephemeral=True)
 
         await add_verified_user(interaction.user.id, self.user_id)
 
@@ -227,63 +236,100 @@ class BioCheckView(ui.LayoutView):
 
         self.stop()
 
-        if origin_role_added:
-            success_msg = (
-                "✅ **Verification complete!**\n"
-                f"You have been age verified in **{interaction.guild.name}** and synced across all eligible O-SAVS servers.\n"
-                "You may now remove the verification code from your VRChat profile."
-            )
-        else:
-            success_msg = (
-                "✅ **Account Linked!**\n"
-                "Your VRChat age verification has been recorded globally. "
-                f"If you did not receive the role in **{interaction.guild.name}**, ensure you meet any required role prerequisites."
-            )
+        success_msg = get_text("verified" if origin_role_added else "linked", language, guild=interaction.guild.name)
 
-        await interaction.followup.send(view=notice(success_msg), ephemeral=True)
+        await interaction.followup.send(view=notice(success_msg, language), ephemeral=True)
 
 class AgeVerifyButton(ui.Button):
-    def __init__(self):
-        super().__init__(label="Age Verify", style=ButtonStyle.primary, custom_id="ageverify_start")
+    def __init__(self, language: str = DEFAULT_LANGUAGE, ephemeral: bool = False):
+        super().__init__(label=get_buttons(language)[0], style=ButtonStyle.primary, custom_id="ageverify_start")
+        self.language = language if ephemeral else None
 
     async def callback(self, interaction: Interaction):
-        if await maintenance_blocked(interaction):
-            return
-        await interaction.response.send_modal(VRChatUsername())
+        language = self.language
+        if language is None:
+            settings = await get_server_settings(interaction.guild_id)
+            language = settings.get("language")
 
-class ConfirmCheck(ui.LayoutView):
+        if await maintenance_blocked(interaction, language):
+            return
+
+        await interaction.response.send_modal(VRChatUsername(language))
+
+def render_steps(lang) -> str:
+    lines = []
+    for i, step in enumerate(lang.steps, 1):
+        lines.append(f"{i}. " + localize(step.replace("{site}", SITE), lang.code))
+    return "\n".join(lines) + "\n\n" + lang.done
+
+class LanguageSelect(ui.Select):
     def __init__(self, bot: commands.Bot, cog: commands.Cog):
-        super().__init__(timeout=None)
+        super().__init__(
+            placeholder="🌐 Language / Idioma / Sprache / 言語...",
+            min_values=1,
+            max_values=1,
+            custom_id="ageverify_language",
+            options=[
+                discord.SelectOption(
+                    label=lang.native, value=lang.code, description=lang.english, emoji=lang.emoji
+                )
+                for lang in LANGUAGES.values()
+            ],
+        )
         self.bot = bot
         self.cog = cog
 
-        self.add_item(ui.Container(
-            ui.TextDisplay("# VRChat 18+ Verification"),
-            ui.TextDisplay("-# O-SAVS · AGE VERIFICATION"),
-            sep(),
-            ui.TextDisplay("## About Verification"),
-            ui.TextDisplay(
-                "To age verify yourself, you must verify that your VRChat account is **age verified**."
-            ),
-        ))
+    async def callback(self, interaction: Interaction):
+        code = self.values[0]
+
+        # Inside a user's private copy: switch the language in place.
+        if interaction.message is not None and interaction.message.flags.ephemeral:
+            await interaction.response.edit_message(
+                view=ConfirmCheck(self.bot, self.cog, code, ephemeral=True)
+            )
+            return
+
+        settings = await get_server_settings(interaction.guild_id)
+        await interaction.response.edit_message(
+            view=ConfirmCheck(self.bot, self.cog, settings.get("language"))
+        )
+        if code in LANGUAGES:
+            await interaction.followup.send(
+                view=ConfirmCheck(self.bot, self.cog, code, ephemeral=True), ephemeral=True
+            )
+
+class ConfirmCheck(ui.LayoutView):
+    def __init__(self, bot: commands.Bot, cog: commands.Cog, language: str = DEFAULT_LANGUAGE, ephemeral: bool = False):
+        super().__init__(timeout=900 if ephemeral else None)
+        self.bot = bot
+        self.cog = cog
+
+        lang = get_language(language)
+        start_heading, start_text = get_start_text(lang.code)
 
         self.add_item(ui.Container(
+            ui.TextDisplay(f"# {lang.title}"),
+            ui.TextDisplay(f"-# {get_panel_subtitle(lang.code)}"),
+            sep(),
+            ui.TextDisplay(f"## {lang.about_heading}"),
+            ui.TextDisplay(lang.about),
+        ))
+
+        items = [
             ui.Section(
-                ui.TextDisplay("## Start Verification"),
-                ui.TextDisplay("Click the **Age Verify** button to begin."),
-                accessory=AgeVerifyButton()
+                ui.TextDisplay(f"## {start_heading}"),
+                ui.TextDisplay(start_text),
+                accessory=AgeVerifyButton(lang.code, ephemeral)
             ),
             sep(),
-            ui.TextDisplay("## Instructions"),
-            ui.TextDisplay(
-                "1. Sign into [vrchat.com](https://vrchat.com/home)\n"
-                "- Go to your profile and copy the link to it\n"
-                "- Click the Age Verify button and input the link you copied\n"
-                "- After clicking submit, we will give you a code; Input that code into your VRChat bio\n"
-                "- After inputting the code into your bio click the `I've updated my profile` button.\n"
-                "  - If you did it all correctly you will now be age verified in the server and any other server using O-SAVS"
-            ),
-        ))
+            ui.TextDisplay(f"## {lang.how_heading}"),
+            ui.TextDisplay(render_steps(lang)),
+        ]
+
+        if not ephemeral:
+            items += [sep(), ui.ActionRow(LanguageSelect(bot, cog))]
+
+        self.add_item(ui.Container(*items))
 
 class VRChatUsername(ui.Modal, title="VRChat Verification"):
     userID = ui.TextInput(
@@ -294,30 +340,31 @@ class VRChatUsername(ui.Modal, title="VRChat Verification"):
         max_length=128
     )
 
-    def __init__(self):
+    def __init__(self, language: Optional[str] = None):
         super().__init__(timeout=None)
+        self.language = language
 
     async def on_submit(self, modal_interaction: Interaction):
-        if await maintenance_blocked(modal_interaction):
+        if await maintenance_blocked(modal_interaction, self.language):
             return
 
         await modal_interaction.response.defer(ephemeral=True)
 
         settings = await get_server_settings(modal_interaction.guild_id)
+        language = self.language or settings.get("language")
+
         required_role_id = settings.get("required_role")
         if required_role_id:
             req_role = modal_interaction.guild.get_role(required_role_id)
             if req_role and req_role not in modal_interaction.user.roles:
-                return await modal_interaction.followup.send(view=notice(f"❌ You must have the {req_role.mention} role before you can age verify in this server."), ephemeral=True)
+                return await modal_interaction.followup.send(view=notice(get_text("required_role", language, role=req_role.mention), language), ephemeral=True)
 
         existing_vrc_id = await get_vrchat_id_from_discord(modal_interaction.user.id)
         if existing_vrc_id:
-            return await modal_interaction.followup.send(view=notice(f"❌ Your Discord account is already linked to VRChat ID (`{existing_vrc_id}`).\n"
-                "If you need to unlink this account, you may join the [Noodle's Nexus](https://discord.gg/PeXzxBeUcB) support server."), ephemeral=True)
+            return await modal_interaction.followup.send(view=notice(get_text("linked_discord", language, vrc_id=existing_vrc_id), language), ephemeral=True)
 
         if await is_banned(modal_interaction.user.id):
-            return await modal_interaction.followup.send(view=notice("❌ Your Discord account was banned by the administration team for O-SAVS.\n"
-                "If you believe this ban was issued in error you may appeal by joining the [Noodle's Nexus](https://discord.gg/PeXzxBeUcB) support server."), ephemeral=True)
+            return await modal_interaction.followup.send(view=notice(get_text("banned_discord", language), language), ephemeral=True)
 
         user_input = self.userID.value.strip()
         match = re.search(r"usr_[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}", user_input, re.IGNORECASE)
@@ -325,14 +372,9 @@ class VRChatUsername(ui.Modal, title="VRChat Verification"):
         if not match:
             invalid_layout = static_layout(
                 ui.Container(
-                    ui.TextDisplay("# Invalid Input!"),
+                    ui.TextDisplay(f"# {get_text('invalid_title', language)}"),
                     sep(),
-                    ui.TextDisplay(
-                        "Could not detect a valid VRChat User ID.\n"
-                        "Please paste your **profile link** (e.g. `https://vrchat.com/home/user/usr_...`) or raw **User ID** (`usr_...`).\n"
-                        "If you believe this is an error you may get assistance in the [Noodle's Nexus](https://discord.gg/PeXzxBeUcB) support server.\n\n"
-                        f"You entered: `{user_input}`"
-                    ),
+                    ui.TextDisplay(get_text("invalid_body", language, input=user_input)),
                     accent_colour=discord.Color.red()
                 )
             )
@@ -341,11 +383,10 @@ class VRChatUsername(ui.Modal, title="VRChat Verification"):
         clean_id = match.group(0)
 
         if await is_banned(clean_id):
-            return await modal_interaction.followup.send(view=notice("❌ Your VRChat account was banned by the administration team for O-SAVS.\n"
-                "If you believe this ban was issued in error you may appeal by joining the [Noodle's Nexus](https://discord.gg/PeXzxBeUcB) support server."), ephemeral=True)
+            return await modal_interaction.followup.send(view=notice(get_text("banned_vrchat", language), language), ephemeral=True)
 
         if await is_vrchat_id_verified(clean_id):
-            return await modal_interaction.followup.send(view=notice(f"❌ The VRChat account (`{clean_id}`) is already linked to another Discord user."), ephemeral=True)
+            return await modal_interaction.followup.send(view=notice(get_text("linked_vrchat", language, vrc_id=clean_id), language), ephemeral=True)
 
         prefix = settings.get("av_start_code") or "AVS-"
         code = generate_code(prefix)
@@ -354,7 +395,8 @@ class VRChatUsername(ui.Modal, title="VRChat Verification"):
         username = user_data.get("username", "Unknown User") if user_data else "Unknown User"
 
         cog = modal_interaction.client.get_cog("Verification")
-        view = BioCheckView(modal_interaction.client, cog, clean_id, code, settings, username)
+        view_settings = {**settings, "language": self.language or settings.get("language")}
+        view = BioCheckView(modal_interaction.client, cog, clean_id, code, view_settings, username)
 
         await modal_interaction.followup.send(view=view, ephemeral=True)
 
@@ -427,6 +469,29 @@ class WizardChannelSelect(ui.ChannelSelect):
         self.wizard.selected_channel = text_channel
         await self.wizard.update_wizard(interaction)
 
+class WizardLanguageSelect(ui.Select):
+    def __init__(self, wizard: "SetupWizardView"):
+        super().__init__(
+            placeholder="Step 5: Choose Default Server Language...",
+            min_values=1,
+            max_values=1,
+            options=[
+                discord.SelectOption(
+                    label=lang.native,
+                    value=lang.code,
+                    description=lang.english,
+                    emoji=lang.emoji,
+                    default=(lang.code == wizard.selected_language),
+                )
+                for lang in LANGUAGES.values()
+            ],
+        )
+        self.wizard = wizard
+
+    async def callback(self, interaction: Interaction):
+        self.wizard.selected_language = self.values[0]
+        await self.wizard.update_wizard(interaction)
+
 class ClearPreRoleButton(ui.Button):
     def __init__(self, wizard: "SetupWizardView"):
         super().__init__(label="Clear Pre-Role", style=ButtonStyle.secondary)
@@ -453,7 +518,7 @@ class FinishSetupButton(ui.Button):
         await self.wizard.finish_setup(interaction)
 
 class SetupWizardView(ui.LayoutView):
-    def __init__(self, bot: commands.Bot, cog: commands.Cog, author: discord.Member, log_channel: discord.TextChannel):
+    def __init__(self, bot: commands.Bot, cog: commands.Cog, author: discord.Member, log_channel: discord.TextChannel, language: str = DEFAULT_LANGUAGE):
         super().__init__(timeout=300)
         self.bot = bot
         self.cog = cog
@@ -464,6 +529,7 @@ class SetupWizardView(ui.LayoutView):
         self.required_role: Optional[discord.Role] = None
         self.selected_channel: Optional[discord.TextChannel] = None
         self.selected_prefix: str = "AVS-"
+        self.selected_language: str = language if language in LANGUAGES else DEFAULT_LANGUAGE
 
         self.build()
 
@@ -482,6 +548,8 @@ class SetupWizardView(ui.LayoutView):
         role_str = self.selected_role.mention if self.selected_role else "❌ *Not selected*"
         req_role_str = self.required_role.mention if self.required_role else "🔹 *None (Optional)*"
         channel_str = self.selected_channel.mention if self.selected_channel else "❌ *Not selected*"
+        language_obj = get_language(self.selected_language)
+        language_str = f"{language_obj.emoji} {language_obj.native}"
 
         if self.is_ready():
             footer = "All required settings configured! Click 'Complete Setup' to finalize."
@@ -515,6 +583,9 @@ class SetupWizardView(ui.LayoutView):
                 ui.TextDisplay(f"### 4. Code Prefix (Optional)\n`{self.selected_prefix}`"),
                 accessory=SetPrefixButton(self)
             ),
+            sep(),
+            ui.TextDisplay(f"### 5. Default Server Language (Optional)\n{language_str}"),
+            ui.ActionRow(WizardLanguageSelect(self)),
         ))
 
         self.add_item(ui.Container(
@@ -536,6 +607,9 @@ class SetupWizardView(ui.LayoutView):
         required_role = self.required_role
         verify_channel = self.selected_channel
         prefix = self.selected_prefix
+        language = self.selected_language
+        language_obj = get_language(language)
+        language_label = f"{language_obj.emoji} {language_obj.native}"
         target_log_channel = self.log_channel
 
         await save_server_settings(
@@ -544,7 +618,8 @@ class SetupWizardView(ui.LayoutView):
             verify_channel=verify_channel.id,
             verification_logs=target_log_channel.id,
             av_start_code=prefix,
-            required_role=required_role.id if required_role else None
+            required_role=required_role.id if required_role else None,
+            language=language
         )
 
         thank_you_layout = static_layout(
@@ -560,7 +635,8 @@ class SetupWizardView(ui.LayoutView):
                     f"**Required Pre-Role:** {required_role.mention if required_role else 'None'}\n"
                     f"**Verify Channel:** {verify_channel.mention}\n"
                     f"**Verification Logs:** {target_log_channel.mention}\n"
-                    f"**Code Prefix:** `{prefix}`"
+                    f"**Code Prefix:** `{prefix}`\n"
+                    f"**Server Language:** {language_label}"
                 ),
                 sep(),
                 ui.TextDisplay(
@@ -575,7 +651,7 @@ class SetupWizardView(ui.LayoutView):
             logging.error(f"[Setup Log Error - {guild.id}] {e}")
 
         try:
-            await verify_channel.send(view=ConfirmCheck(self.bot, self.cog))
+            await verify_channel.send(view=ConfirmCheck(self.bot, self.cog, language))
         except discord.Forbidden:
             return await interaction.followup.send(view=notice(f"⚠️ Settings saved, but lacked permissions to send panel in {verify_channel.mention}."), ephemeral=True)
 
@@ -617,6 +693,7 @@ class SetupWizardView(ui.LayoutView):
                     f"- **Verified Role:** {verified_role.mention}\n"
                     f"- **Required Pre-Role:** {required_role.mention if required_role else 'None'}\n"
                     f"- **Code Prefix:** `{prefix}`\n"
+                    f"- **Server Language:** {language_label}\n"
                     f"- **Synced Users:** `{synced_count}`"
                 ),
                 accent_colour=discord.Colour.green()
@@ -712,7 +789,10 @@ class Verification(commands.Cog):
         await self.bot.wait_until_ready()
 
         new_hash = hashlib.sha256(
-            json.dumps(ConfirmCheck(self.bot, self).to_components(), sort_keys=True).encode()
+            json.dumps(
+                {code: ConfirmCheck(self.bot, self, code).to_components() for code in LANGUAGES},
+                sort_keys=True,
+            ).encode()
         ).hexdigest()
 
         if self.load_panel_hash() == new_hash:
@@ -741,12 +821,12 @@ class Verification(commands.Cog):
 
                 if getattr(message.flags, "components_v2", False):
                     try:
-                        await message.edit(view=ConfirmCheck(self.bot, self))
+                        await message.edit(view=ConfirmCheck(self.bot, self, settings.get("language")))
                     except (discord.HTTPException, TypeError):
-                        await channel.send(view=ConfirmCheck(self.bot, self))
+                        await channel.send(view=ConfirmCheck(self.bot, self, settings.get("language")))
                         await message.delete()
                 else:
-                    await channel.send(view=ConfirmCheck(self.bot, self))
+                    await channel.send(view=ConfirmCheck(self.bot, self, settings.get("language")))
                     await message.delete()
 
                 updated_count += 1
@@ -859,7 +939,10 @@ class Verification(commands.Cog):
             except discord.Forbidden:
                 return await interaction.followup.send(view=notice("❌ Missing permissions to create `#verification-logs`. Check my role permissions and try again."), ephemeral=True)
 
-        wizard_view = SetupWizardView(self.bot, self, interaction.user, target_log_channel)
+        wizard_view = SetupWizardView(
+            self.bot, self, interaction.user, target_log_channel,
+            language=existing_settings.get("language") or DEFAULT_LANGUAGE
+        )
 
         try:
             wizard_msg = await target_log_channel.send(view=wizard_view, allowed_mentions=discord.AllowedMentions.none())
