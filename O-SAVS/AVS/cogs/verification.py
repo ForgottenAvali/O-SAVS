@@ -1,4 +1,4 @@
-import random, discord, string, asyncio, re, logging, os, json, hashlib, importlib
+import random, discord, string, asyncio, re, logging, os, json, hashlib, importlib, time
 
 from typing import Optional
 from datetime import datetime, timezone
@@ -35,13 +35,37 @@ from data.languages import (
     get_wizard_text,
     get_vrc_modal_text,
     codes_for_verify_label,
-    get_lang_select_text
+    get_lang_select_text,
+    HIDDEN_SEQUENCES,
+    HIDDEN_UNLOCK_LABELS,
 )
 
 importlib.reload(_languages_module)
 
 PANEL_STATE_FILE = os.path.join(os.path.dirname(__file__), "..", "utils", "panel_state.json")
 
+HIDDEN_LANGUAGE_WINDOW = 300
+
+_puzzle_progress: dict[int, tuple[list[str], float]] = {}
+
+
+def record_language_pick(user_id: int, code: str) -> list[str]:
+    sequences = {lang: seq for lang, seq in HIDDEN_SEQUENCES.items() if seq}
+    if not sequences:
+        return []
+
+    longest = max(len(seq) for seq in sequences.values())
+    picks, last = _puzzle_progress.get(user_id, ([], 0.0))
+    if time.monotonic() - last > HIDDEN_LANGUAGE_WINDOW:
+        picks = []
+    picks = (picks + [code])[-longest:]
+
+    unlocked = [lang for lang, seq in sequences.items() if picks[-len(seq):] == seq]
+    if unlocked:
+        _puzzle_progress.pop(user_id, None)
+    else:
+        _puzzle_progress[user_id] = (picks, time.monotonic())
+    return unlocked
 
 def generate_code(prefix: str = "AVS-") -> str:
     clean_prefix = prefix.strip() if prefix else "AVS-"
@@ -329,8 +353,9 @@ class MultiLanguageSelect1(ui.Select):
     async def callback(self, interaction: Interaction):
         code = self.values[0]
         if interaction.message is not None and interaction.message.flags.ephemeral:
+            unlocked = record_language_pick(interaction.user.id, code)
             await interaction.response.edit_message(
-                view=ConfirmCheck(self.bot, self.cog, code, ephemeral=True)
+                view=ConfirmCheck(self.bot, self.cog, code, ephemeral=True, unlocked=unlocked)
             )
             return
 
@@ -367,8 +392,9 @@ class MultiLanguageSelect2(ui.Select):
     async def callback(self, interaction: Interaction):
         code = self.values[0]
         if interaction.message is not None and interaction.message.flags.ephemeral:
+            unlocked = record_language_pick(interaction.user.id, code)
             await interaction.response.edit_message(
-                view=ConfirmCheck(self.bot, self.cog, code, ephemeral=True)
+                view=ConfirmCheck(self.bot, self.cog, code, ephemeral=True, unlocked=unlocked)
             )
             return
 
@@ -405,8 +431,20 @@ class LanguagePickerButton(ui.Button):
         view = LanguageModalView(self.bot, self.cog, self.language)
         await interaction.response.send_message(view=view, ephemeral=True)
 
+class HiddenLanguageButton(ui.Button):
+    def __init__(self, bot: commands.Bot, cog: commands.Cog, code: str):
+        super().__init__(label=HIDDEN_UNLOCK_LABELS.get(code, "Switch language"), style=ButtonStyle.success)
+        self.bot = bot
+        self.cog = cog
+        self.code = code
+
+    async def callback(self, interaction: Interaction):
+        await interaction.response.edit_message(
+            view=ConfirmCheck(self.bot, self.cog, self.code, ephemeral=True)
+        )
+
 class ConfirmCheck(ui.LayoutView):
-    def __init__(self, bot: commands.Bot, cog: commands.Cog, language: str = DEFAULT_LANGUAGE, ephemeral: bool = False):
+    def __init__(self, bot: commands.Bot, cog: commands.Cog, language: str = DEFAULT_LANGUAGE, ephemeral: bool = False, unlocked: Optional[list] = None):
         super().__init__(timeout=900 if ephemeral else None)
         self.bot = bot
         self.cog = cog
@@ -422,6 +460,10 @@ class ConfirmCheck(ui.LayoutView):
             ui.TextDisplay(lang.about),
         ))
 
+        row = [LanguagePickerButton(bot, cog, lang.code, ephemeral)]
+        if unlocked and ephemeral:
+            row.extend(HiddenLanguageButton(bot, cog, code) for code in unlocked[:4])
+
         items = [
             ui.Section(
                 ui.TextDisplay(f"## {start_heading}"),
@@ -432,7 +474,7 @@ class ConfirmCheck(ui.LayoutView):
             ui.TextDisplay(f"## {lang.how_heading}"),
             ui.TextDisplay(render_steps(lang)),
             sep(),
-            ui.ActionRow(LanguagePickerButton(bot, cog, lang.code, ephemeral))
+            ui.ActionRow(*row)
         ]
 
         self.add_item(ui.Container(*items))
