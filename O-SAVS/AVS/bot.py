@@ -3,7 +3,6 @@ import os, discord, asyncio, logging, itertools, importlib.util, aiohttp
 from dotenv import load_dotenv
 from discord.ext import commands, tasks
 
-from cogs import verification
 from settings import PRIMARY_SERVER, BOT_ID
 from data.vrchat import login_vrc
 from data.database import init_db, get_total_verified_users, get_maintenance_mode
@@ -35,7 +34,7 @@ last_verified_count = None
 async def on_ready():
     if not hasattr(bot, "initialized"):
         await init_db()
-        await verification.setup(bot)
+        await bot.load_extension("cogs.verification")
 
         if admin_cog is not None:
             await admin_cog.setup(bot)
