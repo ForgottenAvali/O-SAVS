@@ -46,7 +46,7 @@ O-SAVS (Open-Source Age Verification System) is a global Discord age-verificatio
 2. **Placement.** The member places the generated verification code in their VRChat bio.
 3. **Confirmation.** The bot checks the member's VRChat public profile to confirm account ownership and verifies that the account holds official VRChat 18+ age verification status.
 4. **Assignment & Sync.** Upon verification, the verified role is assigned in the current server and automatically synced across all mutual servers running O-SAVS.
-5. **Localization.** Users can select their preferred language from the dropdown menu on the verification panel to complete the process in any of the 22 supported languages.
+5. **Localization.** Users can select their preferred language from the dropdown menu on the verification panel to complete the process in any of the 40 supported languages.
 
 ---
 
