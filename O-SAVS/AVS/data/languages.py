@@ -364,7 +364,6 @@ _START = {
 }
 
 def describe_language(lang: Language, default_code) -> str:
-    """Language-list description; marks the server's default language."""
     return f"{lang.english} (default)" if lang.code == (default_code or DEFAULT_LANGUAGE) else lang.english
 
 def get_language(code) -> Language:
@@ -396,6 +395,9 @@ _BUTTONS = {
 
 def get_buttons(code) -> tuple:
     return _BUTTONS.get(code or DEFAULT_LANGUAGE, _BUTTONS[DEFAULT_LANGUAGE])
+
+def codes_for_verify_label(label: str) -> list[str]:
+    return [code for code, (verify, _) in _BUTTONS.items() if verify == label]
 
 def localize(text: str, code) -> str:
     verify, bio = get_buttons(code)
@@ -645,6 +647,33 @@ def get_wizard_text(code) -> dict:
     text = dict(zip(_WIZARD_KEYS, row))
     text["footer_ready"] = text["footer_ready"].replace("{button}", text["btn_finish"])
     return text
+
+_VRC_MODAL = {
+    "en": ("VRChat Verification", "What is your VRChat user id?"),
+    "de": ("VRChat-Verifizierung", "Wie lautet deine VRChat-Benutzer-ID?"),
+    "es": ("Verificación de VRChat", "¿Cuál es tu ID de usuario de VRChat?"),
+    "es-419": ("Verificación de VRChat", "¿Cuál es tu ID de usuario de VRChat?"),
+    "it": ("Verifica VRChat", "Qual è il tuo ID utente VRChat?"),
+    "hu": ("VRChat-hitelesítés", "Mi a VRChat felhasználói azonosítód?"),
+    "nl": ("VRChat-verificatie", "Wat is je VRChat-gebruikers-ID?"),
+    "pl": ("Weryfikacja VRChat", "Jakie jest twoje ID użytkownika VRChat?"),
+    "pt-BR": ("Verificação do VRChat", "Qual é o seu ID de usuário do VRChat?"),
+    "ro": ("Verificare VRChat", "Care este ID-ul tău de utilizator VRChat?"),
+    "sv": ("VRChat-verifiering", "Vad är ditt VRChat-användar-ID?"),
+    "vi": ("Xác minh VRChat", "ID người dùng VRChat của bạn là gì?"),
+    "tr": ("VRChat Doğrulaması", "VRChat kullanıcı kimliğin nedir?"),
+    "cs": ("Ověření VRChat", "Jaké je tvé uživatelské ID ve VRChatu?"),
+    "ru": ("Верификация VRChat", "Какой у вас ID пользователя VRChat?"),
+    "uk": ("Верифікація VRChat", "Який у вас ID користувача VRChat?"),
+    "th": ("การยืนยัน VRChat", "User ID VRChat ของคุณคืออะไร"),
+    "zh-CN": ("VRChat 验证", "你的 VRChat 用户 ID 是什么？"),
+    "zh-TW": ("VRChat 驗證", "你的 VRChat 使用者 ID 是什麼？"),
+    "ja": ("VRChat認証", "あなたのVRChatユーザーIDは何ですか？"),
+    "ko": ("VRChat 인증", "VRChat 사용자 ID가 무엇인가요?"),
+}
+
+def get_vrc_modal_text(code) -> tuple[str, str]:
+    return _VRC_MODAL.get(code or DEFAULT_LANGUAGE, _VRC_MODAL[DEFAULT_LANGUAGE])
 
 SUPPORT = "[Noodle's Nexus](https://discord.gg/PeXzxBeUcB)"
 
