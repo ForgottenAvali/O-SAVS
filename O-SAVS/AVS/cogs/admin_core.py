@@ -1,9 +1,10 @@
-import asyncio, logging, discord, os, json
+import asyncio, importlib, logging, discord, os, json
 
 from typing import Optional
 from discord import Embed
 from discord.ext import commands
 
+import data.languages as data_languages
 from data.vrchat import get_vrchat_user
 from data.database import (
     get_all_verified_users,
@@ -432,6 +433,12 @@ async def apply_maintenance_presence(bot: commands.Bot, enabled: bool):
 async def reload_verification_cog(bot: commands.Bot) -> Optional[str]:
     """Reloads the verification extension. Returns an error string on failure, None on success.
     If the reload fails, discord.py rolls back and the old cog stays loaded."""
+    try:
+        importlib.reload(data_languages)
+    except Exception as e:
+        logging.error(f"[AdminCore] Failed to reload languages: {e}", exc_info=e)
+        return f"languages.py: {type(e).__name__}: {e}"
+
     try:
         try:
             await bot.reload_extension(VERIFICATION_EXTENSION)
