@@ -1,4 +1,4 @@
-import random, discord, string, asyncio, re, logging, os, json, hashlib
+import random, discord, string, asyncio, re, logging, os, json, hashlib, importlib
 
 from typing import Optional
 from datetime import datetime, timezone
@@ -6,8 +6,8 @@ from discord import app_commands, Interaction, ui, ButtonStyle
 from discord.ext import commands
 
 from settings import PRIMARY_SERVER, GLOBAL_LOG_CHANNEL_ID
+import data.languages as _languages_module
 from data.vrchat import get_vrchat_user
-from data.languages import LANGUAGES, SITE, DEFAULT_LANGUAGE, get_language, get_start_text, get_buttons, localize, get_bio_panel_text, get_panel_subtitle, get_text, get_notice_titles, describe_language, get_wizard_text
 from data.database import (
     get_server_settings,
     get_vrchat_id_from_discord,
@@ -19,6 +19,25 @@ from data.database import (
     is_banned,
     get_maintenance_mode,
 )
+from data.languages import (
+    LANGUAGES,
+    SITE,
+    DEFAULT_LANGUAGE,
+    get_language,
+    get_start_text,
+    get_buttons,
+    localize,
+    get_bio_panel_text,
+    get_panel_subtitle,
+    get_text,
+    get_notice_titles,
+    describe_language,
+    get_wizard_text,
+    get_vrc_modal_text,
+    codes_for_verify_label
+)
+
+importlib.reload(_languages_module)
 
 PANEL_STATE_FILE = os.path.join(os.path.dirname(__file__), "..", "utils", "panel_state.json")
 
@@ -240,6 +259,28 @@ class BioCheckView(ui.LayoutView):
 
         await interaction.followup.send(view=notice(success_msg, language), ephemeral=True)
 
+def _iter_components(components):
+    for comp in components or []:
+        yield comp
+        for attr in ("children", "components"):
+            yield from _iter_components(getattr(comp, attr, None))
+        accessory = getattr(comp, "accessory", None)
+        if accessory is not None:
+            yield accessory
+
+def panel_language_from_message(interaction: Interaction, server_language: Optional[str] = None) -> Optional[str]:
+    message = interaction.message
+    if message is None:
+        return None
+    for comp in _iter_components(getattr(message, "components", None)):
+        if getattr(comp, "custom_id", None) != "ageverify_start":
+            continue
+        matches = codes_for_verify_label(getattr(comp, "label", None))
+        if not matches:
+            return None
+        return server_language if server_language in matches else matches[0]
+    return None
+
 class AgeVerifyButton(ui.Button):
     def __init__(self, language: str = DEFAULT_LANGUAGE, ephemeral: bool = False):
         super().__init__(label=get_buttons(language)[0], style=ButtonStyle.primary, custom_id="ageverify_start")
@@ -249,7 +290,8 @@ class AgeVerifyButton(ui.Button):
         language = self.language
         if language is None:
             settings = await get_server_settings(interaction.guild_id)
-            language = settings.get("language")
+            server_language = settings.get("language")
+            language = panel_language_from_message(interaction, server_language) or server_language
 
         if await maintenance_blocked(interaction, language):
             return
@@ -331,18 +373,19 @@ class ConfirmCheck(ui.LayoutView):
 
         self.add_item(ui.Container(*items))
 
-class VRChatUsername(ui.Modal, title="VRChat Verification"):
-    userID = ui.TextInput(
-        label="What is your VRChat user id?",
-        style=discord.TextStyle.short,
-        placeholder="usr_...",
-        required=True,
-        max_length=128
-    )
-
+class VRChatUsername(ui.Modal):
     def __init__(self, language: Optional[str] = None):
-        super().__init__(timeout=None)
+        title, label = get_vrc_modal_text(language)
+        super().__init__(title=title, timeout=None)
         self.language = language
+        self.userID = ui.TextInput(
+            label=label,
+            style=discord.TextStyle.short,
+            placeholder="usr_...",
+            required=True,
+            max_length=128
+        )
+        self.add_item(self.userID)
 
     async def on_submit(self, modal_interaction: Interaction):
         if await maintenance_blocked(modal_interaction, self.language):
@@ -763,6 +806,19 @@ class Verification(commands.Cog):
             self.bot.remove_view(self._panel_view)
         except Exception as e:
             logging.warning(f"[Verification] Could not remove persistent panel view on unload: {e}")
+
+        try:
+            store = self.bot._connection._view_store
+            seen = set()
+            for entry in list(store._views.values()):
+                view = entry[0] if isinstance(entry, tuple) else entry
+                if id(view) in seen:
+                    continue
+                seen.add(id(view))
+                if type(view).__module__ == __name__:
+                    view.stop()
+        except Exception as e:
+            logging.warning(f"[Verification] Could not stop old message views on unload: {e}")
 
     def load_panel_hash(self) -> Optional[str]:
         try:
