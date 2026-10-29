@@ -7,7 +7,7 @@ from discord.ext import commands
 
 from settings import PRIMARY_SERVER, GLOBAL_LOG_CHANNEL_ID
 from data.vrchat import get_vrchat_user
-from data.languages import LANGUAGES, SITE, DEFAULT_LANGUAGE, get_language, get_start_text, get_buttons, localize, get_bio_panel_text, get_panel_subtitle, get_text, get_notice_titles
+from data.languages import LANGUAGES, SITE, DEFAULT_LANGUAGE, get_language, get_start_text, get_buttons, localize, get_bio_panel_text, get_panel_subtitle, get_text, get_notice_titles, describe_language, get_wizard_text
 from data.database import (
     get_server_settings,
     get_vrchat_id_from_discord,
@@ -263,7 +263,7 @@ def render_steps(lang) -> str:
     return "\n".join(lines) + "\n\n" + lang.done
 
 class LanguageSelect(ui.Select):
-    def __init__(self, bot: commands.Bot, cog: commands.Cog):
+    def __init__(self, bot: commands.Bot, cog: commands.Cog, default_language: str = DEFAULT_LANGUAGE):
         super().__init__(
             placeholder="🌐 Language / Idioma / Sprache / 言語...",
             min_values=1,
@@ -271,7 +271,7 @@ class LanguageSelect(ui.Select):
             custom_id="ageverify_language",
             options=[
                 discord.SelectOption(
-                    label=lang.native, value=lang.code, description=lang.english, emoji=lang.emoji
+                    label=lang.native, value=lang.code, description=describe_language(lang, default_language), emoji=lang.emoji
                 )
                 for lang in LANGUAGES.values()
             ],
@@ -327,7 +327,7 @@ class ConfirmCheck(ui.LayoutView):
         ]
 
         if not ephemeral:
-            items += [sep(), ui.ActionRow(LanguageSelect(bot, cog))]
+            items += [sep(), ui.ActionRow(LanguageSelect(bot, cog, lang.code))]
 
         self.add_item(ui.Container(*items))
 
@@ -422,9 +422,10 @@ class PrefixModal(ui.Modal, title="Custom Verification Prefix"):
 
 class WizardRoleSelect(ui.RoleSelect):
     def __init__(self, wizard: "SetupWizardView", step: str):
+        t = get_wizard_text(wizard.selected_language)
         placeholder = (
-            "Step 1: Choose Verified Role..." if step == "verified"
-            else "Step 2: Choose Required Role to Verify..."
+            f"2. {t['ph_verified']}" if step == "verified"
+            else f"3. {t['ph_required']}"
         )
         current = wizard.selected_role if step == "verified" else wizard.required_role
         super().__init__(
@@ -452,7 +453,7 @@ class WizardRoleSelect(ui.RoleSelect):
 class WizardChannelSelect(ui.ChannelSelect):
     def __init__(self, wizard: "SetupWizardView"):
         super().__init__(
-            placeholder="Step 3: Choose Verification Channel...",
+            placeholder=f"4. {get_wizard_text(wizard.selected_language)['ph_channel']}",
             channel_types=[discord.ChannelType.text],
             min_values=1,
             max_values=1,
@@ -472,14 +473,14 @@ class WizardChannelSelect(ui.ChannelSelect):
 class WizardLanguageSelect(ui.Select):
     def __init__(self, wizard: "SetupWizardView"):
         super().__init__(
-            placeholder="Step 5: Choose Default Server Language...",
+            placeholder=f"1. {get_wizard_text(wizard.selected_language)['ph_language']}",
             min_values=1,
             max_values=1,
             options=[
                 discord.SelectOption(
                     label=lang.native,
                     value=lang.code,
-                    description=lang.english,
+                    description=describe_language(lang, wizard.selected_language),
                     emoji=lang.emoji,
                     default=(lang.code == wizard.selected_language),
                 )
@@ -494,7 +495,7 @@ class WizardLanguageSelect(ui.Select):
 
 class ClearPreRoleButton(ui.Button):
     def __init__(self, wizard: "SetupWizardView"):
-        super().__init__(label="Clear Pre-Role", style=ButtonStyle.secondary)
+        super().__init__(label=get_wizard_text(wizard.selected_language)["btn_clear"], style=ButtonStyle.secondary)
         self.wizard = wizard
 
     async def callback(self, interaction: Interaction):
@@ -503,7 +504,7 @@ class ClearPreRoleButton(ui.Button):
 
 class SetPrefixButton(ui.Button):
     def __init__(self, wizard: "SetupWizardView"):
-        super().__init__(label="Set Custom Prefix", style=ButtonStyle.secondary)
+        super().__init__(label=get_wizard_text(wizard.selected_language)["btn_prefix"], style=ButtonStyle.secondary)
         self.wizard = wizard
 
     async def callback(self, interaction: Interaction):
@@ -511,7 +512,7 @@ class SetPrefixButton(ui.Button):
 
 class FinishSetupButton(ui.Button):
     def __init__(self, wizard: "SetupWizardView"):
-        super().__init__(label="Complete Setup", style=ButtonStyle.success, disabled=not wizard.is_ready())
+        super().__init__(label=get_wizard_text(wizard.selected_language)["btn_finish"], style=ButtonStyle.success, disabled=not wizard.is_ready())
         self.wizard = wizard
 
     async def callback(self, interaction: Interaction):
@@ -545,52 +546,50 @@ class SetupWizardView(ui.LayoutView):
     def build(self):
         self.clear_items()
 
-        role_str = self.selected_role.mention if self.selected_role else "❌ *Not selected*"
-        req_role_str = self.required_role.mention if self.required_role else "🔹 *None (Optional)*"
-        channel_str = self.selected_channel.mention if self.selected_channel else "❌ *Not selected*"
+        t = get_wizard_text(self.selected_language)
+        role_str = self.selected_role.mention if self.selected_role else f"❌ *{t['not_selected']}*"
+        req_role_str = self.required_role.mention if self.required_role else f"🔹 *{t['none_optional']}*"
+        channel_str = self.selected_channel.mention if self.selected_channel else f"❌ *{t['not_selected']}*"
         language_obj = get_language(self.selected_language)
         language_str = f"{language_obj.emoji} {language_obj.native}"
 
-        if self.is_ready():
-            footer = "All required settings configured! Click 'Complete Setup' to finalize."
-        else:
-            footer = "Please select a verified role and verification channel to proceed."
+        footer = t["footer_ready"] if self.is_ready() else t["footer_not_ready"]
 
         self.add_item(ui.Container(
-            ui.TextDisplay("# ⚙️ O-SAVS Interactive Setup"),
-            ui.TextDisplay("-# SERVER CONFIGURATION"),
+            ui.TextDisplay(f"# ⚙️ O-SAVS {t['title']}"),
+            ui.TextDisplay(f"-# {t['subtitle']}"),
             sep(),
             ui.TextDisplay(
-                "Configure your server settings using the components below.\n\n"
-                f"**Log Channel Created:** {self.log_channel.mention}"
+                f"{t['intro']}\n\n"
+                f"**{t['log_created']}:** {self.log_channel.mention}"
             ),
         ))
 
         self.add_item(ui.Container(
-            ui.TextDisplay(f"### 1. Verified Role (Required)\n{role_str}"),
+            ui.TextDisplay(f"### 1. {t['h_language']}\n{language_str}"),
+            ui.ActionRow(WizardLanguageSelect(self)),
+            sep(),
+            ui.TextDisplay(f"### 2. {t['h_verified']}\n{role_str}"),
             ui.ActionRow(WizardRoleSelect(self, "verified")),
             sep(),
             ui.Section(
-                ui.TextDisplay(f"### 2. Required Pre-Verification Role (Optional)\n{req_role_str}"),
+                ui.TextDisplay(f"### 3. {t['h_required']}\n{req_role_str}"),
                 accessory=ClearPreRoleButton(self)
             ),
             ui.ActionRow(WizardRoleSelect(self, "required")),
             sep(),
-            ui.TextDisplay(f"### 3. Verification Panel Channel (Required)\n{channel_str}"),
+            ui.TextDisplay(f"### 4. {t['h_channel']}\n{channel_str}"),
             ui.ActionRow(WizardChannelSelect(self)),
             sep(),
             ui.Section(
-                ui.TextDisplay(f"### 4. Code Prefix (Optional)\n`{self.selected_prefix}`"),
+                ui.TextDisplay(f"### 5. {t['h_prefix']}\n`{self.selected_prefix}`"),
                 accessory=SetPrefixButton(self)
             ),
-            sep(),
-            ui.TextDisplay(f"### 5. Default Server Language (Optional)\n{language_str}"),
-            ui.ActionRow(WizardLanguageSelect(self)),
         ))
 
         self.add_item(ui.Container(
             ui.Section(
-                ui.TextDisplay(f"### Finish\n{footer}"),
+                ui.TextDisplay(f"### {t['finish']}\n{footer}"),
                 accessory=FinishSetupButton(self)
             ),
         ))
