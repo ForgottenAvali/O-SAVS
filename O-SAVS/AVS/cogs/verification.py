@@ -34,7 +34,8 @@ from data.languages import (
     describe_language,
     get_wizard_text,
     get_vrc_modal_text,
-    codes_for_verify_label
+    codes_for_verify_label,
+    get_lang_select_text
 )
 
 importlib.reload(_languages_module)
@@ -304,27 +305,29 @@ def render_steps(lang) -> str:
         lines.append(f"{i}. " + localize(step.replace("{site}", SITE), lang.code))
     return "\n".join(lines) + "\n\n" + lang.done
 
-class LanguageSelect(ui.Select):
-    def __init__(self, bot: commands.Bot, cog: commands.Cog, default_language: str = DEFAULT_LANGUAGE):
+class MultiLanguageSelect1(ui.Select):
+    def __init__(self, bot: commands.Bot, cog: commands.Cog, server_language: str = DEFAULT_LANGUAGE):
+        all_langs = list(LANGUAGES.values())
+        chunk1 = all_langs[:25]
+        ph1, _, _, _ = get_lang_select_text(server_language)
         super().__init__(
-            placeholder="🌐 Language / Idioma / Sprache / 言語...",
+            placeholder=ph1,
             min_values=1,
             max_values=1,
-            custom_id="ageverify_language",
+            custom_id="ageverify_language_1",
             options=[
                 discord.SelectOption(
-                    label=lang.native, value=lang.code, description=describe_language(lang, default_language), emoji=lang.emoji
+                    label=lang.native, value=lang.code, description=describe_language(lang, server_language), emoji=lang.emoji
                 )
-                for lang in LANGUAGES.values()
+                for lang in chunk1
             ],
         )
         self.bot = bot
         self.cog = cog
+        self.server_language = server_language
 
     async def callback(self, interaction: Interaction):
         code = self.values[0]
-
-        # Inside a user's private copy: switch the language in place.
         if interaction.message is not None and interaction.message.flags.ephemeral:
             await interaction.response.edit_message(
                 view=ConfirmCheck(self.bot, self.cog, code, ephemeral=True)
@@ -333,12 +336,74 @@ class LanguageSelect(ui.Select):
 
         settings = await get_server_settings(interaction.guild_id)
         await interaction.response.edit_message(
-            view=ConfirmCheck(self.bot, self.cog, settings.get("language"))
+            view=ConfirmCheck(self.bot, self.cog, settings.get("language", DEFAULT_LANGUAGE))
         )
         if code in LANGUAGES:
             await interaction.followup.send(
                 view=ConfirmCheck(self.bot, self.cog, code, ephemeral=True), ephemeral=True
             )
+
+class MultiLanguageSelect2(ui.Select):
+    def __init__(self, bot: commands.Bot, cog: commands.Cog, server_language: str = DEFAULT_LANGUAGE):
+        all_langs = list(LANGUAGES.values())
+        chunk2 = all_langs[25:]
+        _, ph2, _, _ = get_lang_select_text(server_language)
+        super().__init__(
+            placeholder=ph2,
+            min_values=1,
+            max_values=1,
+            custom_id="ageverify_language_2",
+            options=[
+                discord.SelectOption(
+                    label=lang.native, value=lang.code, description=describe_language(lang, server_language), emoji=lang.emoji
+                )
+                for lang in chunk2
+            ],
+        )
+        self.bot = bot
+        self.cog = cog
+        self.server_language = server_language
+
+    async def callback(self, interaction: Interaction):
+        code = self.values[0]
+        if interaction.message is not None and interaction.message.flags.ephemeral:
+            await interaction.response.edit_message(
+                view=ConfirmCheck(self.bot, self.cog, code, ephemeral=True)
+            )
+            return
+
+        settings = await get_server_settings(interaction.guild_id)
+        await interaction.response.edit_message(
+            view=ConfirmCheck(self.bot, self.cog, settings.get("language", DEFAULT_LANGUAGE))
+        )
+        if code in LANGUAGES:
+            await interaction.followup.send(
+                view=ConfirmCheck(self.bot, self.cog, code, ephemeral=True), ephemeral=True
+            )
+
+class LanguageModalView(ui.LayoutView):
+    def __init__(self, bot: commands.Bot, cog: commands.Cog, server_language: str = DEFAULT_LANGUAGE):
+        super().__init__(timeout=300)
+        _, _, title, description = get_lang_select_text(server_language)
+        self.add_item(ui.Container(
+            ui.TextDisplay(f"# {title}"),
+            ui.TextDisplay(description),
+            sep(),
+            ui.ActionRow(MultiLanguageSelect1(bot, cog, server_language)),
+            ui.ActionRow(MultiLanguageSelect2(bot, cog, server_language))
+        ))
+
+class LanguagePickerButton(ui.Button):
+    def __init__(self, bot: commands.Bot, cog: commands.Cog, language: str = DEFAULT_LANGUAGE, ephemeral: bool = False):
+        super().__init__(label="🌐 Change Language", style=ButtonStyle.secondary, custom_id="open_language_picker")
+        self.bot = bot
+        self.cog = cog
+        self.language = language
+        self.ephemeral = ephemeral
+
+    async def callback(self, interaction: Interaction):
+        view = LanguageModalView(self.bot, self.cog, self.language)
+        await interaction.response.send_message(view=view, ephemeral=True)
 
 class ConfirmCheck(ui.LayoutView):
     def __init__(self, bot: commands.Bot, cog: commands.Cog, language: str = DEFAULT_LANGUAGE, ephemeral: bool = False):
@@ -366,10 +431,9 @@ class ConfirmCheck(ui.LayoutView):
             sep(),
             ui.TextDisplay(f"## {lang.how_heading}"),
             ui.TextDisplay(render_steps(lang)),
+            sep(),
+            ui.ActionRow(LanguagePickerButton(bot, cog, lang.code, ephemeral))
         ]
-
-        if not ephemeral:
-            items += [sep(), ui.ActionRow(LanguageSelect(bot, cog, lang.code))]
 
         self.add_item(ui.Container(*items))
 
@@ -513,10 +577,12 @@ class WizardChannelSelect(ui.ChannelSelect):
         self.wizard.selected_channel = text_channel
         await self.wizard.update_wizard(interaction)
 
-class WizardLanguageSelect(ui.Select):
+class WizardMultiLanguageSelect1(ui.Select):
     def __init__(self, wizard: "SetupWizardView"):
+        all_langs = list(LANGUAGES.values())
+        chunk1 = all_langs[:25]
         super().__init__(
-            placeholder=f"1. {get_wizard_text(wizard.selected_language)['ph_language']}",
+            placeholder=f"1. {get_wizard_text(wizard.selected_language)['ph_language']} (1-25)",
             min_values=1,
             max_values=1,
             options=[
@@ -527,7 +593,32 @@ class WizardLanguageSelect(ui.Select):
                     emoji=lang.emoji,
                     default=(lang.code == wizard.selected_language),
                 )
-                for lang in LANGUAGES.values()
+                for lang in chunk1
+            ],
+        )
+        self.wizard = wizard
+
+    async def callback(self, interaction: Interaction):
+        self.wizard.selected_language = self.values[0]
+        await self.wizard.update_wizard(interaction)
+
+class WizardMultiLanguageSelect2(ui.Select):
+    def __init__(self, wizard: "SetupWizardView"):
+        all_langs = list(LANGUAGES.values())
+        chunk2 = all_langs[25:]
+        super().__init__(
+            placeholder=f"1. {get_wizard_text(wizard.selected_language)['ph_language']} (26-40)",
+            min_values=1,
+            max_values=1,
+            options=[
+                discord.SelectOption(
+                    label=lang.native,
+                    value=lang.code,
+                    description=describe_language(lang, wizard.selected_language),
+                    emoji=lang.emoji,
+                    default=(lang.code == wizard.selected_language),
+                )
+                for lang in chunk2
             ],
         )
         self.wizard = wizard
@@ -610,7 +701,8 @@ class SetupWizardView(ui.LayoutView):
 
         self.add_item(ui.Container(
             ui.TextDisplay(f"### 1. {t['h_language']}\n{language_str}"),
-            ui.ActionRow(WizardLanguageSelect(self)),
+            ui.ActionRow(WizardMultiLanguageSelect1(self)),
+            ui.ActionRow(WizardMultiLanguageSelect2(self)),
             sep(),
             ui.TextDisplay(f"### 2. {t['h_verified']}\n{role_str}"),
             ui.ActionRow(WizardRoleSelect(self, "verified")),
