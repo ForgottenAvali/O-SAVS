@@ -1,4 +1,4 @@
-import re
+import logging, re
 
 from typing import NamedTuple
 
@@ -670,8 +670,8 @@ _START = {
 def describe_language(lang: Language, default_code) -> str:
     return f"{lang.english} (default)" if lang.code == (default_code or DEFAULT_LANGUAGE) else lang.english
 
-def get_language(code) -> Language:
-    return LANGUAGES.get(code or DEFAULT_LANGUAGE, LANGUAGES[DEFAULT_LANGUAGE])
+def get_language(code):
+    return LANGUAGES.get(code) or HIDDEN_LANGUAGES.get(code) or LANGUAGES[DEFAULT_LANGUAGE]
 
 _BUTTONS = {
     "en": ("Age Verify", "I've updated my profile"),
@@ -1910,3 +1910,51 @@ _LANG_SELECT_TEXT = {
 
 def get_lang_select_text(code) -> tuple[str, str, str, str]:
     return _LANG_SELECT_TEXT.get(code or DEFAULT_LANGUAGE, _LANG_SELECT_TEXT[DEFAULT_LANGUAGE])
+
+HIDDEN_LANGUAGES: dict[str, Language] = {}
+HIDDEN_SEQUENCES: dict[str, list[str]] = {}
+HIDDEN_UNLOCK_LABELS: dict[str, str] = {}
+
+_HIDDEN_TABLES = {
+    "start": (_START, 2),
+    "buttons": (_BUTTONS, 2),
+    "bio_panel": (_BIO_PANEL, 4),
+    "panel_subtitle": (_PANEL_SUBTITLE, None),
+    "wizard": (_WIZARD, len(_WIZARD_KEYS)),
+    "vrc_modal": (_VRC_MODAL, 2),
+    "notice_titles": (_NOTICE_TITLES, 3),
+    "messages": (_MESSAGES, None),
+    "lang_select_text": (_LANG_SELECT_TEXT, 4),
+}
+
+def _load_hidden_languages():
+    try:
+        from data import hidden_languages
+    except ImportError:
+        return
+
+    for code, entry in hidden_languages.HIDDEN.items():
+        if code in LANGUAGES:
+            logging.warning(f"[Hidden Languages] '{code}' already exists in LANGUAGES, skipped")
+            continue
+
+        try:
+            language = Language(code, *entry["language"])
+            sequence = list(entry["sequence"])
+            tables = {}
+            for name, (_, size) in _HIDDEN_TABLES.items():
+                value = entry[name]
+                if size is not None and len(value) != size:
+                    raise ValueError(f"'{name}' needs {size} items, got {len(value)}")
+                tables[name] = value
+        except (KeyError, TypeError, ValueError) as e:
+            logging.warning(f"[Hidden Languages] '{code}' skipped: {e!r}")
+            continue
+
+        HIDDEN_LANGUAGES[code] = language
+        HIDDEN_SEQUENCES[code] = sequence
+        HIDDEN_UNLOCK_LABELS[code] = entry.get("unlock_label") or f"Switch to {language.native}"
+        for name, value in tables.items():
+            _HIDDEN_TABLES[name][0][code] = value
+
+_load_hidden_languages()
