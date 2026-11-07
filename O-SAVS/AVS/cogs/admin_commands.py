@@ -72,9 +72,18 @@ class AdminCommands(commands.Cog):
     @admin_only()
     async def ban(self, interaction: Interaction, target: str, reason: str):
         await interaction.response.defer(ephemeral=True)
-        r = await admin_core.perform_ban(self.bot, interaction.user.id, str(interaction.user), target, reason)
-        await respond(interaction, r, "Banned",
-                      f"Discord `{r.get('discord_id')}` · VRChat `{r.get('vrchat_id')}`\nRole removed in {r.get('removed_count')} server(s).")
+        r = await admin_core.perform_ban(
+            self.bot, interaction.user.id, str(interaction.user), target, reason
+        )
+        banned = []
+        if r.get("discord_id"):
+            banned.append(f"Discord `{r['discord_id']}`")
+        if r.get("vrchat_id"):
+            banned.append(f"VRChat `{r['vrchat_id']}`")
+        details = " · ".join(banned) + f"\nRole removed in {r.get('removed_count')} server(s)."
+        if r.get("evidence_thread"):
+            details += f"\nEvidence thread: {r['evidence_thread']}"
+        await respond(interaction, r, "Banned", details)
 
     @admin.command(name="unban", description="Remove a global ban")
     @admin_only()
