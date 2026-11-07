@@ -16,8 +16,12 @@ def safe_int(value: Optional[str | int]) -> Optional[int]:
     except ValueError:
         return None
 
+_settings_cache: dict[str, dict] = {}
+
 async def init_db():
     async with aiosqlite.connect(DB_PATH) as conn:
+        await conn.execute("PRAGMA journal_mode=WAL")
+        await conn.execute("PRAGMA synchronous=NORMAL")
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS server_settings (
                 server_id TEXT PRIMARY KEY,
@@ -29,12 +33,6 @@ async def init_db():
                 language TEXT DEFAULT 'en'
             )
         """)
-
-        async with conn.execute("PRAGMA table_info(server_settings)") as cursor:
-            existing_columns = {row[1] for row in await cursor.fetchall()}
-        if "language" not in existing_columns:
-            await conn.execute("ALTER TABLE server_settings ADD COLUMN language TEXT DEFAULT 'en'")
-        await conn.execute("UPDATE server_settings SET language = 'en' WHERE language IS NULL")
 
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS verified_users (
@@ -67,9 +65,25 @@ async def init_db():
                 value TEXT NOT NULL
             )
         """)
+
+        async with conn.execute("SELECT value FROM bot_state WHERE key = 'vrchat_ids_lowercased'") as cursor:
+            migrated = await cursor.fetchone()
+        if not migrated:
+            await conn.execute(
+                "UPDATE OR IGNORE verified_users SET vrchat_id = lower(vrchat_id) WHERE vrchat_id != lower(vrchat_id)"
+            )
+            await conn.execute("INSERT OR REPLACE INTO bot_state (key, value) VALUES ('vrchat_ids_lowercased', '1')")
         await conn.commit()
 
 async def get_server_settings(guild_id: int | str) -> dict:
+    cached = _settings_cache.get(str(guild_id))
+    if cached is not None:
+        return dict(cached)
+    result = await _load_server_settings(guild_id)
+    _settings_cache[str(guild_id)] = result
+    return dict(result)
+
+async def _load_server_settings(guild_id: int | str) -> dict:
     async with aiosqlite.connect(DB_PATH) as conn:
         conn.row_factory = aiosqlite.Row
         async with conn.execute(
@@ -137,6 +151,9 @@ async def save_server_settings(
             language or "en"
         ))
         await conn.commit()
+    _settings_cache.pop(str(guild_id), None)
+    if clean_guild_id is not None:
+        _settings_cache.pop(str(clean_guild_id), None)
 
 async def delete_server_settings(guild_id: int | str) -> bool:
     async with aiosqlite.connect(DB_PATH) as conn:
@@ -144,6 +161,7 @@ async def delete_server_settings(guild_id: int | str) -> bool:
             "DELETE FROM server_settings WHERE server_id = ?", (str(guild_id),)
         ) as cursor:
             await conn.commit()
+            _settings_cache.pop(str(guild_id), None)
             return cursor.rowcount > 0
 
 async def get_vrchat_id_from_discord(discord_id: int | str) -> Optional[str]:
@@ -157,10 +175,52 @@ async def get_vrchat_id_from_discord(discord_id: int | str) -> Optional[str]:
 async def is_vrchat_id_verified(vrchat_id: str) -> bool:
     async with aiosqlite.connect(DB_PATH) as conn:
         async with conn.execute(
-            "SELECT 1 FROM verified_users WHERE vrchat_id = ?", (vrchat_id,)
+            "SELECT 1 FROM verified_users WHERE vrchat_id = ?", (vrchat_id.strip().lower(),)
         ) as cursor:
             row = await cursor.fetchone()
             return row is not None
+
+async def get_discord_id_from_vrchat(vrchat_id: str) -> Optional[int]:
+    async with aiosqlite.connect(DB_PATH) as conn:
+        async with conn.execute(
+            "SELECT discord_id FROM verified_users WHERE vrchat_id = ?", (vrchat_id.strip().lower(),)
+        ) as cursor:
+            row = await cursor.fetchone()
+            return safe_int(row[0]) if row else None
+
+async def get_verified_among(ids: list[int | str]) -> dict[int, str]:
+    out: dict[int, str] = {}
+    if not ids:
+        return out
+    async with aiosqlite.connect(DB_PATH) as conn:
+        for i in range(0, len(ids), 500):
+            chunk = [str(x) for x in ids[i:i + 500]]
+            marks = ",".join("?" * len(chunk))
+            async with conn.execute(
+                f"SELECT discord_id, vrchat_id FROM verified_users WHERE discord_id IN ({marks})", chunk
+            ) as cursor:
+                for d, v in await cursor.fetchall():
+                    parsed = safe_int(d)
+                    if parsed is not None:
+                        out[parsed] = v
+    return out
+
+async def get_verified_users_page(limit: int = 100, offset: int = 0) -> tuple[list[tuple[int, str]], int]:
+    limit = max(1, min(int(limit), 500))
+    offset = max(0, int(offset))
+    async with aiosqlite.connect(DB_PATH) as conn:
+        async with conn.execute(
+            "SELECT discord_id, vrchat_id FROM verified_users ORDER BY rowid LIMIT ? OFFSET ?", (limit, offset)
+        ) as cursor:
+            rows = await cursor.fetchall()
+        async with conn.execute("SELECT COUNT(*) FROM verified_users") as cursor:
+            total = (await cursor.fetchone())[0]
+    results = []
+    for d, v in rows:
+        parsed = safe_int(d)
+        if parsed is not None:
+            results.append((parsed, v))
+    return results, total
 
 async def get_all_verified_users() -> list[tuple[int, str]]:
     async with aiosqlite.connect(DB_PATH) as conn:
@@ -173,16 +233,30 @@ async def get_all_verified_users() -> list[tuple[int, str]]:
                     results.append((parsed_id, row[1]))
             return results
 
-async def add_verified_user(discord_id: int | str, vrchat_id: str):
+async def add_verified_user(discord_id: int | str, vrchat_id: str, overwrite: bool = False) -> bool:
     clean_id = safe_int(discord_id)
     target_id = str(clean_id) if clean_id is not None else str(discord_id)
-    
+    vrc = vrchat_id.strip().lower()
+
     async with aiosqlite.connect(DB_PATH) as conn:
+        async with conn.execute(
+            "SELECT discord_id, vrchat_id FROM verified_users WHERE discord_id = ? OR vrchat_id = ?",
+            (target_id, vrc)
+        ) as cursor:
+            existing = await cursor.fetchall()
+        if existing and all(d == target_id and v == vrc for d, v in existing):
+            return True
+        if existing and not overwrite:
+            return False
+        if existing:
+            await conn.execute(
+                "DELETE FROM verified_users WHERE discord_id = ? OR vrchat_id = ?", (target_id, vrc)
+            )
         await conn.execute(
-            "INSERT OR REPLACE INTO verified_users (discord_id, vrchat_id) VALUES (?, ?)",
-            (target_id, vrchat_id)
+            "INSERT INTO verified_users (discord_id, vrchat_id) VALUES (?, ?)", (target_id, vrc)
         )
         await conn.commit()
+        return True
 
 async def remove_verified_user(discord_id: int | str) -> bool:
     async with aiosqlite.connect(DB_PATH) as conn:
@@ -194,17 +268,18 @@ async def remove_verified_user(discord_id: int | str) -> bool:
 
 async def get_total_verified_users(exclude_ids: Optional[list[int | str]] = None) -> int:
     async with aiosqlite.connect(DB_PATH) as conn:
-        if exclude_ids:
-            placeholders = ",".join("?" for _ in exclude_ids)
-            query = f"SELECT COUNT(*) FROM verified_users WHERE discord_id NOT IN ({placeholders})"
-            params = tuple(str(x) for x in exclude_ids)
-        else:
-            query = "SELECT COUNT(*) FROM verified_users"
-            params = ()
-
-        async with conn.execute(query, params) as cursor:
+        async with conn.execute("SELECT COUNT(*) FROM verified_users") as cursor:
             row = await cursor.fetchone()
-            return row[0] if row else 0
+            total = row[0] if row else 0
+        if exclude_ids:
+            marks = ",".join("?" for _ in exclude_ids)
+            async with conn.execute(
+                f"SELECT COUNT(*) FROM verified_users WHERE discord_id IN ({marks})",
+                tuple(str(x) for x in exclude_ids)
+            ) as cursor:
+                row = await cursor.fetchone()
+                total -= row[0] if row else 0
+        return total
 
 async def is_banned(target_id: int | str) -> bool:
     async with aiosqlite.connect(DB_PATH) as conn:
