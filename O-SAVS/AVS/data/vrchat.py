@@ -12,7 +12,7 @@ CONTACT = os.getenv("CONTACT")
 
 config = vrchatapi.Configuration(username=VRCUSER, password=VRCPASS)
 client = vrchatapi.ApiClient(config)
-client.user_agent = f"O-SAVS/1.2.0 (contact: {CONTACT})"
+client.user_agent = f"O-SAVS/1.3.0 (contact: {CONTACT})"
 
 auth_api = authentication_api.AuthenticationApi(client)
 users_api_instance = users_api.UsersApi(client)
