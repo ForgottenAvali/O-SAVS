@@ -107,8 +107,10 @@ async def verify_login(username: str, password: str):
             row = await cursor.fetchone()
 
         if not row:
+            await _hash_password(password, "00" * 16)
             return None
-        if await _hash_password(password, row["salt"]) != row["password_hash"]:
+        candidate = await _hash_password(password, row["salt"])
+        if not hmac.compare_digest(candidate, row["password_hash"]):
             return None
 
         raw_discord_id = row["discord_id"]
