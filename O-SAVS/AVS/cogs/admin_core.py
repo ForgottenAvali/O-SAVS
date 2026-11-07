@@ -7,7 +7,8 @@ from discord.ext import commands
 import data.languages as data_languages
 from data.vrchat import get_vrchat_user
 from data.database import (
-    get_all_verified_users,
+    get_verified_users_page,
+    get_discord_id_from_vrchat,
     add_verified_user,
     remove_verified_user,
     get_vrchat_id_from_discord,
@@ -25,15 +26,15 @@ from data.database import (
     set_maintenance_mode,
 )
 
+from settings import EVIDENCE_FORUM_CHANNEL_ID
+
 VERIFICATION_EXTENSION = "cogs.verification"
 ADMIN_USERS = os.path.join(os.path.dirname(__file__), "..", "utils", "administrator_user_ids.json")
 
-
 _allowed_ids: set[str] = set()
 
+
 def reload_admin_ids() -> Optional[str]:
-    """Re-reads administrator_user_ids.json into memory. Returns an error string on failure, None on success.
-    If the file can't be read, the previously loaded list is kept."""
     global _allowed_ids
     try:
         with open(ADMIN_USERS, "r", encoding="utf-8") as f:
@@ -57,9 +58,8 @@ async def resolve_target(target_input: str) -> tuple[Optional[int], Optional[str
         vrchat_id = await get_vrchat_id_from_discord(discord_id)
         return discord_id, vrchat_id
 
-    vrchat_id = target_input
-    all_verified = await get_all_verified_users()
-    discord_id = next((d_id for d_id, v_id in all_verified if v_id.lower() == vrchat_id.lower()), None)
+    vrchat_id = target_input.lower()
+    discord_id = await get_discord_id_from_vrchat(vrchat_id)
 
     if not discord_id:
         vrc_user = await get_vrchat_user(vrchat_id)
@@ -78,19 +78,33 @@ async def get_or_fetch_user(bot: commands.Bot, user_id: int) -> Optional[discord
         return None
 
 async def get_bot_servers(bot: commands.Bot) -> list[dict]:
-    return [
-        {
-            "id": guild.id,
-            "name": guild.name,
-            "member_count": guild.member_count,
-            "bot_name": guild.me.display_name if guild.me else bot.user.name,
-        }
-        for guild in bot.guilds
-    ]
+    servers = []
+    for guild in bot.guilds:
+        try:
+            settings = await get_server_settings(guild.id) or {}
+        except Exception as e:
+            logging.error(f"[AdminCore] Could not load settings for {guild.id}: {e}")
+            settings = {}
+        servers.append(
+            {
+                "id": guild.id,
+                "name": guild.name,
+                "member_count": guild.member_count,
+                "bot_name": guild.me.display_name if guild.me else bot.user.name,
+                "av_start_code": settings.get("av_start_code"),
+                "language": settings.get("language"),
+            }
+        )
+    return servers
 
-async def get_all_linked_users() -> list[dict]:
-    all_verified = await get_all_verified_users()
-    return [{"discord_id": d_id, "vrchat_id": v_id} for d_id, v_id in all_verified]
+async def get_all_linked_users(limit: int = 100, offset: int = 0) -> dict:
+    rows, total = await get_verified_users_page(limit, offset)
+    return {
+        "users": [{"discord_id": d_id, "vrchat_id": v_id} for d_id, v_id in rows],
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+    }
 
 async def get_all_banned() -> list[dict]:
     return await get_all_banned_users()
@@ -224,7 +238,19 @@ async def perform_link(bot, operator_id, operator_name, target_user_id: int, vrc
         return {"success": False, "error": f"Invalid VRChat User ID or unable to fetch profile for `{vrchat_id}`."}
 
     username = vrc_user.get("username", "Unknown User")
-    await add_verified_user(target_user_id, vrchat_id)
+    vrchat_id = vrchat_id.strip().lower()
+    if not await add_verified_user(target_user_id, vrchat_id):
+        existing_vrc = await get_vrchat_id_from_discord(target_user_id)
+        if existing_vrc and existing_vrc != vrchat_id:
+            return {
+                "success": False,
+                "error": f"Discord user `{target_user_id}` is already linked to a different VRChat account (`{existing_vrc}`). Unlink them first.",
+            }
+        other = await get_discord_id_from_vrchat(vrchat_id)
+        return {
+            "success": False,
+            "error": f"VRChat account `{vrchat_id}` is already linked to a different Discord user (`{other}`). Unlink it first.",
+        }
 
     added_count = 0
     already_had_count = 0
@@ -322,17 +348,88 @@ async def perform_unlink(bot, operator_id, operator_name, target_user_id: int, r
         "errors": error_summary,
     }
 
-async def perform_ban(bot, operator_id, operator_name, target_input: str, reason: str) -> dict:
+def _looks_like_discord_id(value: str) -> bool:
+    value = value.strip()
+    return value.isdigit() and 16 <= len(value) <= 22
+
+def _short_reason(reason: str) -> str:
+    head = reason.split(":", 1)[0].strip()
+    return head or reason.strip()
+
+async def create_evidence_thread(
+    bot: commands.Bot, discord_id, vrchat_id, reason: str, operator_id, operator_name
+) -> tuple[Optional[str], Optional[str]]:
+    if not EVIDENCE_FORUM_CHANNEL_ID:
+        return None, None
+
+    channel = bot.get_channel(EVIDENCE_FORUM_CHANNEL_ID)
+    if channel is None:
+        try:
+            channel = await bot.fetch_channel(EVIDENCE_FORUM_CHANNEL_ID)
+        except (discord.NotFound, discord.Forbidden, discord.HTTPException) as e:
+            return None, f"Evidence thread not created: could not load the forum channel ({e})."
+
+    if not isinstance(channel, discord.ForumChannel):
+        return None, "Evidence thread not created: EVIDENCE_FORUM_CHANNEL_ID is not a forum channel."
+
+    description = _short_reason(reason)
+
+    label = ""
+    vrc_link = None
+    if vrchat_id:
+        try:
+            vrc_user = await get_vrchat_user(vrchat_id)
+            label = ((vrc_user or {}).get("username") or "").strip()
+        except Exception:
+            label = ""
+        label = label or str(vrchat_id)
+        vrc_link = f"[{label}](https://vrchat.com/home/user/{vrchat_id})"
+
+    if vrchat_id and discord_id:
+        kind, ids = "VRC & Discord", f"{vrc_link} | {discord_id}"
+    elif vrchat_id:
+        kind, ids = "VRC", vrc_link
+    else:
+        label, kind, ids = str(discord_id), "Discord", str(discord_id)
+
+    content = f"Description: {description}\n{kind}: {ids}"
+    banned_by = f"<@{operator_id}>" if operator_id else f"{operator_name} (dashboard)"
+    content += f"\nBanned by: {banned_by}"
+    name = f"{label} ({kind})"[:100]
+
+    try:
+        created = await channel.create_thread(
+            name=name,
+            content=content,
+            allowed_mentions=discord.AllowedMentions.none(),
+            reason="O-SAVS global ban evidence thread",
+        )
+    except (discord.Forbidden, discord.HTTPException) as e:
+        logging.error(f"[AdminCore] Failed to create evidence thread: {e}")
+        return None, f"Evidence thread not created: {e}"
+
+    return created.thread.jump_url, None
+
+async def perform_ban(
+    bot, operator_id, operator_name, target_input: str, reason: str
+) -> dict:
     discord_id, vrchat_id = await resolve_target(target_input)
 
     if not discord_id and not vrchat_id:
         return {"success": False, "error": "Target could not be resolved to a valid Discord User ID or VRChat User ID."}
 
-    target_key = discord_id or vrchat_id
-    if await is_banned(target_key) or (vrchat_id and await is_banned(vrchat_id)):
+    if vrchat_id:
+        vrchat_id = vrchat_id.lower()
+
+    ban_discord, ban_vrchat = discord_id, vrchat_id
+
+    keys = [str(k) for k in (ban_discord, ban_vrchat) if k]
+    if all([await is_banned(k) for k in keys]):
         return {"success": False, "error": f"Target `{target_input}` is already globally banned."}
 
-    await add_banned_user(target_id=target_key, reason=reason, moderator_id=operator_id)
+    for k in keys:
+        if not await is_banned(k):
+            await add_banned_user(target_id=k, reason=reason, moderator_id=operator_id)
 
     removed_count = 0
     did_not_have_count = 0
@@ -341,8 +438,9 @@ async def perform_ban(bot, operator_id, operator_name, target_input: str, reason
     if discord_id:
         await remove_verified_user(discord_id)
 
+    if ban_discord:
         for guild in bot.guilds:
-            member = guild.get_member(discord_id)
+            member = guild.get_member(ban_discord)
             if not member:
                 continue
 
@@ -371,23 +469,50 @@ async def perform_ban(bot, operator_id, operator_name, target_input: str, reason
 
             await asyncio.sleep(0.5)
 
+    thread_url, thread_error = await create_evidence_thread(
+        bot, ban_discord, ban_vrchat, reason, operator_id, operator_name
+    )
+    if thread_error:
+        error_summary.append(f"• {thread_error}")
+
     return {
         "success": True,
-        "discord_id": discord_id,
-        "vrchat_id": vrchat_id,
+        "discord_id": ban_discord,
+        "vrchat_id": ban_vrchat,
         "removed_count": removed_count,
         "did_not_have_count": did_not_have_count,
+        "evidence_thread": thread_url,
         "errors": error_summary,
     }
 
 async def perform_unban(bot, operator_id, operator_name, target_input: str, reason: str) -> dict:
     discord_id, vrchat_id = await resolve_target(target_input)
 
+    keys = {str(k).strip() for k in (discord_id, vrchat_id, target_input.strip().lower()) if k}
+
+    banned_rows = await get_all_banned_users()
+    entered = next((r for r in banned_rows if str(r["target_id"]).strip() in keys), None)
+    if entered:
+        entered_is_discord = _looks_like_discord_id(str(entered["target_id"]).strip())
+        for r in banned_rows:
+            rid = str(r["target_id"]).strip()
+            if (
+                rid not in keys
+                and _looks_like_discord_id(rid) != entered_is_discord
+                and r["reason"] == entered["reason"]
+                and str(r["moderator_id"]) == str(entered["moderator_id"])
+                and r["timestamp"] == entered["timestamp"]
+            ):
+                keys.add(rid)
+                if _looks_like_discord_id(rid):
+                    discord_id = int(rid)
+                else:
+                    vrchat_id = rid
+
     unbanned = False
-    for key in [discord_id, vrchat_id, target_input]:
-        if key and await remove_banned_user(key):
+    for key in keys:
+        if await remove_banned_user(key):
             unbanned = True
-            break
 
     if not unbanned:
         return {"success": False, "error": f"Target `{target_input}` is not currently globally banned."}
@@ -431,8 +556,6 @@ async def apply_maintenance_presence(bot: commands.Bot, enabled: bool):
             logging.warning(f"[AdminCore] Could not restart status loop: {e}")
 
 async def reload_verification_cog(bot: commands.Bot) -> Optional[str]:
-    """Reloads the verification extension. Returns an error string on failure, None on success.
-    If the reload fails, discord.py rolls back and the old cog stays loaded."""
     try:
         importlib.reload(data_languages)
     except Exception as e:
