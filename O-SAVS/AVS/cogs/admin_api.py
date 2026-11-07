@@ -165,8 +165,21 @@ class AdminAPI(commands.Cog):
 
     async def users(self, request: web.Request):
         self._require_auth(request)
-        linked = await admin_core.get_all_linked_users()
-        return web.json_response({"success": True, "users": linked})
+        try:
+            limit = int(request.query.get("limit", 100))
+            offset = int(request.query.get("offset", 0))
+        except ValueError:
+            return web.json_response({"success": False, "error": "limit and offset must be integers."}, status=400)
+        limit = max(1, min(limit, 500))
+        offset = max(0, offset)
+        page = await admin_core.get_all_linked_users(limit, offset)
+        return web.json_response({
+            "success": True,
+            "users": page["users"],
+            "total": page["total"],
+            "limit": page["limit"],
+            "offset": page["offset"],
+        })
 
     async def banned(self, request: web.Request):
         self._require_auth(request)
@@ -332,7 +345,9 @@ class AdminAPI(commands.Cog):
         target_input = str(body["target_input"])
         reason = str(body["reason"])
 
-        result = await admin_core.perform_ban(self.bot, session["discord_id"], session["username"], target_input, reason)
+        result = await admin_core.perform_ban(
+            self.bot, session["discord_id"], session["username"], target_input, reason
+        )
         await db.log_action(session["username"], "ban", target_input, reason, str(result))
         return web.json_response(result)
 
