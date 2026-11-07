@@ -1,3 +1,4 @@
 PRIMARY_SERVER = YourServer
-GLOBAL_LOG_CHANNEL_ID = ChannelID_InPrimaryServer
+GLOBAL_LOG_CHANNEL_ID = ChannelIDInPrimaryServer
+EVIDENCE_FORUM_CHANNEL_ID = EvidenceForumChannel
 BOT_ID = YourBotID
