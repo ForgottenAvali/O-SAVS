@@ -14,7 +14,7 @@ from data.database import (
     is_vrchat_id_verified,
     add_verified_user,
     save_server_settings,
-    get_all_verified_users,
+    get_verified_among,
     delete_server_settings,
     is_banned,
     get_maintenance_mode,
@@ -66,6 +66,23 @@ def record_language_pick(user_id: int, code: str) -> list[str]:
     else:
         _puzzle_progress[user_id] = (picks, time.monotonic())
     return unlocked
+
+def language_chunks(size: int = 25) -> list[list]:
+    langs = list(LANGUAGES.values())
+    return [langs[i:i + size] for i in range(0, len(langs), size)]
+
+
+def log_invalid_selects(components, path: str = "root"):
+    for i, comp in enumerate(components or []):
+        p = f"{path}.{i}"
+        opts = getattr(comp, "options", None)
+        if opts is not None and not (1 <= len(opts) <= 25):
+            logging.error(f"[Select Check] {p}: {len(opts)} options")
+        for attr in ("children", "components"):
+            log_invalid_selects(getattr(comp, attr, None), p)
+        accessory = getattr(comp, "accessory", None)
+        if accessory is not None:
+            log_invalid_selects([accessory], p)
 
 def generate_code(prefix: str = "AVS-") -> str:
     clean_prefix = prefix.strip() if prefix else "AVS-"
@@ -217,7 +234,9 @@ class BioCheckView(ui.LayoutView):
         if not user_data.get("verification"):
             return await interaction.followup.send(view=notice(get_text("not_age_verified", language), language), ephemeral=True)
 
-        await add_verified_user(interaction.user.id, self.user_id)
+        if not await add_verified_user(interaction.user.id, self.user_id):
+            self.stop()
+            return await interaction.followup.send(view=notice(get_text("linked_vrchat", language, vrc_id=self.user_id), language), ephemeral=True)
 
         origin_role_added = False
 
@@ -329,60 +348,23 @@ def render_steps(lang) -> str:
         lines.append(f"{i}. " + localize(step.replace("{site}", SITE), lang.code))
     return "\n".join(lines) + "\n\n" + lang.done
 
-class MultiLanguageSelect1(ui.Select):
-    def __init__(self, bot: commands.Bot, cog: commands.Cog, server_language: str = DEFAULT_LANGUAGE):
-        all_langs = list(LANGUAGES.values())
-        chunk1 = all_langs[:25]
-        ph1, _, _, _ = get_lang_select_text(server_language)
+class LanguageSelect(ui.Select):
+    def __init__(self, bot: commands.Bot, cog: commands.Cog, server_language: str, chunk: list, index: int):
+        texts = get_lang_select_text(server_language)
+        placeholder = texts[0] if index == 0 else texts[1]
         super().__init__(
-            placeholder=ph1,
+            placeholder=placeholder,
             min_values=1,
             max_values=1,
-            custom_id="ageverify_language_1",
+            custom_id=f"ageverify_language_{index + 1}",
             options=[
                 discord.SelectOption(
-                    label=lang.native, value=lang.code, description=describe_language(lang, server_language), emoji=lang.emoji
+                    label=lang.native,
+                    value=lang.code,
+                    description=describe_language(lang, server_language),
+                    emoji=lang.emoji,
                 )
-                for lang in chunk1
-            ],
-        )
-        self.bot = bot
-        self.cog = cog
-        self.server_language = server_language
-
-    async def callback(self, interaction: Interaction):
-        code = self.values[0]
-        if interaction.message is not None and interaction.message.flags.ephemeral:
-            unlocked = record_language_pick(interaction.user.id, code)
-            await interaction.response.edit_message(
-                view=ConfirmCheck(self.bot, self.cog, code, ephemeral=True, unlocked=unlocked)
-            )
-            return
-
-        settings = await get_server_settings(interaction.guild_id)
-        await interaction.response.edit_message(
-            view=ConfirmCheck(self.bot, self.cog, settings.get("language", DEFAULT_LANGUAGE))
-        )
-        if code in LANGUAGES:
-            await interaction.followup.send(
-                view=ConfirmCheck(self.bot, self.cog, code, ephemeral=True), ephemeral=True
-            )
-
-class MultiLanguageSelect2(ui.Select):
-    def __init__(self, bot: commands.Bot, cog: commands.Cog, server_language: str = DEFAULT_LANGUAGE):
-        all_langs = list(LANGUAGES.values())
-        chunk2 = all_langs[25:]
-        _, ph2, _, _ = get_lang_select_text(server_language)
-        super().__init__(
-            placeholder=ph2,
-            min_values=1,
-            max_values=1,
-            custom_id="ageverify_language_2",
-            options=[
-                discord.SelectOption(
-                    label=lang.native, value=lang.code, description=describe_language(lang, server_language), emoji=lang.emoji
-                )
-                for lang in chunk2
+                for lang in chunk
             ],
         )
         self.bot = bot
@@ -411,12 +393,15 @@ class LanguageModalView(ui.LayoutView):
     def __init__(self, bot: commands.Bot, cog: commands.Cog, server_language: str = DEFAULT_LANGUAGE):
         super().__init__(timeout=300)
         _, _, title, description = get_lang_select_text(server_language)
+        rows = [
+            ui.ActionRow(LanguageSelect(bot, cog, server_language, chunk, i))
+            for i, chunk in enumerate(language_chunks())
+        ]
         self.add_item(ui.Container(
             ui.TextDisplay(f"# {title}"),
             ui.TextDisplay(description),
             sep(),
-            ui.ActionRow(MultiLanguageSelect1(bot, cog, server_language)),
-            ui.ActionRow(MultiLanguageSelect2(bot, cog, server_language))
+            *rows,
         ))
 
 class LanguagePickerButton(ui.Button):
@@ -529,7 +514,7 @@ class VRChatUsername(ui.Modal):
             )
             return await modal_interaction.followup.send(view=invalid_layout, ephemeral=True)
 
-        clean_id = match.group(0)
+        clean_id = match.group(0).lower()
 
         if await is_banned(clean_id):
             return await modal_interaction.followup.send(view=notice(get_text("banned_vrchat", language), language), ephemeral=True)
@@ -831,10 +816,10 @@ class SetupWizardView(ui.LayoutView):
         except discord.Forbidden:
             return await interaction.followup.send(view=notice(f"⚠️ Settings saved, but lacked permissions to send panel in {verify_channel.mention}."), ephemeral=True)
 
-        all_verified = await get_all_verified_users()
+        verified_lookup = await get_verified_among([m.id for m in guild.members])
         synced_count = 0
 
-        for discord_id, vrchat_id in all_verified:
+        for discord_id, vrchat_id in verified_lookup.items():
             member = guild.get_member(discord_id)
             if member and verified_role not in member.roles:
                 if required_role and required_role not in member.roles:
@@ -1236,12 +1221,6 @@ class Verification(commands.Cog):
         await self.bot.wait_until_ready()
         logging.info("[Startup Sync Log] Starting startup verification role sync")
 
-        all_verified = await get_all_verified_users()
-        if not all_verified:
-            logging.info("[Startup Sync Log] No verified users found in database")
-            return
-
-        verified_map = {discord_id: vrchat_id for discord_id, vrchat_id in all_verified}
         synced_count = 0
         error_count = 0
 
@@ -1258,6 +1237,10 @@ class Verification(commands.Cog):
             bot_member = guild.me
             
             if not role or not bot_member.guild_permissions.manage_roles or role >= bot_member.top_role:
+                continue
+
+            verified_map = await get_verified_among([m.id for m in guild.members])
+            if not verified_map:
                 continue
 
             for member in guild.members:
