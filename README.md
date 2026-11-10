@@ -30,13 +30,15 @@ O-SAVS (Open-Source Age Verification System) is a global Discord age-verificatio
 
 1. [How It Works](#how-it-works)
 2. [Features](#features)
-3. [Admin Dashboard](#admin-dashboard)
-4. [Maintenance Mode](#maintenance-mode)
-5. [Self-Hosted Administration](#self-hosted-administration)
-6. [Database Architecture](#database-architecture)
-7. [Installation & Host Setup](#installation--host-setup)
-8. [Community & Team](#community--team)
-9. [Legal & Policies](#legal--policies)
+3. [Server Setup](#server-setup)
+4. [Admin Dashboard](#admin-dashboard)
+5. [Maintenance Mode](#maintenance-mode)
+6. [Self-Hosted Administration](#self-hosted-administration)
+7. [Database Architecture](#database-architecture)
+8. [Installation & Host Setup](#installation--host-setup)
+9. [Project Structure](#project-structure)
+10. [Community & Team](#community--team)
+11. [Legal & Policies](#legal--policies)
 
 ---
 
@@ -44,24 +46,42 @@ O-SAVS (Open-Source Age Verification System) is a global Discord age-verificatio
 
 1. **Request.** A member selects **Age Verify** on a server's verification panel and submits their VRChat account profile link or raw User ID (`usr_...`). The bot issues a unique verification code.
 2. **Placement.** The member places the generated verification code in their VRChat bio.
-3. **Confirmation.** The bot checks the member's VRChat public profile to confirm account ownership and verifies that the account holds official VRChat 18+ age verification status.
+3. **Confirmation.** The member clicks **I've updated my profile**. The bot checks the member's VRChat public profile to confirm account ownership and verifies that the account holds official VRChat 18+ age verification status.
 4. **Assignment & Sync.** Upon verification, the verified role is assigned in the current server and automatically synced across all mutual servers running O-SAVS.
-5. **Localization.** Users can select their preferred language from the dropdown menu on the verification panel to complete the process in any of the 40 supported languages.
+5. **Localization.** Users can press **Change Language** on the verification panel and pick from any of the 40 supported languages. The whole flow (instructions, buttons, prompts, and messages) is then shown in that language. Each server also has a configurable default language.
 
 ---
 
 ## Features
 
 - **Global Verification Sync.** Verify once and be synced automatically across all participating Discord servers.
-- **VRChat Profile Integration.** Generates custom verification codes for users to place in their VRChat bio or status to prove account ownership.
-- **Automated Guild Setup.** The `/setup` slash command configures roles, log channels, and code prefixes.
+- **VRChat Profile Integration.** Generates custom verification codes for users to place in their VRChat bio to prove account ownership.
+- **40 Languages.** The verification panel, prompts, notices, and the setup wizard are fully localized. Users can switch language per session, and servers set their own default.
+- **Interactive Setup Wizard.** The `/setup` slash command creates a private `#verification-logs` channel and walks admins through configuration. See [Server Setup](#server-setup).
+- **Required Pre-Role (Optional).** Servers can require members to hold a specific role before they can verify. The verified role is granted automatically once a verified member acquires the required role.
 - **Role Hierarchy Safety.** Built-in checks prevent configuration failures when managing role assignments.
-- **Auto-Syncing.** Automatically assigns verified roles to existing or joining members who are already in the global database.
+- **Auto-Syncing.** Verified roles are assigned automatically to members who join, to members already in the global database when a server is set up, and to verified members when the bot starts. Globally banned users are skipped.
 - **Panel Updates.** On startup and after every maintenance exit, verification panels are checked and refreshed automatically if their layout has changed.
 - **Maintenance Mode.** Pauses new verifications without taking the bot offline. See [Maintenance Mode](#maintenance-mode).
+- **Global Bans.** Discord and VRChat IDs can be banned globally, and entire servers can be banned. Banned servers are left immediately, and the bot leaves again if re-added. When an evidence forum is configured, each global user ban also opens an evidence thread.
 - **Auto-Cleanup.** Purges a server's configuration from the O-SAVS database upon bot removal. Discord roles, channels, and member verifications are left intact.
+- **Single-Instance Lock.** Prevents two copies of the bot from running on the same host at once.
 - **Admin Dashboard.** A standalone desktop application used by O-SAVS Administration to manage the bot. See [Admin Dashboard](#admin-dashboard).
 - **Self-Hosted Admin Commands.** Slash-command administration for self-hosters, restricted to a configurable list of user IDs. See [Self-Hosted Administration](#self-hosted-administration).
+
+---
+
+## Server Setup
+
+Server administrators run `/setup` (requires the **Administrator** permission). The bot creates or reuses a `#verification-logs` channel locked to admins and the bot, then posts an interactive setup wizard there. Only the person who ran the command can use it.
+
+1. **Default Server Language** (optional). Language used on the panel by default.
+2. **Verified Role** (required). The role granted to verified members. It must sit below the bot's top role.
+3. **Required Pre-Verification Role** (optional). A role members must hold before they can verify.
+4. **Verification Panel Channel** (required). Where the panel is posted.
+5. **Code Prefix** (optional). Prefix for generated codes, defaulting to `AVS-`.
+
+When you press **Complete Setup**, the settings are saved, the verification panel is posted, and every member already in the global database is given the verified role.
 
 ---
 
@@ -70,15 +90,15 @@ O-SAVS (Open-Source Age Verification System) is a global Discord age-verificatio
 O-SAVS Administration manages the bot through a standalone desktop application rather than in-server commands. It communicates with the bot over an authenticated internal HTTP API.
 
 - **Account Management.** Link and unlink Discord–VRChat accounts, and globally ban or unban Discord and VRChat IDs. A dedicated list view separates linked users from banned users.
-- **Server Management.** View every server the bot is in, ban or unban entire servers, and request temporary, single-use support invites for auditing purposes. Banned servers are left immediately, and the bot leaves again if re-added.
+- **Server Management.** View every server the bot is in, ban or unban entire servers, and request temporary, single-use support invites for auditing purposes. Invites are sent to the administrator by direct message, so the dashboard account must be linked to a Discord ID.
 - **Server Removal.** Remove the bot from a server on demand. This action requires the administrator's personal authorization code and a stated reason.
 - **Maintenance Control.** Enter or exit [Maintenance Mode](#maintenance-mode) from the sidebar. This action requires the administrator's personal authorization code.
 - **Audit Logging.** Every administrative action taken through the dashboard is recorded and searchable.
-- **Restricted Access.** Access is limited to authorized administrators through a credentialed login, cross-checked against an internal allow-list of authorized Discord IDs. Failed login attempts are rate-limited.
-- **Session Security.** Saved sessions are stored in the operating system's secure credential store and expire automatically.
+- **Restricted Access.** Access is limited to authorized administrators through a credentialed login. Accounts linked to a Discord ID are cross-checked against the admin allow-list (`utils/administrator_user_ids.json`). Failed login attempts are rate-limited (5 attempts, then a 15-minute lockout), as are failed authorization codes.
+- **Session Security.** Sessions use bearer tokens that expire after 7 days. Saved sessions are stored in the operating system's secure credential store.
 - **Updates.** The application checks for new releases and displays release notes for each version.
 
-> **Authorization codes** are assigned per account by the owner and are required for the most sensitive actions: removing the bot from a server and toggling maintenance mode.
+> **Authorization codes** are 4-digit codes assigned per account and are required for the most sensitive actions: removing the bot from a server and toggling maintenance mode. Create dashboard accounts and set or reset authorization codes with `create_admin.py`.
 
 ---
 
@@ -88,14 +108,14 @@ Maintenance Mode allows administrators to work on the bot remotely without shutt
 
 - **Entering.** The bot's presence changes to offline (invisible). The bot process, API, and database remain running.
 - **While Active.** Selecting **Age Verify** displays an "Under Maintenance" notice instead of the verification form. Members who were already mid-verification are also stopped at submission.
-- **Exiting.** The verification cog is reloaded without restarting the bot, so updated code is applied immediately. Verification panels are then checked and refreshed if they changed, and the bot's status returns to normal.
-- **Failure Handling.** If the verification cog fails to reload (for example, because of a code error), maintenance mode remains active and the error is reported. The bot never returns to service on broken code.
+- **Exiting.** The language files and the verification cog are reloaded without restarting the bot, so updated code is applied immediately. The admin allow-list is reloaded as well. Verification panels are then checked and refreshed if they changed, and the bot's status returns to normal.
+- **Failure Handling.** If the language files or verification cog fail to reload (for example, because of a code error), maintenance mode remains active and the error is reported. The bot never returns to service on broken code. If only the admin list fails to reload, the previous list is kept and a warning is shown.
 - **Persistence.** The maintenance state is stored in the database and survives a bot restart.
 
 Maintenance Mode can be toggled in two ways:
 
 - **Admin Dashboard.** Available to O-SAVS Administration and protected by the administrator's personal authorization code.
-- **`/admin maintenance`.** Available on self-hosted installations and restricted to the user IDs listed in `ADMIN_USER_IDS`.
+- **`/admin maintenance`.** Available on self-hosted installations and restricted to the user IDs in `administrator_user_ids.json`.
 
 ---
 
@@ -104,28 +124,40 @@ Maintenance Mode can be toggled in two ways:
 The bot loads **one** administration cog at startup, in the following order of priority:
 
 1. **`cogs/admin_api.py`** enables the authenticated HTTP API used by the Admin Dashboard.
-2. **`cogs/admin_commands.py`** enables `/admin` slash commands, restricted to the user IDs listed in `ADMIN_USER_IDS`.
+2. **`cogs/admin_commands.py`** enables `/admin` slash commands, restricted to the user IDs in the admin allow-list.
 3. **Neither present.** The bot runs normally without administration tools.
 
-> **Not running the dashboard app?** The Admin Dashboard is only used by O-SAVS Administration. If you are self-hosting, delete `admin_api.py`, `admin_app_db.py`, and `admin_update.py` from the `cogs` folder. The bot will automatically fall back to the slash commands below. Keep `admin_core.py`, which both options depend on. To run with no administration tools at all, also delete `admin_commands.py`.
+> **Not running the dashboard app?** The Admin Dashboard is only used by O-SAVS Administration. If you are self-hosting, delete `admin_api.py`, `admin_app_db.py`, `admin_update.py`, and `create_admin.py`. The bot will automatically fall back to the slash commands below. Keep `admin_core.py`, which both options depend on. To run with no administration tools at all, also delete `admin_commands.py`.
+
+### Admin Allow-List
+
+Administrators are listed by Discord user ID in `utils/administrator_user_ids.json`:
+
+```json
+{
+  "allowed_user_ids": [123456789012345678]
+}
+```
+
+The file is read at startup and again every time maintenance mode is exited, so you can edit it without restarting the bot.
 
 ### Slash Commands
 
-Commands are registered under `/admin` in the server set as `PRIMARY_SERVER`, and may only be used by the user IDs listed in `ADMIN_USER_IDS` in `settings.py`.
+Commands are registered under `/admin` in the server set as `PRIMARY_SERVER`, and may only be used by the user IDs in the allow-list above.
 
 - `/admin link <user> <vrchat_id> [reason]` globally links a Discord user to a VRChat account.
 - `/admin unlink <user> [reason]` globally unlinks a Discord user.
-- `/admin ban <target> <reason>` globally bans a Discord ID or VRChat ID from verifying.
+- `/admin ban <target> <reason>` globally bans a Discord ID or VRChat ID from verifying, and removes the verified role from the user everywhere.
 - `/admin unban <target> <reason>` removes a global ban.
 - `/admin bancheck <target>` checks whether a Discord ID or VRChat ID is banned.
 - `/admin servers` lists the servers the bot is in.
-- `/admin invite <server_id>` sends you a one-hour, single-use invite to a server.
+- `/admin invite <server_id>` sends you a one-hour, single-use invite to a server by direct message.
 - `/admin leave <server_id> <reason>` removes the bot from a server.
 - `/admin serverban <server_id> <reason>` bans a server and leaves it.
 - `/admin serverunban <server_id> <reason>` unbans a server.
 - `/admin maintenance <on|off>` enables or disables [Maintenance Mode](#maintenance-mode).
 
-> Access to these commands is controlled solely by `ADMIN_USER_IDS`. Keep the list limited to people you fully trust.
+> Access to these commands is controlled solely by the admin allow-list. Keep it limited to people you fully trust.
 
 ---
 
@@ -133,15 +165,17 @@ Commands are registered under `/admin` in the server set as `PRIMARY_SERVER`, an
 
 ### Bot Database
 
-- **`server_settings`** stores per-guild configuration. Primary key: `server_id`. Fields: `verified_role`, `verify_channel`, `verification_logs`, `av_start_code`, `required_role`.
-- **`verified_users`** maps Discord accounts to VRChat accounts. Primary key: `discord_id`. Fields: `vrchat_id` (unique).
+Stored in `utils/database.db` (SQLite, WAL mode).
+
+- **`server_settings`** stores per-guild configuration. Primary key: `server_id`. Fields: `verified_role`, `verify_channel`, `verification_logs`, `av_start_code`, `required_role`, `language`.
+- **`verified_users`** maps Discord accounts to VRChat accounts. Primary key: `discord_id`. Fields: `vrchat_id` (unique, stored lowercase).
 - **`banned_users`** holds global user ban records. Primary key: `target_id`, which may be either a Discord ID or a VRChat User ID. Fields: `reason`, `moderator_id`, `timestamp`.
 - **`banned_servers`** holds banned server records. The bot automatically leaves any server listed here. Primary key: `server_id`. Fields: `reason`, `moderator_id`, `timestamp`.
 - **`bot_state`** stores persistent runtime state, such as the maintenance mode flag. Primary key: `key`. Fields: `value`.
 
 ### Admin Database
 
-Used only when the Admin Dashboard API (`admin_api.py`) is installed.
+Stored in `cogs/admin_app.db`. Used only when the Admin Dashboard API (`admin_api.py`) is installed.
 
 - **`admin_accounts`** stores dashboard administrator credentials. Passwords and authorization codes are stored as salted hashes. Primary key: `username`. Fields: `password_hash`, `salt`, `discord_id`, `auth_code_hash`, `auth_code_salt`.
 - **`action_log`** is the audit trail of administrative actions. Primary key: `id`. Fields: `timestamp`, `actor_username`, `action`, `target`, `reason`, `result_summary`.
@@ -159,6 +193,7 @@ Used only when the Admin Dashboard API (`admin_api.py`) is installed.
   - **Manage Channels** (`manage_channels`): Required during `/setup` to create and configure the `#verification-logs` channel with strict overrides.
   - **Send Messages & View Channels**: Required to send panels, interact with users, and post logs.
   - **Embed Links & Attach Files**: Required to render styled UI layouts and status notices.
+  - **Create Invite** (optional): Only needed for the admin invite command and dashboard feature.
 - **VRChat Account** that the bot uses to read public profiles. A dedicated account is recommended.
 
 > **Role Hierarchy Safety:** The bot's top role in your Discord server must be positioned **higher** than the verified role and required pre-roles it is configured to manage.
@@ -191,16 +226,47 @@ Admin Dashboard only:
 
 - `PRIMARY_SERVER`: ID of your main server. The `/admin` commands are registered here, and it is excluded from the public server count.
 - `GLOBAL_LOG_CHANNEL_ID`: ID of the channel in the primary server where global verification events are logged.
+- `EVIDENCE_FORUM_CHANNEL_ID`: ID of a forum channel where an evidence thread is created for each global user ban. Leave unset to disable evidence threads.
 - `BOT_ID`: The bot's own user ID. It is excluded from the verified-user count.
-- `ADMIN_USER_IDS`: List of Discord user IDs allowed to use the `/admin` slash commands.
 
-### 4. Start the Bot
+### 4. Configure the Admin Allow-List
+
+Add the Discord user IDs of your administrators to `utils/administrator_user_ids.json`. See [Admin Allow-List](#admin-allow-list).
+
+### 5. Start the Bot
 
 ```bash
 python bot.py
 ```
 
-On first launch, VRChat may request a two-factor code in the console. Once entered, the session is saved and reused on later launches.
+On first launch, VRChat may request a two-factor code in the console. Once entered, the session token is saved to `utils/vrc_auth_token.json` and reused on later launches. The bot creates its database automatically, so make sure the `utils` folder exists.
+
+---
+
+## Project Structure
+
+```
+bot.py                      Entry point, status loop, startup
+settings.py                 Server and channel IDs
+cogs/
+  verification.py           Verification flow, panels, /setup wizard
+  admin_core.py             Shared admin logic (required by both admin options)
+  admin_api.py              Dashboard HTTP API (optional)
+  admin_app_db.py           Dashboard accounts and audit log (optional)
+  admin_update.py           Dashboard update checks (optional)
+  admin_commands.py         /admin slash commands (optional)
+  create_admin.py           Create dashboard accounts, set authorization codes
+data/
+  database.py               Bot database access
+  languages.py              All localized text
+  vrchat.py                 VRChat API login and profile lookup
+  lock.py                   Single-instance lock
+utils/
+  database.db               Bot database (created automatically)
+  administrator_user_ids.json  Admin allow-list
+  vrc_auth_token.json       Saved VRChat session (created automatically)
+  panel_state.json          Panel layout hash (created automatically)
+```
 
 ---
 
