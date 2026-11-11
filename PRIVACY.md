@@ -1,6 +1,6 @@
 # O-SAVS Privacy Policy
 
-*Last Updated: November 10, 2026*
+*Last Updated: November 11, 2026*
 
 O-SAVS ("the Bot") is committed to protecting user privacy and maintaining transparency regarding data collection, storage, and usage.
 
@@ -17,6 +17,9 @@ To provide global age-verification functionality, O-SAVS stores the following mi
 - **Server Metadata:** Server names and member counts are retrieved live from Discord and shown to O-SAVS Administration in the Admin Dashboard for auditing and support. They are not stored in the bot database, though they may appear in Admin Action Logs as described above.
 - **Verification Logs:** When a user verifies, is linked, unlinked, or banned, a log entry is posted in the `#verification-logs` channel of each affected server, visible to that server's administrators. A global log is also posted in the primary O-SAVS server. These entries include the user's Discord ID, VRChat User ID, and VRChat display name, and the global log also names the origin server.
 
+### Status Check
+If a user chooses the status check, the Bot's VRChat account sends them a friend request and reads their VRChat status message and whether they are friends with the Bot. This is used only to complete that verification and is not stored. The Bot removes the friendship (or withdraws the pending request) once the user is verified or the check expires.
+
 ### Ban Evidence
 When a global ban of a user or server is being reviewed or issued, O-SAVS Administration may store evidence related to that ban, such as message content along with the associated message, author, channel, and server IDs and timestamps. This evidence is kept in a restricted evidence forum on Discord, hosted by Discord and accessible only to authorized O-SAVS Administration. This applies only to content relevant to the ban (see Section 2).
 
@@ -27,7 +30,7 @@ When a global ban of a user or server is being reviewed or issued, O-SAVS Admini
 
 ## 3. How We Use Data
 Collected data is used solely to:
-- Verify that a Discord account is linked to a VRChat profile containing a valid verification code and official VRChat 18+ verification status.
+- Verify that a Discord account is linked to a VRChat profile containing a valid verification code (in the bio, or in the status message when the status check is used) and official VRChat 18+ verification status.
 - Render localized UI components, modals, buttons, and notices in the user's or server's preferred language.
 - Automatically assign verified 18+ roles across mutual Discord servers operating O-SAVS.
 - Maintain global user and server ban lists and audit administrative actions (linking, unlinking, banning, unbanning, ban lookups, server bans, server audits, and temporary support invites) performed through the official O-SAVS Admin Dashboard to protect participating communities from unauthorized or unsafe access.
