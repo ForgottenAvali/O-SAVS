@@ -5,7 +5,7 @@ from discord import Embed
 from discord.ext import commands
 
 import data.languages as data_languages
-from data.vrchat import get_vrchat_user
+import data.vrchat as data_vrchat
 from data.database import (
     get_verified_users_page,
     get_discord_id_from_vrchat,
@@ -62,7 +62,7 @@ async def resolve_target(target_input: str) -> tuple[Optional[int], Optional[str
     discord_id = await get_discord_id_from_vrchat(vrchat_id)
 
     if not discord_id:
-        vrc_user = await get_vrchat_user(vrchat_id)
+        vrc_user = await data_vrchat.get_vrchat_user(vrchat_id)
         if vrc_user:
             vrchat_id = vrc_user.get("id", vrchat_id)
 
@@ -210,7 +210,7 @@ async def send_verify_log(bot, guild, action, member, vrchat_id, operator_id, op
     if not channel or not isinstance(channel, discord.TextChannel):
         return
 
-    vrc_user = await get_vrchat_user(vrchat_id)
+    vrc_user = await data_vrchat.get_vrchat_user(vrchat_id)
     username = vrc_user.get("username", "Unknown User") if vrc_user else "Unknown User"
 
     embed = Embed(title=f"🛡️ {action}", color=discord.Color.red(), timestamp=discord.utils.utcnow())
@@ -233,7 +233,7 @@ async def send_verify_log(bot, guild, action, member, vrchat_id, operator_id, op
         logging.error(f"[AdminCore] Failed to send log in {guild.name} ({guild.id}): {e}")
 
 async def perform_link(bot, operator_id, operator_name, target_user_id: int, vrchat_id: str, reason: Optional[str] = None) -> dict:
-    vrc_user = await get_vrchat_user(vrchat_id)
+    vrc_user = await data_vrchat.get_vrchat_user(vrchat_id)
     if not vrc_user:
         return {"success": False, "error": f"Invalid VRChat User ID or unable to fetch profile for `{vrchat_id}`."}
 
@@ -299,7 +299,7 @@ async def perform_unlink(bot, operator_id, operator_name, target_user_id: int, r
     if not vrchat_id:
         return {"success": False, "error": f"No linked VRChat account found for Discord ID `{target_user_id}`."}
 
-    vrc_user = await get_vrchat_user(vrchat_id)
+    vrc_user = await data_vrchat.get_vrchat_user(vrchat_id)
     username = vrc_user.get("username", "Unknown User") if vrc_user else "Unknown User"
 
     removed = await remove_verified_user(target_user_id)
@@ -378,7 +378,7 @@ async def create_evidence_thread(
     vrc_link = None
     if vrchat_id:
         try:
-            vrc_user = await get_vrchat_user(vrchat_id)
+            vrc_user = await data_vrchat.get_vrchat_user(vrchat_id)
             label = ((vrc_user or {}).get("username") or "").strip()
         except Exception:
             label = ""
@@ -555,6 +555,14 @@ async def apply_maintenance_presence(bot: commands.Bot, enabled: bool):
         except Exception as e:
             logging.warning(f"[AdminCore] Could not restart status loop: {e}")
 
+def reload_vrchat_module() -> Optional[str]:
+    try:
+        importlib.reload(data_vrchat)
+    except Exception as e:
+        logging.error(f"[AdminCore] Failed to reload vrchat.py: {e}", exc_info=e)
+        return f"vrchat.py: {type(e).__name__}: {e}"
+    return None
+
 async def reload_verification_cog(bot: commands.Bot) -> Optional[str]:
     try:
         importlib.reload(data_languages)
@@ -586,6 +594,13 @@ async def perform_set_maintenance(bot: commands.Bot, enabled: bool) -> dict:
             "message": "Maintenance mode is ON. The bot now appears offline and the Age Verify button shows a maintenance notice.",
         }
 
+    error = reload_vrchat_module()
+    if error:
+        return {
+            "success": False,
+            "error": f"VRChat module failed to reload, so maintenance mode is still ON. Fix the error and try again.\n{error}",
+        }
+
     error = await reload_verification_cog(bot)
     if error:
         return {
@@ -598,7 +613,7 @@ async def perform_set_maintenance(bot: commands.Bot, enabled: bool) -> dict:
     await set_maintenance_mode(False)
     await apply_maintenance_presence(bot, False)
 
-    message = "Maintenance mode is OFF. The verification cog was reloaded and the panel check is running in the background."
+    message = "Maintenance mode is OFF. The VRChat module and verification cog were reloaded and the panel check is running in the background."
     if admin_error:
         message += f"\n⚠️ Admin list could not be reloaded, keeping the previous list: {admin_error}"
     else:
