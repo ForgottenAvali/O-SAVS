@@ -457,7 +457,7 @@ _LANGUAGES = (
         "sk", "🇸🇰", "Slovenčina", "Slovak",
         "Overenie veku 18+ vo VRChate",
         "O overení",
-        "Ak chceš overiť svoj vek, musíš potvrdiť, že tvoj účet VRChat má **overený vek**.", # Fixed overeý -> overený
+        "Ak chceš overiť svoj vek, musíš potvrdiť, že tvoj účet VRChat má **overený vek**.",
         "Postup",
         (
             "Prihlás sa na {site}",
@@ -492,7 +492,7 @@ _LANGUAGES = (
         (
             "Συνδεθείτε στο {site}",
             "Μεταβείτε στο προφίλ σας και αντιγράψτε τον σύνδεσμο",
-            "Κάντε κλικ στο κουμπί `Επαλήθευση ηλικίας` και επικολλήστε τον σύνδεσμο που αντιγράψατε", # Fixed επικολλούμε -> επικολλήστε
+            "Κάντε κλικ στο κουμπί `Επαλήθευση ηλικίας` και επικολλήστε τον σύνδεσμο που αντιγράψατε",
             "Μετά την υποβολή, θα σας δώσουμε έναν κωδικό. Εισαγάγετε αυτόν τον κωδικό στο βιογραφικό (bio) του VRChat",
             "Κάντε κλικ στο κουμπί `Ενημέρωσα το προφίλ μου`",
         ),
@@ -1865,6 +1865,733 @@ def get_text(key: str, code=None, **values) -> str:
     values.setdefault("support", SUPPORT)
     return re.sub(r"\{(\w+)\}", lambda m: str(values.get(m.group(1), m.group(0))), text)
 
+_STATUS_TEXT = {
+    "en": {
+        "switch_hint": "Don't want the code in your bio? Use a status check instead. I'll send you a friend request on VRChat.",
+        "switch_button": "Use Status Check Instead",
+        "title": "Status Check",
+        "subtitle": "Verifying {username} with your VRChat status",
+        "steps": (
+            "1. Open VRChat and accept the friend request from **{bot}**.\n"
+            "2. Set your VRChat status message to the code below.\n"
+            "3. Press the button once you've done both."
+        ),
+        "after": "Once you're verified I'll remove you from my friends list, and you can change your status back.",
+        "check_button": "I've accepted & set my status",
+        "request_failed": "❌ I couldn't send a friend request to that VRChat account right now. Please try again shortly, or use the bio check instead.",
+        "rate_limited": "⚠️ VRChat is limiting friend requests right now. Please try again in a few minutes, or use the bio check instead.",
+        "cooldown": "⚠️ Please wait {seconds}s before starting another status check, or use the bio check instead.",
+        "not_friend": "❌ You haven't accepted the friend request from **{bot}** yet. Accept it in VRChat, then press the button again.",
+        "status_missing": "❌ I couldn't find the code `{verification_code}` in your VRChat status message. Set your status message to the code and try again.",
+    },
+    "de": {
+        "switch_hint": "Du möchtest den Code nicht in deiner Bio haben? Nutze stattdessen die Statusprüfung. Ich sende dir eine Freundschaftsanfrage auf VRChat.",
+        "switch_button": "Stattdessen Statusprüfung nutzen",
+        "title": "Statusprüfung",
+        "subtitle": "{username} wird mit deinem VRChat-Status verifiziert",
+        "steps": (
+            "1. Öffne VRChat und nimm die Freundschaftsanfrage von **{bot}** an.\n"
+            "2. Setze deine VRChat-Statusnachricht auf den untenstehenden Code.\n"
+            "3. Drücke den Button, sobald du beides erledigt hast."
+        ),
+        "after": "Sobald du verifiziert bist, entferne ich dich aus meiner Freundesliste und du kannst deinen Status zurücksetzen.",
+        "check_button": "Angenommen & Status gesetzt",
+        "request_failed": "❌ Ich konnte gerade keine Freundschaftsanfrage an dieses VRChat-Konto senden. Bitte versuche es gleich noch einmal oder nutze stattdessen die Bio-Prüfung.",
+        "rate_limited": "⚠️ VRChat begrenzt derzeit Freundschaftsanfragen. Bitte versuche es in ein paar Minuten erneut oder nutze stattdessen die Bio-Prüfung.",
+        "cooldown": "⚠️ Bitte warte {seconds} s, bevor du eine weitere Statusprüfung startest, oder nutze stattdessen die Bio-Prüfung.",
+        "not_friend": "❌ Du hast die Freundschaftsanfrage von **{bot}** noch nicht angenommen. Nimm sie in VRChat an und drücke dann erneut den Button.",
+        "status_missing": "❌ Ich konnte den Code `{verification_code}` nicht in deiner VRChat-Statusnachricht finden. Setze deine Statusnachricht auf den Code und versuche es erneut.",
+    },
+    "es": {
+        "switch_hint": "¿No quieres el código en tu biografía? Usa la comprobación por estado. Te enviaré una solicitud de amistad en VRChat.",
+        "switch_button": "Usar comprobación por estado",
+        "title": "Comprobación por estado",
+        "subtitle": "Verificando a {username} con tu estado de VRChat",
+        "steps": (
+            "1. Abre VRChat y acepta la solicitud de amistad de **{bot}**.\n"
+            "2. Establece tu mensaje de estado de VRChat con el código de abajo.\n"
+            "3. Pulsa el botón cuando hayas hecho ambas cosas."
+        ),
+        "after": "Cuando estés verificado te eliminaré de mi lista de amigos y podrás restablecer tu estado.",
+        "check_button": "He aceptado y puesto mi estado",
+        "request_failed": "❌ No pude enviar una solicitud de amistad a esa cuenta de VRChat en este momento. Inténtalo de nuevo en breve o usa la comprobación por biografía.",
+        "rate_limited": "⚠️ VRChat está limitando las solicitudes de amistad ahora mismo. Inténtalo de nuevo en unos minutos o usa la comprobación por biografía.",
+        "cooldown": "⚠️ Espera {seconds} s antes de iniciar otra comprobación por estado, o usa la comprobación por biografía.",
+        "not_friend": "❌ Aún no has aceptado la solicitud de amistad de **{bot}**. Acéptala en VRChat y vuelve a pulsar el botón.",
+        "status_missing": "❌ No encontré el código `{verification_code}` en tu mensaje de estado de VRChat. Establece tu mensaje de estado con el código e inténtalo de nuevo.",
+    },
+    "es-419": {
+        "switch_hint": "¿No quieres el código en tu biografía? Usa la verificación por estado. Te enviaré una solicitud de amistad en VRChat.",
+        "switch_button": "Usar verificación por estado",
+        "title": "Verificación por estado",
+        "subtitle": "Verificando a {username} con tu estado de VRChat",
+        "steps": (
+            "1. Abre VRChat y acepta la solicitud de amistad de **{bot}**.\n"
+            "2. Configura tu mensaje de estado de VRChat con el código de abajo.\n"
+            "3. Haz clic en el botón cuando hayas hecho ambas cosas."
+        ),
+        "after": "Una vez que estés verificado, te eliminaré de mi lista de amigos y podrás cambiar tu estado de nuevo.",
+        "check_button": "Ya acepté y configuré mi estado",
+        "request_failed": "❌ No pude enviar una solicitud de amistad a esa cuenta de VRChat en este momento. Inténtalo de nuevo en un momento o usa la verificación por biografía.",
+        "rate_limited": "⚠️ VRChat está limitando las solicitudes de amistad en este momento. Inténtalo de nuevo en unos minutos o usa la verificación por biografía.",
+        "cooldown": "⚠️ Espera {seconds} s antes de iniciar otra verificación por estado, o usa la verificación por biografía.",
+        "not_friend": "❌ Aún no has aceptado la solicitud de amistad de **{bot}**. Acéptala en VRChat y vuelve a hacer clic en el botón.",
+        "status_missing": "❌ No encontré el código `{verification_code}` en tu mensaje de estado de VRChat. Configura tu mensaje de estado con el código e inténtalo de nuevo.",
+    },
+    "it": {
+        "switch_hint": "Non vuoi il codice nella tua bio? Usa invece il controllo tramite stato. Ti invierò una richiesta di amicizia su VRChat.",
+        "switch_button": "Usa il controllo dello stato",
+        "title": "Controllo dello stato",
+        "subtitle": "Verifica di {username} tramite il tuo stato VRChat",
+        "steps": (
+            "1. Apri VRChat e accetta la richiesta di amicizia di **{bot}**.\n"
+            "2. Imposta il tuo messaggio di stato di VRChat con il codice qui sotto.\n"
+            "3. Premi il pulsante dopo aver fatto entrambe le cose."
+        ),
+        "after": "Una volta verificato ti rimuoverò dalla mia lista amici e potrai ripristinare il tuo stato.",
+        "check_button": "Ho accettato e impostato lo stato",
+        "request_failed": "❌ Al momento non sono riuscito a inviare una richiesta di amicizia a quell'account VRChat. Riprova a breve oppure usa invece il controllo della bio.",
+        "rate_limited": "⚠️ VRChat sta limitando le richieste di amicizia in questo momento. Riprova tra qualche minuto oppure usa invece il controllo della bio.",
+        "cooldown": "⚠️ Attendi {seconds}s prima di avviare un altro controllo dello stato, oppure usa il controllo della bio.",
+        "not_friend": "❌ Non hai ancora accettato la richiesta di amicizia di **{bot}**. Accettala in VRChat, poi premi di nuovo il pulsante.",
+        "status_missing": "❌ Non ho trovato il codice `{verification_code}` nel tuo messaggio di stato VRChat. Imposta il messaggio di stato con il codice e riprova.",
+    },
+    "hu": {
+        "switch_hint": "Nem szeretnéd a kódot a bioban? Használd inkább az állapotellenőrzést. Küldök neked egy barátkérelmet a VRChaten.",
+        "switch_button": "Állapotellenőrzés használata",
+        "title": "Állapotellenőrzés",
+        "subtitle": "{username} hitelesítése a VRChat-állapotoddal",
+        "steps": (
+            "1. Nyisd meg a VRChatet, és fogadd el **{bot}** barátkérelmét.\n"
+            "2. Állítsd a VRChat-állapotüzenetedet az alábbi kódra.\n"
+            "3. Nyomd meg a gombot, ha mindkettővel végeztél."
+        ),
+        "after": "Miután hitelesítettél, eltávolítalak az ismerőseim közül, és visszaállíthatod az állapotodat.",
+        "check_button": "Elfogadtam és beállítottam",
+        "request_failed": "❌ Most nem tudtam barátkérelmet küldeni ennek a VRChat-fióknak. Próbáld újra hamarosan, vagy használd inkább a bio-ellenőrzést.",
+        "rate_limited": "⚠️ A VRChat jelenleg korlátozza a barátkérelmeket. Próbáld újra néhány perc múlva, vagy használd inkább a bio-ellenőrzést.",
+        "cooldown": "⚠️ Várj {seconds} mp-et, mielőtt újabb állapotellenőrzést indítasz, vagy használd a bio-ellenőrzést.",
+        "not_friend": "❌ Még nem fogadtad el **{bot}** barátkérelmét. Fogadd el a VRChatben, majd nyomd meg újra a gombot.",
+        "status_missing": "❌ Nem találtam a(z) `{verification_code}` kódot a VRChat-állapotüzenetedben. Állítsd az állapotüzeneted a kódra, és próbáld újra.",
+    },
+    "nl": {
+        "switch_hint": "Wil je de code niet in je bio? Gebruik dan de statuscontrole. Ik stuur je een vriendschapsverzoek op VRChat.",
+        "switch_button": "Statuscontrole gebruiken",
+        "title": "Statuscontrole",
+        "subtitle": "{username} verifiëren met je VRChat-status",
+        "steps": (
+            "1. Open VRChat en accepteer het vriendschapsverzoek van **{bot}**.\n"
+            "2. Zet je VRChat-statusbericht op de onderstaande code.\n"
+            "3. Druk op de knop zodra je beide hebt gedaan."
+        ),
+        "after": "Zodra je geverifieerd bent, verwijder ik je uit mijn vriendenlijst en kun je je status terugzetten.",
+        "check_button": "Geaccepteerd en status ingesteld",
+        "request_failed": "❌ Ik kon nu geen vriendschapsverzoek naar dat VRChat-account sturen. Probeer het zo meteen opnieuw of gebruik de biocontrole.",
+        "rate_limited": "⚠️ VRChat beperkt op dit moment vriendschapsverzoeken. Probeer het over een paar minuten opnieuw of gebruik de biocontrole.",
+        "cooldown": "⚠️ Wacht {seconds}s voordat je een nieuwe statuscontrole start, of gebruik de biocontrole.",
+        "not_friend": "❌ Je hebt het vriendschapsverzoek van **{bot}** nog niet geaccepteerd. Accepteer het in VRChat en druk dan opnieuw op de knop.",
+        "status_missing": "❌ Ik kon de code `{verification_code}` niet vinden in je VRChat-statusbericht. Zet je statusbericht op de code en probeer het opnieuw.",
+    },
+    "pl": {
+        "switch_hint": "Nie chcesz kodu w swoim opisie (bio)? Użyj zamiast tego weryfikacji przez status. Wyślę Ci zaproszenie do znajomych w VRChat.",
+        "switch_button": "Użyj weryfikacji przez status",
+        "title": "Weryfikacja przez status",
+        "subtitle": "Weryfikacja użytkownika {username} za pomocą Twojego statusu VRChat",
+        "steps": (
+            "1. Otwórz VRChat i zaakceptuj zaproszenie do znajomych od **{bot}**.\n"
+            "2. Ustaw swój status w VRChat na poniższy kod.\n"
+            "3. Naciśnij przycisk, gdy zrobisz jedno i drugie."
+        ),
+        "after": "Gdy zostaniesz zweryfikowany/a, usunę Cię z listy znajomych, a Ty będziesz mógł/mogła przywrócić swój status.",
+        "check_button": "Zaakceptowano i ustawiono status",
+        "request_failed": "❌ Nie udało mi się teraz wysłać zaproszenia do znajomych temu kontu VRChat. Spróbuj ponownie za chwilę lub użyj weryfikacji przez opis (bio).",
+        "rate_limited": "⚠️ VRChat ogranicza teraz zaproszenia do znajomych. Spróbuj ponownie za kilka minut lub użyj weryfikacji przez opis (bio).",
+        "cooldown": "⚠️ Odczekaj {seconds} s przed rozpoczęciem kolejnej weryfikacji przez status lub użyj weryfikacji przez opis (bio).",
+        "not_friend": "❌ Nie zaakceptowano jeszcze zaproszenia do znajomych od **{bot}**. Zaakceptuj je w VRChat, a następnie naciśnij przycisk ponownie.",
+        "status_missing": "❌ Nie znalazłem kodu `{verification_code}` w Twoim statusie VRChat. Ustaw status na ten kod i spróbuj ponownie.",
+    },
+    "pt-BR": {
+        "switch_hint": "Não quer o código na sua bio? Use a verificação por status. Vou enviar um pedido de amizade para você no VRChat.",
+        "switch_button": "Usar verificação por status",
+        "title": "Verificação por status",
+        "subtitle": "Verificando {username} com seu status do VRChat",
+        "steps": (
+            "1. Abra o VRChat e aceite o pedido de amizade de **{bot}**.\n"
+            "2. Defina a mensagem de status do seu VRChat com o código abaixo.\n"
+            "3. Clique no botão quando tiver feito as duas coisas."
+        ),
+        "after": "Depois de verificado, vou remover você da minha lista de amigos e você poderá mudar seu status de volta.",
+        "check_button": "Aceitei e defini meu status",
+        "request_failed": "❌ Não consegui enviar um pedido de amizade para essa conta do VRChat agora. Tente novamente em instantes ou use a verificação por bio.",
+        "rate_limited": "⚠️ O VRChat está limitando pedidos de amizade no momento. Tente novamente em alguns minutos ou use a verificação por bio.",
+        "cooldown": "⚠️ Aguarde {seconds}s antes de iniciar outra verificação por status, ou use a verificação por bio.",
+        "not_friend": "❌ Você ainda não aceitou o pedido de amizade de **{bot}**. Aceite no VRChat e clique no botão novamente.",
+        "status_missing": "❌ Não encontrei o código `{verification_code}` na sua mensagem de status do VRChat. Defina sua mensagem de status com o código e tente novamente.",
+    },
+    "ro": {
+        "switch_hint": "Nu vrei codul în bio? Folosește în schimb verificarea prin status. Îți voi trimite o cerere de prietenie pe VRChat.",
+        "switch_button": "Folosește verificarea prin status",
+        "title": "Verificare prin status",
+        "subtitle": "Se verifică {username} prin statusul tău VRChat",
+        "steps": (
+            "1. Deschide VRChat și acceptă cererea de prietenie de la **{bot}**.\n"
+            "2. Setează mesajul de status VRChat la codul de mai jos.\n"
+            "3. Apasă butonul după ce le-ai făcut pe amândouă."
+        ),
+        "after": "Odată verificat, te voi elimina din lista mea de prieteni și îți poți schimba statusul la loc.",
+        "check_button": "Am acceptat și am setat statusul",
+        "request_failed": "❌ Momentan nu am putut trimite o cerere de prietenie către acel cont VRChat. Încearcă din nou în scurt timp sau folosește verificarea prin bio.",
+        "rate_limited": "⚠️ VRChat limitează momentan cererile de prietenie. Încearcă din nou peste câteva minute sau folosește verificarea prin bio.",
+        "cooldown": "⚠️ Așteaptă {seconds}s înainte de a începe o altă verificare prin status sau folosește verificarea prin bio.",
+        "not_friend": "❌ Încă nu ai acceptat cererea de prietenie de la **{bot}**. Acceptă-o în VRChat, apoi apasă din nou butonul.",
+        "status_missing": "❌ Nu am găsit codul `{verification_code}` în mesajul tău de status VRChat. Setează mesajul de status la cod și încearcă din nou.",
+    },
+    "sv": {
+        "switch_hint": "Vill du inte ha koden i din bio? Använd statuskontroll i stället. Jag skickar en vänförfrågan till dig på VRChat.",
+        "switch_button": "Använd statuskontroll i stället",
+        "title": "Statuskontroll",
+        "subtitle": "Verifierar {username} med din VRChat-status",
+        "steps": (
+            "1. Öppna VRChat och acceptera vänförfrågan från **{bot}**.\n"
+            "2. Ställ in ditt VRChat-statusmeddelande på koden nedan.\n"
+            "3. Tryck på knappen när du har gjort båda."
+        ),
+        "after": "När du är verifierad tar jag bort dig från min vänlista och du kan ändra tillbaka din status.",
+        "check_button": "Jag har accepterat och ställt in status",
+        "request_failed": "❌ Jag kunde inte skicka en vänförfrågan till det VRChat-kontot just nu. Försök igen om en stund eller använd biokontrollen i stället.",
+        "rate_limited": "⚠️ VRChat begränsar vänförfrågningar just nu. Försök igen om några minuter eller använd biokontrollen i stället.",
+        "cooldown": "⚠️ Vänta {seconds} s innan du startar en ny statuskontroll, eller använd biokontrollen.",
+        "not_friend": "❌ Du har inte accepterat vänförfrågan från **{bot}** än. Acceptera den i VRChat och tryck sedan på knappen igen.",
+        "status_missing": "❌ Jag hittade inte koden `{verification_code}` i ditt VRChat-statusmeddelande. Ställ in ditt statusmeddelande på koden och försök igen.",
+    },
+    "vi": {
+        "switch_hint": "Không muốn để mã trong tiểu sử? Hãy dùng kiểm tra trạng thái. Mình sẽ gửi cho bạn một lời mời kết bạn trên VRChat.",
+        "switch_button": "Dùng kiểm tra trạng thái",
+        "title": "Kiểm tra trạng thái",
+        "subtitle": "Đang xác minh {username} bằng trạng thái VRChat của bạn",
+        "steps": (
+            "1. Mở VRChat và chấp nhận lời mời kết bạn từ **{bot}**.\n"
+            "2. Đặt thông điệp trạng thái VRChat của bạn thành mã bên dưới.\n"
+            "3. Nhấn nút sau khi bạn đã làm xong cả hai."
+        ),
+        "after": "Sau khi bạn được xác minh, mình sẽ xóa bạn khỏi danh sách bạn bè và bạn có thể đổi lại trạng thái.",
+        "check_button": "Tôi đã chấp nhận & đặt trạng thái",
+        "request_failed": "❌ Hiện mình không thể gửi lời mời kết bạn tới tài khoản VRChat đó. Vui lòng thử lại sau ít phút hoặc dùng kiểm tra tiểu sử.",
+        "rate_limited": "⚠️ VRChat đang giới hạn lời mời kết bạn. Vui lòng thử lại sau vài phút hoặc dùng kiểm tra tiểu sử.",
+        "cooldown": "⚠️ Vui lòng chờ {seconds} giây trước khi bắt đầu một lần kiểm tra trạng thái khác, hoặc dùng kiểm tra tiểu sử.",
+        "not_friend": "❌ Bạn chưa chấp nhận lời mời kết bạn từ **{bot}**. Hãy chấp nhận trong VRChat rồi nhấn lại nút.",
+        "status_missing": "❌ Mình không tìm thấy mã `{verification_code}` trong thông điệp trạng thái VRChat của bạn. Hãy đặt thông điệp trạng thái thành mã rồi thử lại.",
+    },
+    "tr": {
+        "switch_hint": "Kodun biyografinde olmasını istemiyor musun? Bunun yerine durum kontrolünü kullan. Sana VRChat'te bir arkadaşlık isteği göndereceğim.",
+        "switch_button": "Bunun Yerine Durum Kontrolü",
+        "title": "Durum Kontrolü",
+        "subtitle": "{username} kullanıcısı VRChat durumunla doğrulanıyor",
+        "steps": (
+            "1. VRChat'i aç ve **{bot}** tarafından gelen arkadaşlık isteğini kabul et.\n"
+            "2. VRChat durum mesajını aşağıdaki kod olarak ayarla.\n"
+            "3. İkisini de yaptığında düğmeye bas."
+        ),
+        "after": "Doğrulandıktan sonra seni arkadaş listemden çıkaracağım, durumunu da eski haline getirebilirsin.",
+        "check_button": "Kabul ettim ve durumumu ayarladım",
+        "request_failed": "❌ Şu anda o VRChat hesabına arkadaşlık isteği gönderemedim. Lütfen birazdan tekrar dene veya biyografi kontrolünü kullan.",
+        "rate_limited": "⚠️ VRChat şu anda arkadaşlık isteklerini sınırlıyor. Lütfen birkaç dakika sonra tekrar dene veya biyografi kontrolünü kullan.",
+        "cooldown": "⚠️ Başka bir durum kontrolü başlatmadan önce lütfen {seconds} sn bekle veya biyografi kontrolünü kullan.",
+        "not_friend": "❌ **{bot}** tarafından gönderilen arkadaşlık isteğini henüz kabul etmedin. VRChat'te kabul et, ardından düğmeye tekrar bas.",
+        "status_missing": "❌ `{verification_code}` kodunu VRChat durum mesajında bulamadım. Durum mesajını bu kod olarak ayarla ve tekrar dene.",
+    },
+    "cs": {
+        "switch_hint": "Nechceš kód v bio? Použij místo toho kontrolu stavu. Pošlu ti ve VRChatu žádost o přátelství.",
+        "switch_button": "Použít kontrolu stavu",
+        "title": "Kontrola stavu",
+        "subtitle": "Ověřování uživatele {username} pomocí tvého stavu ve VRChatu",
+        "steps": (
+            "1. Otevři VRChat a přijmi žádost o přátelství od **{bot}**.\n"
+            "2. Nastav svůj stav ve VRChatu na kód níže.\n"
+            "3. Až budeš mít obojí hotové, stiskni tlačítko."
+        ),
+        "after": "Jakmile budeš ověřen, odeberu tě ze svých přátel a svůj stav můžeš vrátit zpět.",
+        "check_button": "Přijal/a jsem a nastavil/a stav",
+        "request_failed": "❌ Teď se mi nepodařilo odeslat žádost o přátelství tomuto účtu VRChat. Zkus to za chvíli znovu, nebo použij kontrolu bia.",
+        "rate_limited": "⚠️ VRChat momentálně omezuje žádosti o přátelství. Zkus to znovu za několik minut, nebo použij kontrolu bia.",
+        "cooldown": "⚠️ Počkej {seconds} s, než spustíš další kontrolu stavu, nebo použij kontrolu bia.",
+        "not_friend": "❌ Žádost o přátelství od **{bot}** jsi zatím nepřijal/a. Přijmi ji ve VRChatu a pak znovu stiskni tlačítko.",
+        "status_missing": "❌ Kód `{verification_code}` jsem ve tvém stavu ve VRChatu nenašel. Nastav svůj stav na tento kód a zkus to znovu.",
+    },
+    "ru": {
+        "switch_hint": "Не хотите размещать код в описании (bio)? Используйте проверку по статусу. Я отправлю вам запрос в друзья в VRChat.",
+        "switch_button": "Проверка по статусу",
+        "title": "Проверка по статусу",
+        "subtitle": "Верификация {username} по вашему статусу VRChat",
+        "steps": (
+            "1. Откройте VRChat и примите запрос в друзья от **{bot}**.\n"
+            "2. Установите в качестве статуса VRChat код, указанный ниже.\n"
+            "3. Нажмите кнопку, когда сделаете и то и другое."
+        ),
+        "after": "После верификации я удалю вас из списка друзей, и вы сможете вернуть прежний статус.",
+        "check_button": "Принял(а) и установил(а) статус",
+        "request_failed": "❌ Сейчас не удалось отправить запрос в друзья этому аккаунту VRChat. Повторите попытку чуть позже или воспользуйтесь проверкой по описанию (bio).",
+        "rate_limited": "⚠️ VRChat сейчас ограничивает запросы в друзья. Повторите попытку через несколько минут или воспользуйтесь проверкой по описанию (bio).",
+        "cooldown": "⚠️ Подождите {seconds} с, прежде чем начинать новую проверку по статусу, или воспользуйтесь проверкой по описанию (bio).",
+        "not_friend": "❌ Вы ещё не приняли запрос в друзья от **{bot}**. Примите его в VRChat и снова нажмите кнопку.",
+        "status_missing": "❌ Не удалось найти код `{verification_code}` в вашем статусе VRChat. Установите код в качестве статуса и повторите попытку.",
+    },
+    "uk": {
+        "switch_hint": "Не хочете розміщувати код в описі (bio)? Скористайтеся перевіркою за статусом. Я надішлю вам запит у друзі у VRChat.",
+        "switch_button": "Перевірка за статусом",
+        "title": "Перевірка за статусом",
+        "subtitle": "Верифікація {username} за вашим статусом VRChat",
+        "steps": (
+            "1. Відкрийте VRChat і прийміть запит у друзі від **{bot}**.\n"
+            "2. Встановіть як статус VRChat код, наведений нижче.\n"
+            "3. Натисніть кнопку, коли виконаєте обидва кроки."
+        ),
+        "after": "Після верифікації я видалю вас зі списку друзів, і ви зможете повернути попередній статус.",
+        "check_button": "Прийняв(ла) і встановив(ла) статус",
+        "request_failed": "❌ Зараз не вдалося надіслати запит у друзі цьому обліковому запису VRChat. Спробуйте ще раз трохи пізніше або скористайтеся перевіркою за описом (bio).",
+        "rate_limited": "⚠️ VRChat зараз обмежує запити у друзі. Спробуйте ще раз за кілька хвилин або скористайтеся перевіркою за описом (bio).",
+        "cooldown": "⚠️ Зачекайте {seconds} с, перш ніж починати нову перевірку за статусом, або скористайтеся перевіркою за описом (bio).",
+        "not_friend": "❌ Ви ще не прийняли запит у друзі від **{bot}**. Прийміть його у VRChat і знову натисніть кнопку.",
+        "status_missing": "❌ Не вдалося знайти код `{verification_code}` у вашому статусі VRChat. Встановіть код як статус і повторіть спробу.",
+    },
+    "th": {
+        "switch_hint": "ไม่อยากใส่รหัสในประวัติย่อ (bio) ใช่ไหม? ใช้การตรวจสอบผ่านสถานะแทนได้ เราจะส่งคำขอเป็นเพื่อนให้คุณใน VRChat",
+        "switch_button": "ใช้การตรวจสอบสถานะแทน",
+        "title": "การตรวจสอบสถานะ",
+        "subtitle": "กำลังยืนยัน {username} ด้วยสถานะ VRChat ของคุณ",
+        "steps": (
+            "1. เปิด VRChat แล้วกดยอมรับคำขอเป็นเพื่อนจาก **{bot}**\n"
+            "2. ตั้งข้อความสถานะ VRChat ของคุณเป็นรหัสด้านล่าง\n"
+            "3. กดปุ่มเมื่อทำครบทั้งสองขั้นตอนแล้ว"
+        ),
+        "after": "เมื่อยืนยันเสร็จ เราจะลบคุณออกจากรายชื่อเพื่อน และคุณสามารถเปลี่ยนสถานะกลับได้",
+        "check_button": "ฉันยอมรับและตั้งสถานะแล้ว",
+        "request_failed": "❌ ขณะนี้ไม่สามารถส่งคำขอเป็นเพื่อนไปยังบัญชี VRChat นั้นได้ โปรดลองอีกครั้งในอีกสักครู่ หรือใช้การตรวจสอบผ่านประวัติย่อ (bio) แทน",
+        "rate_limited": "⚠️ ขณะนี้ VRChat จำกัดจำนวนคำขอเป็นเพื่อน โปรดลองอีกครั้งในอีกไม่กี่นาที หรือใช้การตรวจสอบผ่านประวัติย่อ (bio) แทน",
+        "cooldown": "⚠️ โปรดรอ {seconds} วินาที ก่อนเริ่มการตรวจสอบสถานะอีกครั้ง หรือใช้การตรวจสอบผ่านประวัติย่อ (bio) แทน",
+        "not_friend": "❌ คุณยังไม่ได้ยอมรับคำขอเป็นเพื่อนจาก **{bot}** โปรดยอมรับใน VRChat แล้วกดปุ่มอีกครั้ง",
+        "status_missing": "❌ ไม่พบรหัส `{verification_code}` ในข้อความสถานะ VRChat ของคุณ โปรดตั้งข้อความสถานะเป็นรหัสนี้แล้วลองอีกครั้ง",
+    },
+    "zh-CN": {
+        "switch_hint": "不想把验证码放在简介里？可以改用状态验证。我会在 VRChat 上向你发送好友请求。",
+        "switch_button": "改用状态验证",
+        "title": "状态验证",
+        "subtitle": "正在通过你的 VRChat 状态验证 {username}",
+        "steps": (
+            "1. 打开 VRChat，接受来自 **{bot}** 的好友请求。\n"
+            "2. 将你的 VRChat 状态消息设置为下方的验证码。\n"
+            "3. 完成以上两步后，点击按钮。"
+        ),
+        "after": "验证通过后，我会把你从好友列表中移除，你可以把状态改回去。",
+        "check_button": "我已接受并设置状态",
+        "request_failed": "❌ 我暂时无法向该 VRChat 账号发送好友请求。请稍后重试，或改用简介验证。",
+        "rate_limited": "⚠️ VRChat 目前正在限制好友请求。请几分钟后重试，或改用简介验证。",
+        "cooldown": "⚠️ 请等待 {seconds} 秒后再开始新的状态验证，或改用简介验证。",
+        "not_friend": "❌ 你还没有接受来自 **{bot}** 的好友请求。请在 VRChat 中接受后再次点击按钮。",
+        "status_missing": "❌ 在你的 VRChat 状态消息中未找到验证码 `{verification_code}`。请将状态消息设置为该验证码后重试。",
+    },
+    "zh-TW": {
+        "switch_hint": "不想把驗證碼放在簡介裡？可以改用狀態驗證。我會在 VRChat 上向你發送好友邀請。",
+        "switch_button": "改用狀態驗證",
+        "title": "狀態驗證",
+        "subtitle": "正在透過你的 VRChat 狀態驗證 {username}",
+        "steps": (
+            "1. 開啟 VRChat，接受來自 **{bot}** 的好友邀請。\n"
+            "2. 將你的 VRChat 狀態訊息設定為下方的驗證碼。\n"
+            "3. 完成以上兩步後，點擊按鈕。"
+        ),
+        "after": "驗證通過後，我會將你從好友名單中移除，你可以把狀態改回去。",
+        "check_button": "我已接受並設定狀態",
+        "request_failed": "❌ 我暫時無法向該 VRChat 帳號發送好友邀請。請稍後重試，或改用簡介驗證。",
+        "rate_limited": "⚠️ VRChat 目前正在限制好友邀請。請幾分鐘後重試，或改用簡介驗證。",
+        "cooldown": "⚠️ 請等待 {seconds} 秒後再開始新的狀態驗證，或改用簡介驗證。",
+        "not_friend": "❌ 你還沒有接受來自 **{bot}** 的好友邀請。請在 VRChat 中接受後再次點擊按鈕。",
+        "status_missing": "❌ 在你的 VRChat 狀態訊息中找不到驗證碼 `{verification_code}`。請將狀態訊息設定為該驗證碼後重試。",
+    },
+    "ja": {
+        "switch_hint": "コードを自己紹介（bio）に入れたくない場合は、代わりにステータス確認をご利用ください。VRChat でフレンドリクエストを送信します。",
+        "switch_button": "ステータス確認を使う",
+        "title": "ステータス確認",
+        "subtitle": "VRChat のステータスで {username} を認証します",
+        "steps": (
+            "1. VRChat を開き、**{bot}** からのフレンドリクエストを承認します。\n"
+            "2. VRChat のステータスメッセージを下のコードに設定します。\n"
+            "3. 両方終わったらボタンを押します。"
+        ),
+        "after": "認証が完了したらフレンドリストから削除しますので、ステータスは元に戻して構いません。",
+        "check_button": "承認してステータスを設定しました",
+        "request_failed": "❌ 現在、その VRChat アカウントにフレンドリクエストを送信できませんでした。しばらくしてからもう一度お試しいただくか、bio 確認をご利用ください。",
+        "rate_limited": "⚠️ 現在 VRChat がフレンドリクエストを制限しています。数分後にもう一度お試しいただくか、bio 確認をご利用ください。",
+        "cooldown": "⚠️ 次のステータス確認を始めるまで {seconds} 秒お待ちいただくか、bio 確認をご利用ください。",
+        "not_friend": "❌ **{bot}** からのフレンドリクエストをまだ承認していません。VRChat で承認してから、もう一度ボタンを押してください。",
+        "status_missing": "❌ VRChat のステータスメッセージにコード `{verification_code}` が見つかりませんでした。ステータスメッセージをコードに設定してもう一度お試しください。",
+    },
+    "ko": {
+        "switch_hint": "코드를 소개(bio)에 넣고 싶지 않으신가요? 대신 상태 확인을 이용하세요. VRChat에서 친구 요청을 보내드립니다.",
+        "switch_button": "상태 확인 사용하기",
+        "title": "상태 확인",
+        "subtitle": "VRChat 상태 메시지로 {username} 인증 중",
+        "steps": (
+            "1. VRChat을 열고 **{bot}**의 친구 요청을 수락하세요.\n"
+            "2. VRChat 상태 메시지를 아래 코드로 설정하세요.\n"
+            "3. 두 가지를 모두 마쳤다면 버튼을 누르세요."
+        ),
+        "after": "인증이 완료되면 친구 목록에서 삭제해 드리며, 상태 메시지는 원래대로 바꾸셔도 됩니다.",
+        "check_button": "수락하고 상태를 설정했습니다",
+        "request_failed": "❌ 지금은 해당 VRChat 계정에 친구 요청을 보낼 수 없습니다. 잠시 후 다시 시도하거나 소개(bio) 확인을 이용해 주세요.",
+        "rate_limited": "⚠️ 현재 VRChat에서 친구 요청을 제한하고 있습니다. 몇 분 후 다시 시도하거나 소개(bio) 확인을 이용해 주세요.",
+        "cooldown": "⚠️ 다른 상태 확인을 시작하기 전에 {seconds}초 기다리시거나 소개(bio) 확인을 이용해 주세요.",
+        "not_friend": "❌ 아직 **{bot}**의 친구 요청을 수락하지 않으셨습니다. VRChat에서 수락한 후 버튼을 다시 눌러 주세요.",
+        "status_missing": "❌ VRChat 상태 메시지에서 코드 `{verification_code}`을(를) 찾을 수 없습니다. 상태 메시지를 코드로 설정하고 다시 시도해 주세요.",
+    },
+    "fr": {
+        "switch_hint": "Vous ne voulez pas du code dans votre bio ? Utilisez plutôt la vérification par statut. Je vous enverrai une demande d'ami sur VRChat.",
+        "switch_button": "Utiliser la vérification par statut",
+        "title": "Vérification par statut",
+        "subtitle": "Vérification de {username} avec votre statut VRChat",
+        "steps": (
+            "1. Ouvrez VRChat et acceptez la demande d'ami de **{bot}**.\n"
+            "2. Définissez votre message de statut VRChat sur le code ci-dessous.\n"
+            "3. Appuyez sur le bouton une fois les deux étapes terminées."
+        ),
+        "after": "Une fois vérifié, je vous retirerai de ma liste d'amis et vous pourrez remettre votre statut d'origine.",
+        "check_button": "J'ai accepté et défini mon statut",
+        "request_failed": "❌ Je n'ai pas pu envoyer de demande d'ami à ce compte VRChat pour le moment. Veuillez réessayer dans un instant ou utiliser la vérification par bio.",
+        "rate_limited": "⚠️ VRChat limite actuellement les demandes d'ami. Veuillez réessayer dans quelques minutes ou utiliser la vérification par bio.",
+        "cooldown": "⚠️ Veuillez patienter {seconds} s avant de lancer une autre vérification par statut, ou utilisez la vérification par bio.",
+        "not_friend": "❌ Vous n'avez pas encore accepté la demande d'ami de **{bot}**. Acceptez-la dans VRChat, puis appuyez de nouveau sur le bouton.",
+        "status_missing": "❌ Je n'ai pas trouvé le code `{verification_code}` dans votre message de statut VRChat. Définissez votre message de statut sur le code et réessayez.",
+    },
+    "ar": {
+        "switch_hint": "لا تريد الرمز في السيرة الذاتية (bio)؟ استخدم التحقق عبر الحالة بدلاً من ذلك. سأرسل لك طلب صداقة على VRChat.",
+        "switch_button": "استخدام التحقق عبر الحالة",
+        "title": "التحقق عبر الحالة",
+        "subtitle": "جارٍ التحقق من {username} باستخدام حالة VRChat الخاصة بك",
+        "steps": (
+            "1. افتح VRChat واقبل طلب الصداقة من **{bot}**.\n"
+            "2. اضبط رسالة حالة VRChat الخاصة بك على الرمز أدناه.\n"
+            "3. اضغط على الزر بعد إتمام الخطوتين."
+        ),
+        "after": "بمجرد التحقق منك سأزيلك من قائمة أصدقائي، ويمكنك إعادة حالتك كما كانت.",
+        "check_button": "قبلت الطلب وضبطت حالتي",
+        "request_failed": "❌ تعذّر عليّ إرسال طلب صداقة إلى حساب VRChat هذا الآن. يرجى المحاولة مرة أخرى بعد قليل أو استخدام التحقق عبر السيرة الذاتية (bio).",
+        "rate_limited": "⚠️ يقوم VRChat حاليًا بتقييد طلبات الصداقة. يرجى المحاولة مرة أخرى بعد بضع دقائق أو استخدام التحقق عبر السيرة الذاتية (bio).",
+        "cooldown": "⚠️ يرجى الانتظار {seconds} ثانية قبل بدء تحقق آخر عبر الحالة، أو استخدام التحقق عبر السيرة الذاتية (bio).",
+        "not_friend": "❌ لم تقبل طلب الصداقة من **{bot}** بعد. اقبله في VRChat ثم اضغط على الزر مرة أخرى.",
+        "status_missing": "❌ لم أجد الرمز `{verification_code}` في رسالة حالة VRChat الخاصة بك. اضبط رسالة الحالة على الرمز وحاول مرة أخرى.",
+    },
+    "id": {
+        "switch_hint": "Tidak ingin kode di bio Anda? Gunakan pemeriksaan status sebagai gantinya. Saya akan mengirimkan permintaan pertemanan kepada Anda di VRChat.",
+        "switch_button": "Gunakan Pemeriksaan Status",
+        "title": "Pemeriksaan Status",
+        "subtitle": "Memverifikasi {username} dengan status VRChat Anda",
+        "steps": (
+            "1. Buka VRChat dan terima permintaan pertemanan dari **{bot}**.\n"
+            "2. Atur pesan status VRChat Anda menjadi kode di bawah.\n"
+            "3. Tekan tombol setelah Anda menyelesaikan keduanya."
+        ),
+        "after": "Setelah Anda terverifikasi, saya akan menghapus Anda dari daftar teman saya, dan Anda dapat mengubah status Anda kembali.",
+        "check_button": "Sudah diterima & status diatur",
+        "request_failed": "❌ Saya tidak dapat mengirim permintaan pertemanan ke akun VRChat tersebut saat ini. Silakan coba lagi sebentar lagi, atau gunakan pemeriksaan bio.",
+        "rate_limited": "⚠️ VRChat sedang membatasi permintaan pertemanan. Silakan coba lagi dalam beberapa menit, atau gunakan pemeriksaan bio.",
+        "cooldown": "⚠️ Harap tunggu {seconds} detik sebelum memulai pemeriksaan status lainnya, atau gunakan pemeriksaan bio.",
+        "not_friend": "❌ Anda belum menerima permintaan pertemanan dari **{bot}**. Terima di VRChat, lalu tekan tombol lagi.",
+        "status_missing": "❌ Saya tidak menemukan kode `{verification_code}` di pesan status VRChat Anda. Atur pesan status Anda menjadi kode tersebut dan coba lagi.",
+    },
+    "pt-PT": {
+        "switch_hint": "Não quer o código na sua bio? Use antes a verificação por estado. Vou enviar-lhe um pedido de amizade no VRChat.",
+        "switch_button": "Usar verificação por estado",
+        "title": "Verificação por estado",
+        "subtitle": "A verificar {username} com o seu estado do VRChat",
+        "steps": (
+            "1. Abra o VRChat e aceite o pedido de amizade de **{bot}**.\n"
+            "2. Defina a mensagem de estado do seu VRChat com o código abaixo.\n"
+            "3. Clique no botão quando tiver feito ambas as coisas."
+        ),
+        "after": "Depois de verificado, vou removê-lo da minha lista de amigos e poderá repor o seu estado.",
+        "check_button": "Aceitei e defini o meu estado",
+        "request_failed": "❌ Não consegui enviar um pedido de amizade a essa conta do VRChat neste momento. Tente novamente daqui a pouco ou use a verificação por bio.",
+        "rate_limited": "⚠️ O VRChat está a limitar os pedidos de amizade neste momento. Tente novamente dentro de alguns minutos ou use a verificação por bio.",
+        "cooldown": "⚠️ Aguarde {seconds}s antes de iniciar outra verificação por estado, ou use a verificação por bio.",
+        "not_friend": "❌ Ainda não aceitou o pedido de amizade de **{bot}**. Aceite-o no VRChat e clique novamente no botão.",
+        "status_missing": "❌ Não encontrei o código `{verification_code}` na sua mensagem de estado do VRChat. Defina a mensagem de estado com o código e tente novamente.",
+    },
+    "fil": {
+        "switch_hint": "Ayaw mong ilagay ang code sa iyong bio? Gamitin na lang ang status check. Magpapadala ako sa iyo ng friend request sa VRChat.",
+        "switch_button": "Gamitin ang Status Check",
+        "title": "Status Check",
+        "subtitle": "Bini-verify si {username} gamit ang iyong VRChat status",
+        "steps": (
+            "1. Buksan ang VRChat at tanggapin ang friend request mula kay **{bot}**.\n"
+            "2. Itakda ang iyong VRChat status message sa code sa ibaba.\n"
+            "3. Pindutin ang button kapag nagawa mo na ang pareho."
+        ),
+        "after": "Kapag na-verify ka na, aalisin kita sa friends list ko, at maaari mo nang ibalik ang iyong status.",
+        "check_button": "Tinanggap ko at naitakda ang status",
+        "request_failed": "❌ Hindi ako nakapagpadala ng friend request sa VRChat account na iyon ngayon. Subukang muli maya-maya, o gamitin ang bio check.",
+        "rate_limited": "⚠️ Nililimitahan ng VRChat ang mga friend request ngayon. Subukang muli pagkalipas ng ilang minuto, o gamitin ang bio check.",
+        "cooldown": "⚠️ Mangyaring maghintay ng {seconds}s bago magsimula ng panibagong status check, o gamitin ang bio check.",
+        "not_friend": "❌ Hindi mo pa natatanggap ang friend request mula kay **{bot}**. Tanggapin ito sa VRChat, pagkatapos ay pindutin muli ang button.",
+        "status_missing": "❌ Hindi ko mahanap ang code na `{verification_code}` sa iyong VRChat status message. Itakda ang iyong status message sa code at subukang muli.",
+    },
+    "he": {
+        "switch_hint": "לא רוצה את הקוד בביו שלך? השתמש באימות דרך סטטוס במקום זאת. אשלח לך בקשת חברות ב-VRChat.",
+        "switch_button": "השתמש באימות סטטוס",
+        "title": "אימות סטטוס",
+        "subtitle": "מאמת את {username} באמצעות הסטטוס שלך ב-VRChat",
+        "steps": (
+            "1. פתח את VRChat וקבל את בקשת החברות מ-**{bot}**.\n"
+            "2. הגדר את הודעת הסטטוס שלך ב-VRChat לקוד שלהלן.\n"
+            "3. לחץ על הלחצן לאחר שסיימת את שני השלבים."
+        ),
+        "after": "לאחר שתאומת, אסיר אותך מרשימת החברים שלי, ותוכל להחזיר את הסטטוס שלך.",
+        "check_button": "קיבלתי והגדרתי את הסטטוס",
+        "request_failed": "❌ לא הצלחתי לשלוח בקשת חברות לחשבון ה-VRChat הזה כרגע. נסה שוב בעוד רגע, או השתמש באימות דרך הביו.",
+        "rate_limited": "⚠️ VRChat מגביל כרגע בקשות חברות. נסה שוב בעוד כמה דקות, או השתמש באימות דרך הביו.",
+        "cooldown": "⚠️ המתן {seconds} שניות לפני שתתחיל אימות סטטוס נוסף, או השתמש באימות דרך הביו.",
+        "not_friend": "❌ עדיין לא קיבלת את בקשת החברות מ-**{bot}**. קבל אותה ב-VRChat ואז לחץ שוב על הלחצן.",
+        "status_missing": "❌ לא מצאתי את הקוד `{verification_code}` בהודעת הסטטוס שלך ב-VRChat. הגדר את הודעת הסטטוס לקוד ונסה שוב.",
+    },
+    "fi": {
+        "switch_hint": "Etkö halua koodia biografiaasi? Käytä sen sijaan tilan tarkistusta. Lähetän sinulle kaveripyynnön VRChatissa.",
+        "switch_button": "Käytä tilan tarkistusta",
+        "title": "Tilan tarkistus",
+        "subtitle": "Vahvistetaan käyttäjä {username} VRChat-tilasi avulla",
+        "steps": (
+            "1. Avaa VRChat ja hyväksy kaveripyyntö käyttäjältä **{bot}**.\n"
+            "2. Aseta VRChat-tilaviestisi alla olevaksi koodiksi.\n"
+            "3. Paina painiketta, kun olet tehnyt molemmat."
+        ),
+        "after": "Kun olet vahvistettu, poistan sinut kaverilistaltani ja voit vaihtaa tilasi takaisin.",
+        "check_button": "Hyväksyin ja asetin tilani",
+        "request_failed": "❌ En voinut nyt lähettää kaveripyyntöä kyseiselle VRChat-tilille. Yritä hetken kuluttua uudelleen tai käytä sen sijaan biotarkistusta.",
+        "rate_limited": "⚠️ VRChat rajoittaa tällä hetkellä kaveripyyntöjä. Yritä muutaman minuutin kuluttua uudelleen tai käytä sen sijaan biotarkistusta.",
+        "cooldown": "⚠️ Odota {seconds} s ennen kuin aloitat uuden tilan tarkistuksen, tai käytä biotarkistusta.",
+        "not_friend": "❌ Et ole vielä hyväksynyt käyttäjän **{bot}** kaveripyyntöä. Hyväksy se VRChatissa ja paina sitten painiketta uudelleen.",
+        "status_missing": "❌ En löytänyt koodia `{verification_code}` VRChat-tilaviestistäsi. Aseta tilaviestisi koodiksi ja yritä uudelleen.",
+    },
+    "ms": {
+        "switch_hint": "Tidak mahu kod dalam bio anda? Gunakan semakan status sebagai ganti. Saya akan menghantar permintaan rakan kepada anda di VRChat.",
+        "switch_button": "Guna Semakan Status",
+        "title": "Semakan Status",
+        "subtitle": "Mengesahkan {username} dengan status VRChat anda",
+        "steps": (
+            "1. Buka VRChat dan terima permintaan rakan daripada **{bot}**.\n"
+            "2. Tetapkan mesej status VRChat anda kepada kod di bawah.\n"
+            "3. Tekan butang selepas anda melakukan kedua-duanya."
+        ),
+        "after": "Setelah anda disahkan, saya akan mengeluarkan anda daripada senarai rakan saya, dan anda boleh menukar status anda kembali.",
+        "check_button": "Saya telah terima & tetapkan status",
+        "request_failed": "❌ Saya tidak dapat menghantar permintaan rakan kepada akaun VRChat itu buat masa ini. Sila cuba lagi sebentar lagi, atau gunakan semakan bio.",
+        "rate_limited": "⚠️ VRChat sedang menghadkan permintaan rakan. Sila cuba lagi dalam beberapa minit, atau gunakan semakan bio.",
+        "cooldown": "⚠️ Sila tunggu {seconds} saat sebelum memulakan semakan status lain, atau gunakan semakan bio.",
+        "not_friend": "❌ Anda belum menerima permintaan rakan daripada **{bot}**. Terimanya dalam VRChat, kemudian tekan butang sekali lagi.",
+        "status_missing": "❌ Saya tidak menjumpai kod `{verification_code}` dalam mesej status VRChat anda. Tetapkan mesej status anda kepada kod tersebut dan cuba lagi.",
+    },
+    "sk": {
+        "switch_hint": "Nechceš kód v biu? Použi namiesto toho kontrolu stavu. Pošlem ti vo VRChate žiadosť o priateľstvo.",
+        "switch_button": "Použiť kontrolu stavu",
+        "title": "Kontrola stavu",
+        "subtitle": "Overovanie používateľa {username} pomocou tvojho stavu vo VRChate",
+        "steps": (
+            "1. Otvor VRChat a prijmi žiadosť o priateľstvo od **{bot}**.\n"
+            "2. Nastav svoj stav vo VRChate na kód nižšie.\n"
+            "3. Keď budeš mať oboje hotové, stlač tlačidlo."
+        ),
+        "after": "Hneď ako budeš overený, odstránim ťa zo svojich priateľov a svoj stav môžeš vrátiť späť.",
+        "check_button": "Prijal/a som a nastavil/a stav",
+        "request_failed": "❌ Teraz sa mi nepodarilo odoslať žiadosť o priateľstvo tomuto účtu VRChat. Skús to o chvíľu znova alebo použi kontrolu bia.",
+        "rate_limited": "⚠️ VRChat momentálne obmedzuje žiadosti o priateľstvo. Skús to znova o niekoľko minút alebo použi kontrolu bia.",
+        "cooldown": "⚠️ Počkaj {seconds} s, kým spustíš ďalšiu kontrolu stavu, alebo použi kontrolu bia.",
+        "not_friend": "❌ Žiadosť o priateľstvo od **{bot}** si ešte neprijal/a. Prijmi ju vo VRChate a potom znova stlač tlačidlo.",
+        "status_missing": "❌ Kód `{verification_code}` som vo tvojom stave vo VRChate nenašiel. Nastav svoj stav na tento kód a skús to znova.",
+    },
+    "hi": {
+        "switch_hint": "बायो में कोड नहीं रखना चाहते? इसके बजाय स्टेटस जांच का उपयोग करें। मैं VRChat पर आपको एक फ्रेंड रिक्वेस्ट भेजूंगा।",
+        "switch_button": "स्टेटस जांच का उपयोग करें",
+        "title": "स्टेटस जांच",
+        "subtitle": "आपके VRChat स्टेटस से {username} का सत्यापन किया जा रहा है",
+        "steps": (
+            "1. VRChat खोलें और **{bot}** की फ्रेंड रिक्वेस्ट स्वीकार करें।\n"
+            "2. अपना VRChat स्टेटस संदेश नीचे दिए गए कोड पर सेट करें।\n"
+            "3. दोनों काम हो जाने पर बटन दबाएं।"
+        ),
+        "after": "सत्यापित होते ही मैं आपको अपनी मित्र सूची से हटा दूंगा, और आप अपना स्टेटस वापस बदल सकते हैं।",
+        "check_button": "मैंने स्वीकार कर स्टेटस सेट कर दिया",
+        "request_failed": "❌ मैं अभी उस VRChat खाते को फ्रेंड रिक्वेस्ट नहीं भेज सका। कृपया थोड़ी देर में फिर प्रयास करें, या इसके बजाय बायो जांच का उपयोग करें।",
+        "rate_limited": "⚠️ VRChat अभी फ्रेंड रिक्वेस्ट सीमित कर रहा है। कृपया कुछ मिनट बाद फिर प्रयास करें, या इसके बजाय बायो जांच का उपयोग करें।",
+        "cooldown": "⚠️ दूसरी स्टेटस जांच शुरू करने से पहले कृपया {seconds} सेकंड प्रतीक्षा करें, या बायो जांच का उपयोग करें।",
+        "not_friend": "❌ आपने अभी तक **{bot}** की फ्रेंड रिक्वेस्ट स्वीकार नहीं की है। इसे VRChat में स्वीकार करें, फिर बटन दोबारा दबाएं।",
+        "status_missing": "❌ मुझे आपके VRChat स्टेटस संदेश में कोड `{verification_code}` नहीं मिला। अपना स्टेटस संदेश इस कोड पर सेट करें और फिर प्रयास करें।",
+    },
+    "el": {
+        "switch_hint": "Δεν θέλετε τον κωδικό στο βιογραφικό σας; Χρησιμοποιήστε αντί γι' αυτό τον έλεγχο κατάστασης. Θα σας στείλω αίτημα φιλίας στο VRChat.",
+        "switch_button": "Χρήση ελέγχου κατάστασης",
+        "title": "Έλεγχος κατάστασης",
+        "subtitle": "Επαλήθευση του {username} με την κατάστασή σας στο VRChat",
+        "steps": (
+            "1. Ανοίξτε το VRChat και αποδεχτείτε το αίτημα φιλίας από τον χρήστη **{bot}**.\n"
+            "2. Ορίστε το μήνυμα κατάστασής σας στο VRChat στον παρακάτω κωδικό.\n"
+            "3. Πατήστε το κουμπί όταν ολοκληρώσετε και τα δύο."
+        ),
+        "after": "Μόλις επαληθευτείτε, θα σας αφαιρέσω από τη λίστα φίλων μου και μπορείτε να επαναφέρετε την κατάστασή σας.",
+        "check_button": "Αποδέχτηκα και όρισα την κατάσταση",
+        "request_failed": "❌ Δεν μπόρεσα να στείλω αίτημα φιλίας σε αυτόν τον λογαριασμό VRChat αυτή τη στιγμή. Δοκιμάστε ξανά σε λίγο ή χρησιμοποιήστε τον έλεγχο βιογραφικού.",
+        "rate_limited": "⚠️ Το VRChat περιορίζει αυτή τη στιγμή τα αιτήματα φιλίας. Δοκιμάστε ξανά σε λίγα λεπτά ή χρησιμοποιήστε τον έλεγχο βιογραφικού.",
+        "cooldown": "⚠️ Περιμένετε {seconds} δ πριν ξεκινήσετε νέο έλεγχο κατάστασης ή χρησιμοποιήστε τον έλεγχο βιογραφικού.",
+        "not_friend": "❌ Δεν έχετε αποδεχτεί ακόμη το αίτημα φιλίας από τον χρήστη **{bot}**. Αποδεχτείτε το στο VRChat και πατήστε ξανά το κουμπί.",
+        "status_missing": "❌ Δεν βρήκα τον κωδικό `{verification_code}` στο μήνυμα κατάστασής σας στο VRChat. Ορίστε το μήνυμα κατάστασής σας στον κωδικό και δοκιμάστε ξανά.",
+    },
+    "da": {
+        "switch_hint": "Vil du ikke have koden i din bio? Brug i stedet statustjek. Jeg sender dig en venneanmodning på VRChat.",
+        "switch_button": "Brug statustjek i stedet",
+        "title": "Statustjek",
+        "subtitle": "Verificerer {username} med din VRChat-status",
+        "steps": (
+            "1. Åbn VRChat og accepter venneanmodningen fra **{bot}**.\n"
+            "2. Sæt din VRChat-statusbesked til koden nedenfor.\n"
+            "3. Tryk på knappen, når du har gjort begge dele."
+        ),
+        "after": "Når du er verificeret, fjerner jeg dig fra min venneliste, og du kan ændre din status tilbage.",
+        "check_button": "Jeg har accepteret og sat min status",
+        "request_failed": "❌ Jeg kunne ikke sende en venneanmodning til den VRChat-konto lige nu. Prøv igen om lidt, eller brug bio-tjekket i stedet.",
+        "rate_limited": "⚠️ VRChat begrænser venneanmodninger lige nu. Prøv igen om et par minutter, eller brug bio-tjekket i stedet.",
+        "cooldown": "⚠️ Vent {seconds} s, før du starter et nyt statustjek, eller brug bio-tjekket.",
+        "not_friend": "❌ Du har endnu ikke accepteret venneanmodningen fra **{bot}**. Accepter den i VRChat, og tryk derefter på knappen igen.",
+        "status_missing": "❌ Jeg kunne ikke finde koden `{verification_code}` i din VRChat-statusbesked. Sæt din statusbesked til koden, og prøv igen.",
+    },
+    "nb": {
+        "switch_hint": "Vil du ikke ha koden i bioen din? Bruk statussjekk i stedet. Jeg sender deg en venneforespørsel på VRChat.",
+        "switch_button": "Bruk statussjekk i stedet",
+        "title": "Statussjekk",
+        "subtitle": "Verifiserer {username} med VRChat-statusen din",
+        "steps": (
+            "1. Åpne VRChat og godta venneforespørselen fra **{bot}**.\n"
+            "2. Sett VRChat-statusmeldingen din til koden nedenfor.\n"
+            "3. Trykk på knappen når du har gjort begge deler."
+        ),
+        "after": "Når du er verifisert, fjerner jeg deg fra vennelisten min, og du kan endre statusen din tilbake.",
+        "check_button": "Jeg har godtatt og satt statusen",
+        "request_failed": "❌ Jeg kunne ikke sende en venneforespørsel til den VRChat-kontoen akkurat nå. Prøv igjen om litt, eller bruk bio-sjekken i stedet.",
+        "rate_limited": "⚠️ VRChat begrenser venneforespørsler akkurat nå. Prøv igjen om noen minutter, eller bruk bio-sjekken i stedet.",
+        "cooldown": "⚠️ Vent {seconds} s før du starter en ny statussjekk, eller bruk bio-sjekken.",
+        "not_friend": "❌ Du har ikke godtatt venneforespørselen fra **{bot}** ennå. Godta den i VRChat, og trykk deretter på knappen igjen.",
+        "status_missing": "❌ Jeg fant ikke koden `{verification_code}` i VRChat-statusmeldingen din. Sett statusmeldingen din til koden og prøv igjen.",
+    },
+    "fa": {
+        "switch_hint": "نمی‌خواهید کد در بیو شما باشد؟ به‌جای آن از بررسی وضعیت استفاده کنید. من در VRChat برای شما درخواست دوستی می‌فرستم.",
+        "switch_button": "استفاده از بررسی وضعیت",
+        "title": "بررسی وضعیت",
+        "subtitle": "در حال تأیید {username} با وضعیت VRChat شما",
+        "steps": (
+            "1. VRChat را باز کنید و درخواست دوستی **{bot}** را بپذیرید.\n"
+            "2. پیام وضعیت VRChat خود را روی کد زیر تنظیم کنید.\n"
+            "3. پس از انجام هر دو مرحله، روی دکمه کلیک کنید."
+        ),
+        "after": "پس از تأیید، شما را از فهرست دوستانم حذف می‌کنم و می‌توانید وضعیت خود را به حالت قبل برگردانید.",
+        "check_button": "پذیرفتم و وضعیت را تنظیم کردم",
+        "request_failed": "❌ در حال حاضر نتوانستم برای آن حساب VRChat درخواست دوستی بفرستم. لطفاً کمی بعد دوباره تلاش کنید یا به‌جای آن از بررسی بیو استفاده کنید.",
+        "rate_limited": "⚠️ VRChat در حال حاضر درخواست‌های دوستی را محدود کرده است. لطفاً چند دقیقه بعد دوباره تلاش کنید یا به‌جای آن از بررسی بیو استفاده کنید.",
+        "cooldown": "⚠️ لطفاً {seconds} ثانیه صبر کنید و سپس بررسی وضعیت دیگری را شروع کنید، یا از بررسی بیو استفاده کنید.",
+        "not_friend": "❌ هنوز درخواست دوستی **{bot}** را نپذیرفته‌اید. آن را در VRChat بپذیرید و دوباره روی دکمه کلیک کنید.",
+        "status_missing": "❌ کد `{verification_code}` را در پیام وضعیت VRChat شما پیدا نکردم. پیام وضعیت خود را روی این کد تنظیم کنید و دوباره تلاش کنید.",
+    },
+    "sr": {
+        "switch_hint": "Не желите код у свом био-у? Уместо тога користите проверу статуса. Послаћу вам захтев за пријатељство на VRChat-у.",
+        "switch_button": "Користи проверу статуса",
+        "title": "Провера статуса",
+        "subtitle": "Верификација корисника {username} помоћу вашег VRChat статуса",
+        "steps": (
+            "1. Отворите VRChat и прихватите захтев за пријатељство од **{bot}**.\n"
+            "2. Подесите своју VRChat статусну поруку на код испод.\n"
+            "3. Притисните дугме када завршите оба корака."
+        ),
+        "after": "Када будете верификовани, уклонићу вас са своје листе пријатеља, а ви можете вратити свој статус.",
+        "check_button": "Прихватио/ла сам и подесио/ла статус",
+        "request_failed": "❌ Тренутно нисам могао да пошаљем захтев за пријатељство том VRChat налогу. Покушајте поново за кратко или користите проверу био-а.",
+        "rate_limited": "⚠️ VRChat тренутно ограничава захтеве за пријатељство. Покушајте поново за неколико минута или користите проверу био-а.",
+        "cooldown": "⚠️ Сачекајте {seconds} с пре него што започнете нову проверу статуса или користите проверу био-а.",
+        "not_friend": "❌ Још нисте прихватили захтев за пријатељство од **{bot}**. Прихватите га у VRChat-у, па поново притисните дугме.",
+        "status_missing": "❌ Нисам пронашао код `{verification_code}` у вашој VRChat статусној поруци. Подесите статусну поруку на тај код и покушајте поново.",
+    },
+    "hr": {
+        "switch_hint": "Ne želite kod u svom biou? Umjesto toga koristite provjeru statusa. Poslat ću vam zahtjev za prijateljstvo na VRChatu.",
+        "switch_button": "Koristi provjeru statusa",
+        "title": "Provjera statusa",
+        "subtitle": "Potvrđivanje korisnika {username} putem vašeg VRChat statusa",
+        "steps": (
+            "1. Otvorite VRChat i prihvatite zahtjev za prijateljstvo od **{bot}**.\n"
+            "2. Postavite svoju VRChat statusnu poruku na kod u nastavku.\n"
+            "3. Pritisnite gumb kad završite oba koraka."
+        ),
+        "after": "Nakon što budete potvrđeni, uklonit ću vas s popisa prijatelja, a vi možete vratiti svoj status.",
+        "check_button": "Prihvatio/la sam i postavio/la status",
+        "request_failed": "❌ Trenutačno nisam mogao poslati zahtjev za prijateljstvo tom VRChat računu. Pokušajte ponovno za koji trenutak ili koristite provjeru bia.",
+        "rate_limited": "⚠️ VRChat trenutačno ograničava zahtjeve za prijateljstvo. Pokušajte ponovno za nekoliko minuta ili koristite provjeru bia.",
+        "cooldown": "⚠️ Pričekajte {seconds} s prije nego što pokrenete novu provjeru statusa ili koristite provjeru bia.",
+        "not_friend": "❌ Još niste prihvatili zahtjev za prijateljstvo od **{bot}**. Prihvatite ga u VRChatu pa ponovno pritisnite gumb.",
+        "status_missing": "❌ Nisam pronašao kod `{verification_code}` u vašoj VRChat statusnoj poruci. Postavite statusnu poruku na taj kod i pokušajte ponovno.",
+    },
+    "bn": {
+        "switch_hint": "বায়োতে কোড রাখতে চান না? এর বদলে স্ট্যাটাস চেক ব্যবহার করুন। আমি VRChat-এ আপনাকে একটি ফ্রেন্ড রিকোয়েস্ট পাঠাব।",
+        "switch_button": "স্ট্যাটাস চেক ব্যবহার করুন",
+        "title": "স্ট্যাটাস চেক",
+        "subtitle": "আপনার VRChat স্ট্যাটাস দিয়ে {username} যাচাই করা হচ্ছে",
+        "steps": (
+            "1. VRChat খুলুন এবং **{bot}**-এর ফ্রেন্ড রিকোয়েস্ট গ্রহণ করুন।\n"
+            "2. আপনার VRChat স্ট্যাটাস মেসেজ নিচের কোডে সেট করুন।\n"
+            "3. দুটোই করা হয়ে গেলে বোতামটি চাপুন।"
+        ),
+        "after": "যাচাই সম্পন্ন হলে আমি আপনাকে আমার বন্ধুতালিকা থেকে সরিয়ে দেব, এবং আপনি আপনার স্ট্যাটাস আগের মতো করে নিতে পারবেন।",
+        "check_button": "গ্রহণ করেছি ও স্ট্যাটাস সেট করেছি",
+        "request_failed": "❌ আমি এখন ওই VRChat অ্যাকাউন্টে ফ্রেন্ড রিকোয়েস্ট পাঠাতে পারিনি। অনুগ্রহ করে একটু পরে আবার চেষ্টা করুন, অথবা এর বদলে বায়ো চেক ব্যবহার করুন।",
+        "rate_limited": "⚠️ VRChat এখন ফ্রেন্ড রিকোয়েস্ট সীমিত করছে। অনুগ্রহ করে কয়েক মিনিট পরে আবার চেষ্টা করুন, অথবা এর বদলে বায়ো চেক ব্যবহার করুন।",
+        "cooldown": "⚠️ আরেকটি স্ট্যাটাস চেক শুরু করার আগে অনুগ্রহ করে {seconds} সেকেন্ড অপেক্ষা করুন, অথবা বায়ো চেক ব্যবহার করুন।",
+        "not_friend": "❌ আপনি এখনও **{bot}**-এর ফ্রেন্ড রিকোয়েস্ট গ্রহণ করেননি। VRChat-এ সেটি গ্রহণ করুন, তারপর আবার বোতামটি চাপুন।",
+        "status_missing": "❌ আপনার VRChat স্ট্যাটাস মেসেজে `{verification_code}` কোডটি খুঁজে পাইনি। স্ট্যাটাস মেসেজ ওই কোডে সেট করে আবার চেষ্টা করুন।",
+    },
+    "bg": {
+        "switch_hint": "Не искате кода във вашата биография? Използвайте проверка чрез статус. Ще ви изпратя покана за приятелство във VRChat.",
+        "switch_button": "Използвай проверка чрез статус",
+        "title": "Проверка чрез статус",
+        "subtitle": "Потвърждаване на {username} чрез вашия VRChat статус",
+        "steps": (
+            "1. Отворете VRChat и приемете поканата за приятелство от **{bot}**.\n"
+            "2. Задайте статус съобщението си във VRChat да бъде кодът по-долу.\n"
+            "3. Натиснете бутона, след като направите и двете."
+        ),
+        "after": "След като бъдете потвърдени, ще ви премахна от списъка си с приятели и можете да върнете статуса си.",
+        "check_button": "Приех и зададох статуса си",
+        "request_failed": "❌ В момента не успях да изпратя покана за приятелство до този VRChat профил. Опитайте отново след малко или използвайте проверката чрез биография.",
+        "rate_limited": "⚠️ VRChat в момента ограничава поканите за приятелство. Опитайте отново след няколко минути или използвайте проверката чрез биография.",
+        "cooldown": "⚠️ Моля, изчакайте {seconds} с, преди да започнете нова проверка чрез статус, или използвайте проверката чрез биография.",
+        "not_friend": "❌ Все още не сте приели поканата за приятелство от **{bot}**. Приемете я във VRChat и натиснете бутона отново.",
+        "status_missing": "❌ Не намерих кода `{verification_code}` във вашето статус съобщение във VRChat. Задайте статус съобщението си да бъде кодът и опитайте отново.",
+    },
+    "ca": {
+        "switch_hint": "No vols el codi a la teva biografia? Fes servir la comprovació per estat. T'enviaré una sol·licitud d'amistat a VRChat.",
+        "switch_button": "Utilitza la comprovació per estat",
+        "title": "Comprovació per estat",
+        "subtitle": "Verificant {username} amb el teu estat de VRChat",
+        "steps": (
+            "1. Obre VRChat i accepta la sol·licitud d'amistat de **{bot}**.\n"
+            "2. Estableix el missatge d'estat de VRChat amb el codi de sota.\n"
+            "3. Prem el botó quan hagis fet les dues coses."
+        ),
+        "after": "Un cop estiguis verificat, t'eliminaré de la meva llista d'amics i podràs tornar a canviar el teu estat.",
+        "check_button": "He acceptat i establert l'estat",
+        "request_failed": "❌ Ara mateix no he pogut enviar una sol·licitud d'amistat a aquest compte de VRChat. Torna-ho a provar d'aquí a poc o fes servir la comprovació per biografia.",
+        "rate_limited": "⚠️ VRChat està limitant les sol·licituds d'amistat ara mateix. Torna-ho a provar d'aquí a uns minuts o fes servir la comprovació per biografia.",
+        "cooldown": "⚠️ Espera {seconds} s abans de començar una altra comprovació per estat, o fes servir la comprovació per biografia.",
+        "not_friend": "❌ Encara no has acceptat la sol·licitud d'amistat de **{bot}**. Accepta-la a VRChat i torna a prémer el botó.",
+        "status_missing": "❌ No he trobat el codi `{verification_code}` al teu missatge d'estat de VRChat. Estableix el missatge d'estat amb el codi i torna-ho a provar.",
+    },
+}
+
+def get_status_text(key: str, code=None, **values) -> str:
+    text = _STATUS_TEXT.get(code or DEFAULT_LANGUAGE, {}).get(key) or _STATUS_TEXT[DEFAULT_LANGUAGE][key]
+    return re.sub(r"\{(\w+)\}", lambda m: str(values.get(m.group(1), m.group(0))), text)
+
 _LANG_SELECT_TEXT = {
     "en": ("🌐 Select Language (1-25)...", "🌐 Select Language (26-40)...", "🌐 Language Selection", "Choose your preferred language from the menus below:"),
     "de": ("🌐 Sprache wählen (1-25)...", "🌐 Sprache wählen (26-40)...", "🌐 Sprachauswahl", "Wähle deine bevorzugte Sprache aus den Menüs unten:"),
@@ -1925,7 +2652,10 @@ _HIDDEN_TABLES = {
     "notice_titles": (_NOTICE_TITLES, 3),
     "messages": (_MESSAGES, None),
     "lang_select_text": (_LANG_SELECT_TEXT, 4),
+    "status_text": (_STATUS_TEXT, None),
 }
+
+_HIDDEN_OPTIONAL = {"status_text"}
 
 def _load_hidden_languages():
     try:
@@ -1943,7 +2673,7 @@ def _load_hidden_languages():
             sequence = list(entry["sequence"])
             tables = {}
             for name, (_, size) in _HIDDEN_TABLES.items():
-                value = entry[name]
+                value = entry.get(name, {}) if name in _HIDDEN_OPTIONAL else entry[name]
                 if size is not None and len(value) != size:
                     raise ValueError(f"'{name}' needs {size} items, got {len(value)}")
                 tables[name] = value
