@@ -48,7 +48,8 @@ O-SAVS (Open-Source Age Verification System) is a global Discord age-verificatio
 2. **Placement.** The member places the generated verification code in their VRChat bio.
 3. **Confirmation.** The member clicks **I've updated my profile**. The bot checks the member's VRChat public profile to confirm account ownership and verifies that the account holds official VRChat 18+ age verification status.
 4. **Assignment & Sync.** Upon verification, the verified role is assigned in the current server and automatically synced across all mutual servers running O-SAVS.
-5. **Localization.** Users can press **Change Language** on the verification panel and pick from any of the 40 supported languages. The whole flow (instructions, buttons, prompts, and messages) is then shown in that language. Each server also has a configurable default language.
+5. **Status check (alternative).** Instead of editing their bio, a member can press **Use Status Check Instead** on the code message. The bot sends a friend request from its VRChat account (`BOT_VRC_NAME` in `data/vrchat.py`, shown to the member). The member accepts it, sets their VRChat status message to the code, and presses the finalize button. The bot confirms the friendship, the code in the status message and the 18+ verification status, assigns the role, and then unfriends the member.
+6. **Localization.** Users can press **Change Language** on the verification panel and pick from any of the 40 supported languages. The whole flow (instructions, buttons, prompts, and messages) is then shown in that language. Each server also has a configurable default language.
 
 ---
 
@@ -56,6 +57,7 @@ O-SAVS (Open-Source Age Verification System) is a global Discord age-verificatio
 
 - **Global Verification Sync.** Verify once and be synced automatically across all participating Discord servers.
 - **VRChat Profile Integration.** Generates custom verification codes for users to place in their VRChat bio to prove account ownership.
+- **Status Check.** An alternative to the bio check. The bot sends a friend request, the member accepts it and puts the code in their VRChat status message, and the bot unfriends them once they are verified (or when the check times out). Friend requests are rate limited per Discord user.
 - **40 Languages.** The verification panel, prompts, notices, and the setup wizard are fully localized. Users can switch language per session, and servers set their own default.
 - **Interactive Setup Wizard.** The `/setup` slash command creates a private `#verification-logs` channel and walks admins through configuration. See [Server Setup](#server-setup).
 - **Required Pre-Role (Optional).** Servers can require members to hold a specific role before they can verify. The verified role is granted automatically once a verified member acquires the required role.
@@ -108,8 +110,8 @@ Maintenance Mode allows administrators to work on the bot remotely without shutt
 
 - **Entering.** The bot's presence changes to offline (invisible). The bot process, API, and database remain running.
 - **While Active.** Selecting **Age Verify** displays an "Under Maintenance" notice instead of the verification form. Members who were already mid-verification are also stopped at submission.
-- **Exiting.** The language files and the verification cog are reloaded without restarting the bot, so updated code is applied immediately. The admin allow-list is reloaded as well. Verification panels are then checked and refreshed if they changed, and the bot's status returns to normal.
-- **Failure Handling.** If the language files or verification cog fail to reload (for example, because of a code error), maintenance mode remains active and the error is reported. The bot never returns to service on broken code. If only the admin list fails to reload, the previous list is kept and a warning is shown.
+- **Exiting.** The VRChat module (`data/vrchat.py`), the language files and the verification cog are reloaded without restarting the bot, so updated code is applied immediately. The bot's VRChat session is kept, so it does not log in again. The admin allow-list is reloaded as well. Verification panels are then checked and refreshed if they changed, and the bot's status returns to normal.
+- **Failure Handling.** If the VRChat module, language files or verification cog fail to reload (for example, because of a code error), maintenance mode remains active and the error is reported. The bot never returns to service on broken code. If only the admin list fails to reload, the previous list is kept and a warning is shown.
 - **Persistence.** The maintenance state is stored in the database and survives a bot restart.
 
 Maintenance Mode can be toggled in two ways:
@@ -229,11 +231,15 @@ Admin Dashboard only:
 - `EVIDENCE_FORUM_CHANNEL_ID`: ID of a forum channel where an evidence thread is created for each global user ban. Leave unset to disable evidence threads.
 - `BOT_ID`: The bot's own user ID. It is excluded from the verified-user count.
 
-### 4. Configure the Admin Allow-List
+### 4. Configure `data/vrchat.py`
+
+- `BOT_VRC_NAME`: Display name of the VRChat account the bot logs in with. Members are told to accept the friend request from this name during a status check.
+
+### 5. Configure the Admin Allow-List
 
 Add the Discord user IDs of your administrators to `utils/administrator_user_ids.json`. See [Admin Allow-List](#admin-allow-list).
 
-### 5. Start the Bot
+### 6. Start the Bot
 
 ```bash
 python bot.py
@@ -259,7 +265,7 @@ cogs/
 data/
   database.py               Bot database access
   languages.py              All localized text
-  vrchat.py                 VRChat API login and profile lookup
+  vrchat.py                 VRChat API login, bio and status lookups, friend requests
   lock.py                   Single-instance lock
 utils/
   database.db               Bot database (created automatically)
