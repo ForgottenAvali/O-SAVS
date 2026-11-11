@@ -1,6 +1,6 @@
 import os, asyncio, logging, vrchatapi, json, http.cookiejar
 
-from vrchatapi.api import authentication_api, users_api
+from vrchatapi.api import authentication_api, users_api, friends_api
 from vrchatapi.models.two_factor_email_code import TwoFactorEmailCode
 from vrchatapi.exceptions import UnauthorizedException
 from dotenv import load_dotenv
@@ -10,12 +10,17 @@ VRCUSER = os.getenv("VRC_USER")
 VRCPASS = os.getenv("VRC_PASS")
 CONTACT = os.getenv("CONTACT")
 
+BOT_VRC_NAME = "Noodle's Nexus"
+
 config = vrchatapi.Configuration(username=VRCUSER, password=VRCPASS)
-client = vrchatapi.ApiClient(config)
-client.user_agent = f"O-SAVS/1.3.0 (contact: {CONTACT})"
+
+_existing_client = globals().get("client")
+client = _existing_client if _existing_client is not None else vrchatapi.ApiClient(config)
+client.user_agent = f"O-SAVS/1.4.0 (contact: {CONTACT})"
 
 auth_api = authentication_api.AuthenticationApi(client)
 users_api_instance = users_api.UsersApi(client)
+friends_api_instance = friends_api.FriendsApi(client)
 
 AUTH_TOKEN_FILE = os.path.join(os.path.dirname(__file__), "..", "utils", "vrc_auth_token.json")
 
@@ -106,13 +111,13 @@ async def login_vrc():
         logging.error(f"[VRChat] Login failed: {e}")
         raise
 
-async def get_vrchat_user(user_id: str) -> dict | None:
+async def _call(func, *args):
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, lambda: func(*args))
+
+async def get_vrchat_bio(user_id: str) -> dict | None:
     try:
-        loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(
-            None,
-            lambda: users_api_instance.get_public_profile(user_id)
-        )
+        result = await _call(users_api_instance.get_public_profile, user_id)
 
         username = getattr(result, "display_name", None) or getattr(result, "username", "Unknown")
         verification = getattr(result, "age_verified")
@@ -127,3 +132,56 @@ async def get_vrchat_user(user_id: str) -> dict | None:
     except Exception as e:
         logging.exception(f"[VRChat] Failed to fetch user from user id ({user_id})")
         return None
+
+get_vrchat_user = get_vrchat_bio
+
+async def get_vrchat_status(user_id: str) -> dict | None:
+    try:
+        result = await _call(users_api_instance.get_user, user_id)
+
+        status = getattr(result, "status", None)
+        return {
+            "id": getattr(result, "id", user_id),
+            "username": getattr(result, "display_name", None) or "Unknown",
+            "verification": bool(getattr(result, "age_verified", False)),
+            "status": getattr(status, "value", status),
+            "status_description": getattr(result, "status_description", None) or "",
+            "is_friend": bool(getattr(result, "is_friend", False)),
+        }
+    except Exception as e:
+        logging.exception(f"[VRChat] Failed to fetch status for user id ({user_id})")
+        return None
+
+async def send_friend_request(user_id: str) -> dict:
+    try:
+        status = await _call(friends_api_instance.get_friend_status, user_id)
+        if getattr(status, "is_friend", False):
+            return {"success": True, "already_friends": True}
+        if getattr(status, "outgoing_request", False):
+            return {"success": True, "already_pending": True}
+
+        await _call(friends_api_instance.friend, user_id)
+        return {"success": True}
+    except vrchatapi.exceptions.ApiException as e:
+        logging.error(f"[VRChat] Friend request to {user_id} failed: {e.status} {e.reason}")
+        return {"success": False, "error": "rate_limited" if e.status == 429 else "failed"}
+    except Exception as e:
+        logging.exception(f"[VRChat] Friend request to {user_id} failed")
+        return {"success": False, "error": "failed"}
+
+async def remove_friend(user_id: str) -> bool:
+    try:
+        status = await _call(friends_api_instance.get_friend_status, user_id)
+        is_friend = getattr(status, "is_friend", False)
+        pending = getattr(status, "outgoing_request", False)
+
+        if is_friend:
+            await _call(friends_api_instance.unfriend, user_id)
+        elif pending:
+            await _call(friends_api_instance.delete_friend_request, user_id)
+        else:
+            logging.warning(f"[VRChat] remove_friend {user_id}: nothing to remove (status={status})")
+        return True
+    except Exception:
+        logging.exception(f"[VRChat] Failed to unfriend {user_id}")
+        return False
