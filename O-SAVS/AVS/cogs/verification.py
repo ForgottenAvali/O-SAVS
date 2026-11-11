@@ -7,7 +7,14 @@ from discord.ext import commands
 
 from settings import PRIMARY_SERVER, GLOBAL_LOG_CHANNEL_ID
 import data.languages as _languages_module
-from data.vrchat import get_vrchat_user
+from data.vrchat import (
+    get_vrchat_user,
+    get_vrchat_bio,
+    get_vrchat_status,
+    send_friend_request,
+    remove_friend,
+    BOT_VRC_NAME,
+)
 from data.database import (
     get_server_settings,
     get_vrchat_id_from_discord,
@@ -30,6 +37,7 @@ from data.languages import (
     get_bio_panel_text,
     get_panel_subtitle,
     get_text,
+    get_status_text,
     get_notice_titles,
     describe_language,
     get_wizard_text,
@@ -43,11 +51,22 @@ from data.languages import (
 importlib.reload(_languages_module)
 
 PANEL_STATE_FILE = os.path.join(os.path.dirname(__file__), "..", "utils", "panel_state.json")
+MAINTENANCE_NOTICE = get_text("maintenance", DEFAULT_LANGUAGE)
 
 HIDDEN_LANGUAGE_WINDOW = 300
-
 _puzzle_progress: dict[int, tuple[list[str], float]] = {}
 
+FRIEND_REQUEST_COOLDOWN = 60
+_friend_request_times: dict[int, float] = {}
+
+
+def friend_request_cooldown(user_id: int) -> int:
+    now = time.monotonic()
+    for uid, started in list(_friend_request_times.items()):
+        if now - started >= FRIEND_REQUEST_COOLDOWN:
+            del _friend_request_times[uid]
+    started = _friend_request_times.get(user_id)
+    return 0 if started is None else max(1, int(FRIEND_REQUEST_COOLDOWN - (now - started)))
 
 def record_language_pick(user_id: int, code: str) -> list[str]:
     sequences = {lang: seq for lang, seq in HIDDEN_SEQUENCES.items() if seq}
@@ -130,8 +149,6 @@ def log_layout(title: str, colour: discord.Colour, fields: list) -> ui.LayoutVie
         )
     )
 
-MAINTENANCE_NOTICE = get_text("maintenance", DEFAULT_LANGUAGE)
-
 async def maintenance_blocked(interaction: Interaction, language: Optional[str] = None) -> bool:
     if not await get_maintenance_mode():
         return False
@@ -158,6 +175,94 @@ def has_age_button(components) -> bool:
             return True
 
     return False
+
+async def verification_blocked(interaction: Interaction, vrchat_id: str, language: Optional[str]) -> bool:
+    if await is_banned(interaction.user.id):
+        await interaction.followup.send(view=notice(get_text("banned_discord", language), language), ephemeral=True)
+        return True
+
+    if await is_banned(vrchat_id):
+        await interaction.followup.send(view=notice(get_text("banned_vrchat", language), language), ephemeral=True)
+        return True
+
+    existing_vrc_id = await get_vrchat_id_from_discord(interaction.user.id)
+    if existing_vrc_id:
+        await interaction.followup.send(view=notice(get_text("linked_discord", language, vrc_id=existing_vrc_id), language), ephemeral=True)
+        return True
+
+    if await is_vrchat_id_verified(vrchat_id):
+        await interaction.followup.send(view=notice(get_text("linked_vrchat", language, vrc_id=vrchat_id), language), ephemeral=True)
+        return True
+
+    return False
+
+async def finalize_verification(bot: commands.Bot, cog: commands.Cog, interaction: Interaction, vrchat_id: str, language: Optional[str]) -> bool:
+    if not await add_verified_user(interaction.user.id, vrchat_id):
+        await interaction.followup.send(view=notice(get_text("linked_vrchat", language, vrc_id=vrchat_id), language), ephemeral=True)
+        return False
+
+    origin_role_added = False
+
+    for guild in bot.guilds:
+        member = guild.get_member(interaction.user.id)
+        if not member:
+            continue
+
+        settings = await get_server_settings(guild.id)
+        role_id = settings.get("verified_role")
+        required_role_id = settings.get("required_role")
+
+        if not role_id:
+            continue
+
+        if required_role_id:
+            req_role = guild.get_role(required_role_id)
+            if req_role and req_role not in member.roles:
+                continue
+
+        role = guild.get_role(role_id)
+        if role and role not in member.roles:
+            is_origin = (guild.id == interaction.guild_id)
+
+            audit_reason = (
+                "O-SAVS Automated Verification" if is_origin
+                else "O-SAVS Auto-Role: Global Verification Sync"
+            )
+
+            log_reason = (
+                "Initial profile verification via code" if is_origin
+                else "Global Verification Sync"
+            )
+
+            try:
+                await member.add_roles(role, reason=audit_reason)
+                if is_origin:
+                    origin_role_added = True
+            except (discord.Forbidden, discord.HTTPException) as e:
+                logging.error(f"[Verify Log Error - {guild.id}] {e}")
+
+            try:
+                await cog.send_verify_log(
+                    guild=guild,
+                    action="User Verified",
+                    member=member,
+                    vrchat_id=vrchat_id,
+                    operator=interaction.user if is_origin else bot.user,
+                    reason=log_reason
+                )
+            except Exception as e:
+                logging.error(f"[Verify Log Error - {guild.id}] {e}")
+
+    await cog.send_global_log(
+        action="User Verified",
+        user=interaction.user,
+        vrchat_id=vrchat_id,
+        origin_guild=interaction.guild
+    )
+
+    success_msg = get_text("verified" if origin_role_added else "linked", language, guild=interaction.guild.name)
+    await interaction.followup.send(view=notice(success_msg, language), ephemeral=True)
+    return True
 
 class BioCheckButton(ui.Button):
     def __init__(self, bio_view: "BioCheckView", language: str = DEFAULT_LANGUAGE):
@@ -197,6 +302,9 @@ class BioCheckView(ui.LayoutView):
                 ui.TextDisplay(after),
                 accessory=BioCheckButton(self, self.language)
             ),
+            sep(),
+            ui.TextDisplay(f"-# {get_status_text('switch_hint', self.language)}"),
+            ui.ActionRow(StatusSwitchButton(self)),
         ))
 
     async def run_check(self, interaction: Interaction):
@@ -204,24 +312,11 @@ class BioCheckView(ui.LayoutView):
 
         language = self.language
 
-        if await is_banned(interaction.user.id):
+        if await verification_blocked(interaction, self.user_id, language):
             self.stop()
-            return await interaction.followup.send(view=notice(get_text("banned_discord", language), language), ephemeral=True)
+            return
 
-        if await is_banned(self.user_id):
-            self.stop()
-            return await interaction.followup.send(view=notice(get_text("banned_vrchat", language), language), ephemeral=True)
-
-        existing_vrc_id = await get_vrchat_id_from_discord(interaction.user.id)
-        if existing_vrc_id:
-            self.stop()
-            return await interaction.followup.send(view=notice(get_text("linked_discord", language, vrc_id=existing_vrc_id), language), ephemeral=True)
-
-        if await is_vrchat_id_verified(self.user_id):
-            self.stop()
-            return await interaction.followup.send(view=notice(get_text("linked_vrchat", language, vrc_id=self.user_id), language), ephemeral=True)
-
-        user_data = await get_vrchat_user(self.user_id)
+        user_data = await get_vrchat_bio(self.user_id)
 
         if not user_data:
             return await interaction.followup.send(view=notice(get_text("fetch_failed", language), language), ephemeral=True)
@@ -234,74 +329,124 @@ class BioCheckView(ui.LayoutView):
         if not user_data.get("verification"):
             return await interaction.followup.send(view=notice(get_text("not_age_verified", language), language), ephemeral=True)
 
-        if not await add_verified_user(interaction.user.id, self.user_id):
-            self.stop()
-            return await interaction.followup.send(view=notice(get_text("linked_vrchat", language, vrc_id=self.user_id), language), ephemeral=True)
-
-        origin_role_added = False
-
-        for guild in self.bot.guilds:
-            member = guild.get_member(interaction.user.id)
-            if not member:
-                continue
-
-            settings = await get_server_settings(guild.id)
-            role_id = settings.get("verified_role")
-            required_role_id = settings.get("required_role")
-
-            if not role_id:
-                continue
-
-            if required_role_id:
-                req_role = guild.get_role(required_role_id)
-                if req_role and req_role not in member.roles:
-                    continue
-
-            role = guild.get_role(role_id)
-            if role and role not in member.roles:
-                is_origin = (guild.id == interaction.guild_id)
-                
-                audit_reason = (
-                    "O-SAVS Automated Verification" if is_origin 
-                    else "O-SAVS Auto-Role: Global Verification Sync"
-                )
-                
-                log_reason = (
-                    "Initial profile verification via code" if is_origin 
-                    else "Global Verification Sync"
-                )
-
-                try:
-                    await member.add_roles(role, reason=audit_reason)
-                    if is_origin:
-                        origin_role_added = True
-                except (discord.Forbidden, discord.HTTPException) as e:
-                    logging.error(f"[Verify Log Error - {guild.id}] {e}")
-
-                try:
-                    await self.cog.send_verify_log(
-                        guild=guild,
-                        action="User Verified",
-                        member=member,
-                        vrchat_id=self.user_id,
-                        operator=interaction.user if is_origin else self.bot.user,
-                        reason=log_reason
-                    )
-                except Exception as e:
-                    logging.error(f"[Verify Log Error - {guild.id}] {e}")
-
-        await self.cog.send_global_log(
-            action="User Verified",
-            user=interaction.user,
-            vrchat_id=self.user_id,
-            origin_guild=interaction.guild
-        )
-
+        await finalize_verification(self.bot, self.cog, interaction, self.user_id, language)
         self.stop()
 
-        success_msg = get_text("verified" if origin_role_added else "linked", language, guild=interaction.guild.name)
+class StatusSwitchButton(ui.Button):
+    def __init__(self, bio_view: "BioCheckView"):
+        super().__init__(label=get_status_text("switch_button", bio_view.language), style=ButtonStyle.secondary)
+        self.bio_view = bio_view
 
-        await interaction.followup.send(view=notice(success_msg, language), ephemeral=True)
+    async def callback(self, interaction: Interaction):
+        view = self.bio_view
+        language = view.language
+
+        if await maintenance_blocked(interaction, language):
+            return
+
+        await interaction.response.defer()
+
+        if await verification_blocked(interaction, view.user_id, language):
+            view.stop()
+            return
+
+        remaining = friend_request_cooldown(interaction.user.id)
+        if remaining:
+            return await interaction.followup.send(
+                view=notice(get_status_text("cooldown", language, seconds=remaining), language), ephemeral=True
+            )
+
+        _friend_request_times[interaction.user.id] = time.monotonic()
+        result = await send_friend_request(view.user_id)
+        if not result.get("success"):
+            _friend_request_times.pop(interaction.user.id, None)
+            key = "rate_limited" if result.get("error") == "rate_limited" else "request_failed"
+            return await interaction.followup.send(view=notice(get_status_text(key, language), language), ephemeral=True)
+
+        status_view = StatusCheckView(view.bot, view.cog, view.user_id, view.code, view.settings, view.username)
+        view.stop()
+        await interaction.edit_original_response(view=status_view)
+
+class StatusCheckButton(ui.Button):
+    def __init__(self, status_view: "StatusCheckView"):
+        super().__init__(label=get_status_text("check_button", status_view.language), style=ButtonStyle.success)
+        self.status_view = status_view
+
+    async def callback(self, interaction: Interaction):
+        if await maintenance_blocked(interaction, self.status_view.language):
+            return
+        await self.status_view.run_check(interaction)
+
+class StatusCheckView(ui.LayoutView):
+    def __init__(self, bot: commands.Bot, cog: commands.Cog, user_id: str, code: str, settings: dict, username: str = "Unknown User"):
+        super().__init__(timeout=600)
+        self.bot = bot
+        self.cog = cog
+        self.user_id = user_id
+        self.code = code
+        self.settings = settings
+        self.username = username
+        self.language = settings.get("language") or DEFAULT_LANGUAGE
+        self.friend_released = False
+
+        self.build()
+
+    def build(self):
+        self.clear_items()
+
+        self.add_item(ui.Container(
+            ui.TextDisplay(f"# 🔐 {get_status_text('title', self.language)}"),
+            ui.TextDisplay(f"-# {get_status_text('subtitle', self.language, username=self.username)}"),
+            sep(),
+            ui.Section(
+                ui.TextDisplay(get_status_text("steps", self.language, bot=BOT_VRC_NAME)),
+                ui.TextDisplay(f"# `{self.code}`"),
+                ui.TextDisplay(get_status_text("after", self.language)),
+                accessory=StatusCheckButton(self)
+            ),
+        ))
+
+    async def release_friend(self):
+        if self.friend_released:
+            return
+        self.friend_released = True
+        if not await remove_friend(self.user_id):
+            logging.warning(f"[Status Check] Could not remove {self.user_id} from the bot's friends list")
+
+    async def on_timeout(self):
+        await self.release_friend()
+
+    async def run_check(self, interaction: Interaction):
+        await interaction.response.defer(ephemeral=True)
+
+        language = self.language
+
+        if await verification_blocked(interaction, self.user_id, language):
+            self.stop()
+            await self.release_friend()
+            return
+
+        user_data = await get_vrchat_status(self.user_id)
+
+        if not user_data:
+            return await interaction.followup.send(view=notice(get_text("fetch_failed", language), language), ephemeral=True)
+
+        if not user_data.get("is_friend"):
+            return await interaction.followup.send(
+                view=notice(get_status_text("not_friend", language, bot=BOT_VRC_NAME), language), ephemeral=True
+            )
+
+        if self.code not in (user_data.get("status_description") or ""):
+            return await interaction.followup.send(
+                view=notice(get_status_text("status_missing", language, verification_code=self.code), language), ephemeral=True
+            )
+
+        if not user_data.get("verification"):
+            return await interaction.followup.send(view=notice(get_text("not_age_verified", language), language), ephemeral=True)
+
+        await finalize_verification(self.bot, self.cog, interaction, self.user_id, language)
+        self.stop()
+        await self.release_friend()
 
 def _iter_components(components):
     for comp in components or []:
@@ -936,6 +1081,8 @@ class Verification(commands.Cog):
                 seen.add(id(view))
                 if type(view).__module__ == __name__:
                     view.stop()
+                    if isinstance(view, StatusCheckView):
+                        asyncio.get_running_loop().create_task(view.release_friend())
         except Exception as e:
             logging.warning(f"[Verification] Could not stop old message views on unload: {e}")
 
