@@ -1,4 +1,4 @@
-Required Notice: Copyright 2026 ForgottenAvali
+Required Notice: Copyright 2026 ForgottenAvali (https://github.com/ForgottenAvali)
 
 # PolyForm Noncommercial License 1.0.0
 
@@ -28,6 +28,16 @@ to distribute copies of the software.  Your license
 to distribute covers distributing the software with
 changes and new works permitted by [Changes and New Works
 License](#changes-and-new-works-license).
+
+## Notices
+
+You must ensure that anyone who gets a copy of any part of
+the software from you also gets a copy of these terms or the
+URL for them above, as well as copies of any plain-text lines
+beginning with `Required Notice:` that the licensor provided
+with the software.  For example:
+
+> Required Notice: Copyright Yoyodyne, Inc. (http://example.com)
 
 ## Changes and New Works License
 
