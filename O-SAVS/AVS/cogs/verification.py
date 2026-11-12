@@ -353,7 +353,7 @@ class StatusSwitchButton(ui.Button):
         remaining = friend_request_cooldown(interaction.user.id)
         if remaining:
             return await interaction.followup.send(
-                view=notice(get_status_text("cooldown", language, seconds=remaining), language), ephemeral=True
+                view=notice(get_text("cooldown", language, seconds=remaining), language), ephemeral=True
             )
 
         _friend_request_times[interaction.user.id] = time.monotonic()
@@ -361,7 +361,7 @@ class StatusSwitchButton(ui.Button):
         if not result.get("success"):
             _friend_request_times.pop(interaction.user.id, None)
             key = "rate_limited" if result.get("error") == "rate_limited" else "request_failed"
-            return await interaction.followup.send(view=notice(get_status_text(key, language), language), ephemeral=True)
+            return await interaction.followup.send(view=notice(get_text(key, language), language), ephemeral=True)
 
         status_view = StatusCheckView(view.bot, view.cog, view.user_id, view.code, view.settings, view.username)
         view.stop()
@@ -433,12 +433,12 @@ class StatusCheckView(ui.LayoutView):
 
         if not user_data.get("is_friend"):
             return await interaction.followup.send(
-                view=notice(get_status_text("not_friend", language, bot=BOT_VRC_NAME), language), ephemeral=True
+                view=notice(get_text("not_friend", language, bot=BOT_VRC_NAME), language), ephemeral=True
             )
 
         if self.code not in (user_data.get("status_description") or ""):
             return await interaction.followup.send(
-                view=notice(get_status_text("status_missing", language, verification_code=self.code), language), ephemeral=True
+                view=notice(get_text("status_missing", language, verification_code=self.code), language), ephemeral=True
             )
 
         if not user_data.get("verification"):
