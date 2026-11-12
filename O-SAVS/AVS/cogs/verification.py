@@ -394,14 +394,18 @@ class StatusCheckView(ui.LayoutView):
     def build(self):
         self.clear_items()
 
+        steps = get_status_text("steps", self.language, bot=BOT_VRC_NAME).split("\n")
+        after = get_status_text("after", self.language)
+        title = get_bio_panel_text(self.language, self.username)[0]
+
         self.add_item(ui.Container(
-            ui.TextDisplay(f"# 🔐 {get_status_text('title', self.language)}"),
-            ui.TextDisplay(f"-# {get_status_text('subtitle', self.language, username=self.username)}"),
+            ui.TextDisplay(f"# 🔐 {title}"),
+            ui.TextDisplay(f"-# {get_status_text('subtitle', self.language)}"),
             sep(),
             ui.Section(
-                ui.TextDisplay(get_status_text("steps", self.language, bot=BOT_VRC_NAME)),
+                ui.TextDisplay("\n".join(steps[:2])),
                 ui.TextDisplay(f"# `{self.code}`"),
-                ui.TextDisplay(get_status_text("after", self.language)),
+                ui.TextDisplay("\n".join(steps[2:] + ["", after])),
                 accessory=StatusCheckButton(self)
             ),
         ))
@@ -1067,7 +1071,7 @@ class Verification(commands.Cog):
 
     def cog_unload(self):
         try:
-            self.bot.remove_view(self._panel_view)
+            self._panel_view.stop()
         except Exception as e:
             logging.warning(f"[Verification] Could not remove persistent panel view on unload: {e}")
 
