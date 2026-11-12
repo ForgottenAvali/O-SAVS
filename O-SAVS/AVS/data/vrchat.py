@@ -169,19 +169,26 @@ async def send_friend_request(user_id: str) -> dict:
         logging.exception(f"[VRChat] Friend request to {user_id} failed")
         return {"success": False, "error": "failed"}
 
-async def remove_friend(user_id: str) -> bool:
-    try:
-        status = await _call(friends_api_instance.get_friend_status, user_id)
-        is_friend = getattr(status, "is_friend", False)
-        pending = getattr(status, "outgoing_request", False)
-
-        if is_friend:
-            await _call(friends_api_instance.unfriend, user_id)
-        elif pending:
-            await _call(friends_api_instance.delete_friend_request, user_id)
-        else:
-            logging.warning(f"[VRChat] remove_friend {user_id}: nothing to remove (status={status})")
+def _is_not_found_error(e: "vrchatapi.exceptions.ApiException") -> bool:
+    if e.status in (400, 404):
         return True
-    except Exception:
-        logging.exception(f"[VRChat] Failed to unfriend {user_id}")
+    body = (getattr(e, "body", None) or "").lower()
+    return any(s in body for s in ("not friends", "not a friend", "no outgoing", "friend request not found", "not found"))
+
+async def _try_remove(func, user_id: str, label: str) -> bool:
+    try:
+        await _call(func, user_id)
+        return True
+    except vrchatapi.exceptions.ApiException as e:
+        if _is_not_found_error(e):
+            return True
+        logging.error(f"[VRChat] {label} for {user_id} failed: {e.status} {e.reason}")
         return False
+    except Exception:
+        logging.exception(f"[VRChat] {label} for {user_id} failed")
+        return False
+
+async def remove_friend(user_id: str) -> bool:
+    unfriended = await _try_remove(friends_api_instance.unfriend, user_id, "Unfriend")
+    retracted = await _try_remove(friends_api_instance.delete_friend_request, user_id, "Retract friend request")
+    return unfriended and retracted
