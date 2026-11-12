@@ -731,124 +731,124 @@ def get_start_text(code) -> tuple:
     return heading, localize(text, code)
 
 _BIO_PANEL = {
-    "en": ("Verification for `{username}`", "VRCHAT PROFILE CHECK",
+    "en": ("Verification for `{username}`", "VRCHAT BIO CHECK",
            "Add the following code to your VRChat bio:",
            "Once updated, click the button to complete verification."),
-    "de": ("Verifizierung für `{username}`", "VRCHAT-PROFILPRÜFUNG",
+    "de": ("Verifizierung für `{username}`", "VRCHAT-BIO-PRÜFUNG",
            "Füge den folgenden Code zu deiner VRChat-Bio hinzu:",
            "Klicke danach auf den Button, um die Verifizierung abzuschließen."),
-    "es": ("Verificación de `{username}`", "COMPROBACIÓN DEL PERFIL DE VRCHAT",
+    "es": ("Verificación de `{username}`", "COMPROBACIÓN DE LA BIOGRAFÍA DE VRCHAT",
            "Añade el siguiente código a la biografía de tu VRChat:",
            "Cuando lo hayas actualizado, pulsa el botón para completar la verificación."),
-    "es-419": ("Verificación de `{username}`", "COMPROBACIÓN DEL PERFIL DE VRCHAT",
+    "es-419": ("Verificación de `{username}`", "COMPROBACIÓN DE LA BIOGRAFÍA DE VRCHAT",
                "Agrega el siguiente código a la biografía de tu VRChat:",
                "Una vez actualizada, haz clic en el botón para completar la verificación."),
-    "it": ("Verifica per `{username}`", "CONTROLLO DEL PROFILO VRCHAT",
+    "it": ("Verifica per `{username}`", "CONTROLLO DELLA BIO VRCHAT",
            "Aggiungi il seguente codice alla bio del tuo profilo VRChat:",
            "Dopo l'aggiornamento, clicca sul pulsante per completare la verifica."),
-    "hu": ("Hitelesítés – `{username}`", "VRCHAT-PROFIL ELLENŐRZÉSE",
+    "hu": ("Hitelesítés – `{username}`", "VRCHAT-BIÓ ELLENŐRZÉSE",
            "Add hozzá a következő kódot a VRChat-biódhoz:",
            "Miután frissítetted, kattints a gombra a hitelesítés befejezéséhez."),
-    "nl": ("Verificatie voor `{username}`", "VRCHAT-PROFIELCONTROLE",
+    "nl": ("Verificatie voor `{username}`", "VRCHAT-BIOCONTROLE",
            "Voeg de volgende code toe aan je VRChat-bio:",
            "Klik na het bijwerken op de knop om de verificatie te voltooien."),
-    "pl": ("Weryfikacja dla `{username}`", "SPRAWDZANIE PROFILU VRCHAT",
+    "pl": ("Weryfikacja dla `{username}`", "SPRAWDZANIE BIO VRCHAT",
            "Dodaj poniższy kod do opisu (bio) swojego profilu VRChat:",
            "Po zaktualizowaniu kliknij przycisk, aby dokończyć weryfikację."),
-    "pt-BR": ("Verificação de `{username}`", "VERIFICAÇÃO DO PERFIL DO VRCHAT",
+    "pt-BR": ("Verificação de `{username}`", "VERIFICAÇÃO DA BIO DO VRCHAT",
               "Adicione o código a seguir à bio do seu VRChat:",
               "Depois de atualizar, clique no botão para concluir a verificação."),
-    "ro": ("Verificare pentru `{username}`", "VERIFICAREA PROFILULUI VRCHAT",
+    "ro": ("Verificare pentru `{username}`", "VERIFICAREA BIO-ULUI VRCHAT",
            "Adaugă următorul cod în bio-ul tău VRChat:",
            "După actualizare, apasă butonul pentru a finaliza verificarea."),
-    "sv": ("Verifiering för `{username}`", "KONTROLL AV VRCHAT-PROFIL",
+    "sv": ("Verifiering för `{username}`", "KONTROLL AV VRCHAT-BIO",
            "Lägg till följande kod i din VRChat-bio:",
            "När du har uppdaterat klickar du på knappen för att slutföra verifieringen."),
-    "vi": ("Xác minh cho `{username}`", "KIỂM TRA HỒ SƠ VRCHAT",
+    "vi": ("Xác minh cho `{username}`", "KIỂM TRA TIỂU SỬ VRCHAT",
            "Thêm mã sau vào tiểu sử (bio) VRChat của bạn:",
            "Sau khi cập nhật, hãy nhấn nút để hoàn tất xác minh."),
-    "tr": ("`{username}` için Doğrulama", "VRCHAT PROFİL KONTROLÜ",
+    "tr": ("`{username}` için Doğrulama", "VRCHAT BİYOGRAFİ KONTROLÜ",
            "Aşağıdaki kodu VRChat biyografine ekle:",
            "Güncelledikten sonra doğrulamayı tamamlamak için düğmeye tıkla."),
-    "cs": ("Ověření pro `{username}`", "KONTROLA PROFILU VRCHAT",
+    "cs": ("Ověření pro `{username}`", "KONTROLA BIA VRCHAT",
            "Přidej do bia svého profilu ve VRChatu následující kód:",
            "Po aktualizaci dokonči ověření kliknutím na tlačítko."),
-    "ru": ("Верификация для `{username}`", "ПРОВЕРКА ПРОФИЛЯ VRCHAT",
+    "ru": ("Верификация для `{username}`", "ПРОВЕРКА ОПИСАНИЯ (BIO) VRCHAT",
            "Добавьте следующий код в описание (bio) вашего профиля VRChat:",
            "После обновления нажмите кнопку, чтобы завершить верификацию."),
-    "uk": ("Верифікація для `{username}`", "ПЕРЕВІРКА ПРОФІЛЮ VRCHAT",
+    "uk": ("Верифікація для `{username}`", "ПЕРЕВІРКА ОПИСУ (BIO) VRCHAT",
            "Додайте наведений нижче код в опис (bio) вашого профілю VRChat:",
            "Після оновлення натисніть кнопку, щоб завершити верифікацію."),
-    "th": ("การยืนยันสำหรับ `{username}`", "ตรวจสอบโปรไฟล์ VRCHAT",
+    "th": ("การยืนยันสำหรับ `{username}`", "ตรวจสอบประวัติย่อ (BIO) VRCHAT",
            "เพิ่มรหัสต่อไปนี้ลงในประวัติย่อ (bio) ของ VRChat ของคุณ:",
            "เมื่ออัปเดตแล้ว ให้กดปุ่มเพื่อยืนยันให้เสร็จสมบูรณ์"),
-    "zh-CN": ("为 `{username}` 验证", "VRCHAT 个人资料检查",
+    "zh-CN": ("为 `{username}` 验证", "VRCHAT 简介检查",
               "请将以下验证码添加到你的 VRChat 简介中：",
               "更新后，点击按钮完成验证。"),
-    "zh-TW": ("為 `{username}` 驗證", "VRCHAT 個人檔案檢查",
+    "zh-TW": ("為 `{username}` 驗證", "VRCHAT 個人簡介檢查",
               "請將以下驗證碼加入你的 VRChat 個人簡介：",
               "更新後，點擊按鈕完成驗證。"),
-    "ja": ("`{username}` の認証", "VRCHAT プロフィール確認",
+    "ja": ("`{username}` の認証", "VRCHAT 自己紹介確認",
            "次のコードを VRChat の自己紹介（bio）に追加してください：",
            "更新したら、ボタンを押して認証を完了します。"),
-    "ko": ("`{username}` 인증", "VRCHAT 프로필 확인",
+    "ko": ("`{username}` 인증", "VRCHAT 소개(BIO) 확인",
            "다음 코드를 VRChat 소개(bio)에 추가하세요:",
            "업데이트한 후 버튼을 눌러 인증을 완료하세요."),
-    "fr": ("Vérification pour `{username}`", "VÉRIFICATION DU PROFIL VRCHAT",
+    "fr": ("Vérification pour `{username}`", "VÉRIFICATION DE LA BIO VRCHAT",
            "Ajoutez le code suivant à votre bio VRChat :",
            "Une fois mis à jour, cliquez sur le bouton pour terminer la vérification."),
-    "ar": ("التحقق من أجل `{username}`", "فحص ملف VRCHAT الشخصي",
+    "ar": ("التحقق من أجل `{username}`", "فحص السيرة الذاتية (BIO) في VRCHAT",
            "أضف الرمز التالي إلى السيرة الذاتية (bio) الخاصة بك في VRChat:",
            "بمجرد التحديث، انقر على الزر لإكمال التحقق."),
-    "id": ("Verifikasi untuk `{username}`", "PEMERIKSAAN PROFIL VRCHAT",
+    "id": ("Verifikasi untuk `{username}`", "PEMERIKSAAN BIO VRCHAT",
            "Tambahkan kode berikut ke bio VRChat Anda:",
            "Setelah diperbarui, klik tombol untuk menyelesaikan verifikasi."),
-    "pt-PT": ("Verificação de `{username}`", "VERIFICAÇÃO DO PERFIL DO VRCHAT",
+    "pt-PT": ("Verificação de `{username}`", "VERIFICAÇÃO DA BIO DO VRCHAT",
               "Adicione o seguinte código à bio do seu VRChat:",
               "Assim que atualizar, clique no botão para concluir a verificação."),
-    "fil": ("Pag-verify para sa `{username}`", "PAGSUSURI NG PROFILE SA VRCHAT",
+    "fil": ("Pag-verify para sa `{username}`", "PAGSUSURI NG BIO SA VRCHAT",
            "Idagdag ang sumusunod na code sa iyong VRChat bio:",
            "Kapag na-update na, i-click ang button upang kumpletuhin ang pag-verify."),
-    "he": ("אימות עבור `{username}`", "בדיקת פרופיל VRCHAT",
+    "he": ("אימות עבור `{username}`", "בדיקת ביו VRCHAT",
            "הוסף את הקוד הבא לביו (bio) של ה-VRChat שלך:",
            "לאחר העדכון, לחץ על הלחצן כדי להשלים את האימות."),
-    "fi": ("Käyttäjän `{username}` vahvistus", "VRCHAT-PROFIILIN TARKISTUS",
+    "fi": ("Käyttäjän `{username}` vahvistus", "VRCHAT-BIOGRAFIAN TARKISTUS",
            "Lisää seuraava koodi VRChat-biografiaasi:",
            "Kun olet päivittänyt sen, napsauta painiketta suorittaaksesi vahvistuksen loppuun."),
-    "ms": ("Pengesahan untuk `{username}`", "SEMAKAN PROFIL VRCHAT",
+    "ms": ("Pengesahan untuk `{username}`", "SEMAKAN BIO VRCHAT",
            "Tambah kod berikut ke bio VRChat anda:",
            "Setelah dikemas kini, klik butang untuk melengkapkan pengesahan."),
-    "sk": ("Overenie pre `{username}`", "KONTROLA PROFILU VRCHAT",
+    "sk": ("Overenie pre `{username}`", "KONTROLA BIA VRCHAT",
            "Pridaj do bia svojho profilu vo VRChate nasledujúci kód:",
            "Po aktualizácii dokonči overenie kliknutím na tlačidlo."),
-    "hi": ("`{username}` के लिए सत्यापन", "VRCHAT प्रोफ़ाइल जांच",
+    "hi": ("`{username}` के लिए सत्यापन", "VRCHAT बायो जांच",
            "निम्नलिखित कोड को अपने VRChat बायो में जोड़ें:",
            "अपडेट करने के बाद, सत्यापन पूरा करने के लिए बटन पर क्लिक करें।"),
-    "el": ("Επαλήθευση για `{username}`", "ΕΛΕΓΧΟΣ ΠΡΟΦΙΛ VRCHAT",
+    "el": ("Επαλήθευση για `{username}`", "ΕΛΕΓΧΟΣ ΒΙΟΓΡΑΦΙΚΟΥ (BIO) VRCHAT",
            "Προσθέστε τον ακόλουθο κωδικό στο βιογραφικό (bio) του VRChat σας:",
            "Μόλις ενημερωθεί, κάντε κλικ στο κουμπί για να ολοκληρώσετε την επαλήθευση."),
-    "da": ("Verifikation for `{username}`", "VRCHAT PROFILTJEK",
+    "da": ("Verifikation for `{username}`", "VRCHAT BIOTJEK",
            "Tilføj følgende kode til din VRChat-bio:",
            "Når du har opdateret, skal du klikke på knappen for at fuldføre verifikationen."),
-    "nb": ("Verifisering for `{username}`", "VRCHAT PROFILSJEKK",
+    "nb": ("Verifisering for `{username}`", "VRCHAT BIOSJEKK",
            "Legg til følgende kode i din VRChat-bio:",
            "Når du har oppdatert, klikker du på knappen for å fullføre verifiseringen."),
-    "fa": ("تأیید برای `{username}`", "بررسی پروفایل VRCHAT",
+    "fa": ("تأیید برای `{username}`", "بررسی بیو VRCHAT",
            "کد زیر را به بیو (bio) VRChat خود اضافه کنید:",
            "پس از به‌روزرسانی، روی دکمه کلیک کنید تا تأیید کامل شود."),
-    "sr": ("Верификација за `{username}`", "ПРОВЕРА VRCHAT ПРОФИЛА",
+    "sr": ("Верификација за `{username}`", "ПРОВЕРА VRCHAT БИОА",
            "Додајте следећи код у свој VRChat био:",
            "Када ажурирате, кликните на дугме да бисте завршили верификацију."),
-    "hr": ("Potvrđivanje za `{username}`", "PROVJERA VRCHAT PROFILA",
+    "hr": ("Potvrđivanje za `{username}`", "PROVJERA VRCHAT BIA",
            "Dodajte sljedeći kod u svoj VRChat bio:",
            "Nakon što ažurirate, kliknite na gumb kako biste završili potvrđivanje."),
-    "bn": ("`{username}`-এর জন্য যাচাইকরণ", "VRCHAT প্রোফাইল পরীক্ষা",
+    "bn": ("`{username}`-এর জন্য যাচাইকরণ", "VRCHAT বায়ো পরীক্ষা",
            "আপনার VRChat বায়োতে নিম্নলিখিত কোডটি যোগ করুন:",
            "আপডেট করার পর, যাচাইকরণ সম্পন্ন করতে বোতামে ক্লিক করুন।"),
-    "bg": ("Потвърждение за `{username}`", "ПРОВЕРКА НА VRCHAT ПРОФИЛ",
+    "bg": ("Потвърждение за `{username}`", "ПРОВЕРКА НА VRCHAT БИОГРАФИЯТА",
            "Добавете следния код към вашата VRChat биография (bio):",
            "След като актуализирате, натиснете бутона, за да завършите потвърждението."),
-    "ca": ("Verificació per a `{username}`", "COMPROVACIÓ DEL PERFIL DE VRCHAT",
+    "ca": ("Verificació per a `{username}`", "COMPROVACIÓ DE LA BIOGRAFIA DE VRCHAT",
            "Afegeix el codi següent a la biografia del teu VRChat:",
            "Un cop actualitzat, clica al botó per completar la verificació."),
 }
@@ -2070,11 +2070,11 @@ _STATUS_TEXT = {
         "switch_hint": "Don't want the code in your bio? Use a status check instead. I'll send you a friend request on VRChat.",
         "switch_button": "Use Status Check Instead",
         "title": "Status Check",
-        "subtitle": "Verifying {username} with your VRChat status",
+        "subtitle": "VRCHAT STATUS CHECK",
         "steps": (
-            "1. Open VRChat and accept the friend request from **{bot}**.\n"
-            "2. Set your VRChat status message to the code below.\n"
-            "3. Press the button once you've done both."
+            "Open VRChat and accept the friend request from **`{bot}`**.\n"
+            "Set your VRChat status message to the code below:\n"
+            "Press the button once you've done both."
         ),
         "after": "Once you're verified I'll remove you from my friends list, and you can change your status back.",
         "check_button": "I've accepted & set my status",
@@ -2083,11 +2083,11 @@ _STATUS_TEXT = {
         "switch_hint": "Du möchtest den Code nicht in deiner Bio haben? Nutze stattdessen die Statusprüfung. Ich sende dir eine Freundschaftsanfrage auf VRChat.",
         "switch_button": "Stattdessen Statusprüfung nutzen",
         "title": "Statusprüfung",
-        "subtitle": "{username} wird mit deinem VRChat-Status verifiziert",
+        "subtitle": "VRCHAT-STATUSPRÜFUNG",
         "steps": (
-            "1. Öffne VRChat und nimm die Freundschaftsanfrage von **{bot}** an.\n"
-            "2. Setze deine VRChat-Statusnachricht auf den untenstehenden Code.\n"
-            "3. Drücke den Button, sobald du beides erledigt hast."
+            "Öffne VRChat und nimm die Freundschaftsanfrage von **`{bot}`** an.\n"
+            "Setze deine VRChat-Statusnachricht auf den untenstehenden Code:\n"
+            "Drücke den Button, sobald du beides erledigt hast."
         ),
         "after": "Sobald du verifiziert bist, entferne ich dich aus meiner Freundesliste und du kannst deinen Status zurücksetzen.",
         "check_button": "Angenommen & Status gesetzt",
@@ -2096,11 +2096,11 @@ _STATUS_TEXT = {
         "switch_hint": "¿No quieres el código en tu biografía? Usa la comprobación por estado. Te enviaré una solicitud de amistad en VRChat.",
         "switch_button": "Usar comprobación por estado",
         "title": "Comprobación por estado",
-        "subtitle": "Verificando a {username} con tu estado de VRChat",
+        "subtitle": "COMPROBACIÓN DEL ESTADO DE VRCHAT",
         "steps": (
-            "1. Abre VRChat y acepta la solicitud de amistad de **{bot}**.\n"
-            "2. Establece tu mensaje de estado de VRChat con el código de abajo.\n"
-            "3. Pulsa el botón cuando hayas hecho ambas cosas."
+            "Abre VRChat y acepta la solicitud de amistad de **`{bot}`**.\n"
+            "Establece tu mensaje de estado de VRChat con el código de abajo:\n"
+            "Pulsa el botón cuando hayas hecho ambas cosas."
         ),
         "after": "Cuando estés verificado te eliminaré de mi lista de amigos y podrás restablecer tu estado.",
         "check_button": "He aceptado y puesto mi estado",
@@ -2109,11 +2109,11 @@ _STATUS_TEXT = {
         "switch_hint": "¿No quieres el código en tu biografía? Usa la verificación por estado. Te enviaré una solicitud de amistad en VRChat.",
         "switch_button": "Usar verificación por estado",
         "title": "Verificación por estado",
-        "subtitle": "Verificando a {username} con tu estado de VRChat",
+        "subtitle": "COMPROBACIÓN DEL ESTADO DE VRCHAT",
         "steps": (
-            "1. Abre VRChat y acepta la solicitud de amistad de **{bot}**.\n"
-            "2. Configura tu mensaje de estado de VRChat con el código de abajo.\n"
-            "3. Haz clic en el botón cuando hayas hecho ambas cosas."
+            "Abre VRChat y acepta la solicitud de amistad de **`{bot}`**.\n"
+            "Configura tu mensaje de estado de VRChat con el código de abajo:\n"
+            "Haz clic en el botón cuando hayas hecho ambas cosas."
         ),
         "after": "Una vez que estés verificado, te eliminaré de mi lista de amigos y podrás cambiar tu estado de nuevo.",
         "check_button": "Ya acepté y configuré mi estado",
@@ -2122,11 +2122,11 @@ _STATUS_TEXT = {
         "switch_hint": "Non vuoi il codice nella tua bio? Usa invece il controllo tramite stato. Ti invierò una richiesta di amicizia su VRChat.",
         "switch_button": "Usa il controllo dello stato",
         "title": "Controllo dello stato",
-        "subtitle": "Verifica di {username} tramite il tuo stato VRChat",
+        "subtitle": "CONTROLLO DELLO STATO VRCHAT",
         "steps": (
-            "1. Apri VRChat e accetta la richiesta di amicizia di **{bot}**.\n"
-            "2. Imposta il tuo messaggio di stato di VRChat con il codice qui sotto.\n"
-            "3. Premi il pulsante dopo aver fatto entrambe le cose."
+            "Apri VRChat e accetta la richiesta di amicizia di **`{bot}`**.\n"
+            "Imposta il tuo messaggio di stato di VRChat con il codice qui sotto:\n"
+            "Premi il pulsante dopo aver fatto entrambe le cose."
         ),
         "after": "Una volta verificato ti rimuoverò dalla mia lista amici e potrai ripristinare il tuo stato.",
         "check_button": "Ho accettato e impostato lo stato",
@@ -2135,11 +2135,11 @@ _STATUS_TEXT = {
         "switch_hint": "Nem szeretnéd a kódot a bioban? Használd inkább az állapotellenőrzést. Küldök neked egy barátkérelmet a VRChaten.",
         "switch_button": "Állapotellenőrzés használata",
         "title": "Állapotellenőrzés",
-        "subtitle": "{username} hitelesítése a VRChat-állapotoddal",
+        "subtitle": "VRCHAT-ÁLLAPOT ELLENŐRZÉSE",
         "steps": (
-            "1. Nyisd meg a VRChatet, és fogadd el **{bot}** barátkérelmét.\n"
-            "2. Állítsd a VRChat-állapotüzenetedet az alábbi kódra.\n"
-            "3. Nyomd meg a gombot, ha mindkettővel végeztél."
+            "Nyisd meg a VRChatet, és fogadd el **`{bot}`** barátkérelmét.\n"
+            "Állítsd a VRChat-állapotüzenetedet az alábbi kódra:\n"
+            "Nyomd meg a gombot, ha mindkettővel végeztél."
         ),
         "after": "Miután hitelesítettél, eltávolítalak az ismerőseim közül, és visszaállíthatod az állapotodat.",
         "check_button": "Elfogadtam és beállítottam",
@@ -2148,11 +2148,11 @@ _STATUS_TEXT = {
         "switch_hint": "Wil je de code niet in je bio? Gebruik dan de statuscontrole. Ik stuur je een vriendschapsverzoek op VRChat.",
         "switch_button": "Statuscontrole gebruiken",
         "title": "Statuscontrole",
-        "subtitle": "{username} verifiëren met je VRChat-status",
+        "subtitle": "VRCHAT-STATUSCONTROLE",
         "steps": (
-            "1. Open VRChat en accepteer het vriendschapsverzoek van **{bot}**.\n"
-            "2. Zet je VRChat-statusbericht op de onderstaande code.\n"
-            "3. Druk op de knop zodra je beide hebt gedaan."
+            "Open VRChat en accepteer het vriendschapsverzoek van **`{bot}`**.\n"
+            "Zet je VRChat-statusbericht op de onderstaande code:\n"
+            "Druk op de knop zodra je beide hebt gedaan."
         ),
         "after": "Zodra je geverifieerd bent, verwijder ik je uit mijn vriendenlijst en kun je je status terugzetten.",
         "check_button": "Geaccepteerd en status ingesteld",
@@ -2161,11 +2161,11 @@ _STATUS_TEXT = {
         "switch_hint": "Nie chcesz kodu w swoim opisie (bio)? Użyj zamiast tego weryfikacji przez status. Wyślę Ci zaproszenie do znajomych w VRChat.",
         "switch_button": "Użyj weryfikacji przez status",
         "title": "Weryfikacja przez status",
-        "subtitle": "Weryfikacja użytkownika {username} za pomocą Twojego statusu VRChat",
+        "subtitle": "SPRAWDZANIE STATUSU VRCHAT",
         "steps": (
-            "1. Otwórz VRChat i zaakceptuj zaproszenie do znajomych od **{bot}**.\n"
-            "2. Ustaw swój status w VRChat na poniższy kod.\n"
-            "3. Naciśnij przycisk, gdy zrobisz jedno i drugie."
+            "Otwórz VRChat i zaakceptuj zaproszenie do znajomych od **`{bot}`**.\n"
+            "Ustaw swój status w VRChat na poniższy kod:\n"
+            "Naciśnij przycisk, gdy zrobisz jedno i drugie."
         ),
         "after": "Gdy zostaniesz zweryfikowany/a, usunę Cię z listy znajomych, a Ty będziesz mógł/mogła przywrócić swój status.",
         "check_button": "Zaakceptowano i ustawiono status",
@@ -2174,11 +2174,11 @@ _STATUS_TEXT = {
         "switch_hint": "Não quer o código na sua bio? Use a verificação por status. Vou enviar um pedido de amizade para você no VRChat.",
         "switch_button": "Usar verificação por status",
         "title": "Verificação por status",
-        "subtitle": "Verificando {username} com seu status do VRChat",
+        "subtitle": "VERIFICAÇÃO DO STATUS DO VRCHAT",
         "steps": (
-            "1. Abra o VRChat e aceite o pedido de amizade de **{bot}**.\n"
-            "2. Defina a mensagem de status do seu VRChat com o código abaixo.\n"
-            "3. Clique no botão quando tiver feito as duas coisas."
+            "Abra o VRChat e aceite o pedido de amizade de **`{bot}`**.\n"
+            "Defina a mensagem de status do seu VRChat com o código abaixo:\n"
+            "Clique no botão quando tiver feito as duas coisas."
         ),
         "after": "Depois de verificado, vou remover você da minha lista de amigos e você poderá mudar seu status de volta.",
         "check_button": "Aceitei e defini meu status",
@@ -2187,11 +2187,11 @@ _STATUS_TEXT = {
         "switch_hint": "Nu vrei codul în bio? Folosește în schimb verificarea prin status. Îți voi trimite o cerere de prietenie pe VRChat.",
         "switch_button": "Folosește verificarea prin status",
         "title": "Verificare prin status",
-        "subtitle": "Se verifică {username} prin statusul tău VRChat",
+        "subtitle": "VERIFICAREA STATUSULUI VRCHAT",
         "steps": (
-            "1. Deschide VRChat și acceptă cererea de prietenie de la **{bot}**.\n"
-            "2. Setează mesajul de status VRChat la codul de mai jos.\n"
-            "3. Apasă butonul după ce le-ai făcut pe amândouă."
+            "Deschide VRChat și acceptă cererea de prietenie de la **`{bot}`**.\n"
+            "Setează mesajul de status VRChat la codul de mai jos:\n"
+            "Apasă butonul după ce le-ai făcut pe amândouă."
         ),
         "after": "Odată verificat, te voi elimina din lista mea de prieteni și îți poți schimba statusul la loc.",
         "check_button": "Am acceptat și am setat statusul",
@@ -2200,11 +2200,11 @@ _STATUS_TEXT = {
         "switch_hint": "Vill du inte ha koden i din bio? Använd statuskontroll i stället. Jag skickar en vänförfrågan till dig på VRChat.",
         "switch_button": "Använd statuskontroll i stället",
         "title": "Statuskontroll",
-        "subtitle": "Verifierar {username} med din VRChat-status",
+        "subtitle": "KONTROLL AV VRCHAT-STATUS",
         "steps": (
-            "1. Öppna VRChat och acceptera vänförfrågan från **{bot}**.\n"
-            "2. Ställ in ditt VRChat-statusmeddelande på koden nedan.\n"
-            "3. Tryck på knappen när du har gjort båda."
+            "Öppna VRChat och acceptera vänförfrågan från **`{bot}`**.\n"
+            "Ställ in ditt VRChat-statusmeddelande på koden nedan:\n"
+            "Tryck på knappen när du har gjort båda."
         ),
         "after": "När du är verifierad tar jag bort dig från min vänlista och du kan ändra tillbaka din status.",
         "check_button": "Jag har accepterat och ställt in status",
@@ -2213,11 +2213,11 @@ _STATUS_TEXT = {
         "switch_hint": "Không muốn để mã trong tiểu sử? Hãy dùng kiểm tra trạng thái. Mình sẽ gửi cho bạn một lời mời kết bạn trên VRChat.",
         "switch_button": "Dùng kiểm tra trạng thái",
         "title": "Kiểm tra trạng thái",
-        "subtitle": "Đang xác minh {username} bằng trạng thái VRChat của bạn",
+        "subtitle": "KIỂM TRA TRẠNG THÁI VRCHAT",
         "steps": (
-            "1. Mở VRChat và chấp nhận lời mời kết bạn từ **{bot}**.\n"
-            "2. Đặt thông điệp trạng thái VRChat của bạn thành mã bên dưới.\n"
-            "3. Nhấn nút sau khi bạn đã làm xong cả hai."
+            "Mở VRChat và chấp nhận lời mời kết bạn từ **`{bot}`**.\n"
+            "Đặt thông điệp trạng thái VRChat của bạn thành mã bên dưới:\n"
+            "Nhấn nút sau khi bạn đã làm xong cả hai."
         ),
         "after": "Sau khi bạn được xác minh, mình sẽ xóa bạn khỏi danh sách bạn bè và bạn có thể đổi lại trạng thái.",
         "check_button": "Tôi đã chấp nhận & đặt trạng thái",
@@ -2226,11 +2226,11 @@ _STATUS_TEXT = {
         "switch_hint": "Kodun biyografinde olmasını istemiyor musun? Bunun yerine durum kontrolünü kullan. Sana VRChat'te bir arkadaşlık isteği göndereceğim.",
         "switch_button": "Bunun Yerine Durum Kontrolü",
         "title": "Durum Kontrolü",
-        "subtitle": "{username} kullanıcısı VRChat durumunla doğrulanıyor",
+        "subtitle": "VRCHAT DURUM KONTROLÜ",
         "steps": (
-            "1. VRChat'i aç ve **{bot}** tarafından gelen arkadaşlık isteğini kabul et.\n"
-            "2. VRChat durum mesajını aşağıdaki kod olarak ayarla.\n"
-            "3. İkisini de yaptığında düğmeye bas."
+            "VRChat'i aç ve **`{bot}`** tarafından gelen arkadaşlık isteğini kabul et.\n"
+            "VRChat durum mesajını aşağıdaki kod olarak ayarla:\n"
+            "İkisini de yaptığında düğmeye bas."
         ),
         "after": "Doğrulandıktan sonra seni arkadaş listemden çıkaracağım, durumunu da eski haline getirebilirsin.",
         "check_button": "Kabul ettim ve durumumu ayarladım",
@@ -2239,11 +2239,11 @@ _STATUS_TEXT = {
         "switch_hint": "Nechceš kód v bio? Použij místo toho kontrolu stavu. Pošlu ti ve VRChatu žádost o přátelství.",
         "switch_button": "Použít kontrolu stavu",
         "title": "Kontrola stavu",
-        "subtitle": "Ověřování uživatele {username} pomocí tvého stavu ve VRChatu",
+        "subtitle": "KONTROLA STAVU VRCHAT",
         "steps": (
-            "1. Otevři VRChat a přijmi žádost o přátelství od **{bot}**.\n"
-            "2. Nastav svůj stav ve VRChatu na kód níže.\n"
-            "3. Až budeš mít obojí hotové, stiskni tlačítko."
+            "Otevři VRChat a přijmi žádost o přátelství od **`{bot}`**.\n"
+            "Nastav svůj stav ve VRChatu na kód níže:\n"
+            "Až budeš mít obojí hotové, stiskni tlačítko."
         ),
         "after": "Jakmile budeš ověřen, odeberu tě ze svých přátel a svůj stav můžeš vrátit zpět.",
         "check_button": "Přijal/a jsem a nastavil/a stav",
@@ -2252,11 +2252,11 @@ _STATUS_TEXT = {
         "switch_hint": "Не хотите размещать код в описании (bio)? Используйте проверку по статусу. Я отправлю вам запрос в друзья в VRChat.",
         "switch_button": "Проверка по статусу",
         "title": "Проверка по статусу",
-        "subtitle": "Верификация {username} по вашему статусу VRChat",
+        "subtitle": "ПРОВЕРКА СТАТУСА VRCHAT",
         "steps": (
-            "1. Откройте VRChat и примите запрос в друзья от **{bot}**.\n"
-            "2. Установите в качестве статуса VRChat код, указанный ниже.\n"
-            "3. Нажмите кнопку, когда сделаете и то и другое."
+            "Откройте VRChat и примите запрос в друзья от **`{bot}`**.\n"
+            "Установите в качестве статуса VRChat код, указанный ниже:\n"
+            "Нажмите кнопку, когда сделаете и то и другое."
         ),
         "after": "После верификации я удалю вас из списка друзей, и вы сможете вернуть прежний статус.",
         "check_button": "Принял(а) и установил(а) статус",
@@ -2265,11 +2265,11 @@ _STATUS_TEXT = {
         "switch_hint": "Не хочете розміщувати код в описі (bio)? Скористайтеся перевіркою за статусом. Я надішлю вам запит у друзі у VRChat.",
         "switch_button": "Перевірка за статусом",
         "title": "Перевірка за статусом",
-        "subtitle": "Верифікація {username} за вашим статусом VRChat",
+        "subtitle": "ПЕРЕВІРКА СТАТУСУ VRCHAT",
         "steps": (
-            "1. Відкрийте VRChat і прийміть запит у друзі від **{bot}**.\n"
-            "2. Встановіть як статус VRChat код, наведений нижче.\n"
-            "3. Натисніть кнопку, коли виконаєте обидва кроки."
+            "Відкрийте VRChat і прийміть запит у друзі від **`{bot}`**.\n"
+            "Встановіть як статус VRChat код, наведений нижче:\n"
+            "Натисніть кнопку, коли виконаєте обидва кроки."
         ),
         "after": "Після верифікації я видалю вас зі списку друзів, і ви зможете повернути попередній статус.",
         "check_button": "Прийняв(ла) і встановив(ла) статус",
@@ -2278,11 +2278,11 @@ _STATUS_TEXT = {
         "switch_hint": "ไม่อยากใส่รหัสในประวัติย่อ (bio) ใช่ไหม? ใช้การตรวจสอบผ่านสถานะแทนได้ เราจะส่งคำขอเป็นเพื่อนให้คุณใน VRChat",
         "switch_button": "ใช้การตรวจสอบสถานะแทน",
         "title": "การตรวจสอบสถานะ",
-        "subtitle": "กำลังยืนยัน {username} ด้วยสถานะ VRChat ของคุณ",
+        "subtitle": "ตรวจสอบสถานะ VRCHAT",
         "steps": (
-            "1. เปิด VRChat แล้วกดยอมรับคำขอเป็นเพื่อนจาก **{bot}**\n"
-            "2. ตั้งข้อความสถานะ VRChat ของคุณเป็นรหัสด้านล่าง\n"
-            "3. กดปุ่มเมื่อทำครบทั้งสองขั้นตอนแล้ว"
+            "เปิด VRChat แล้วกดยอมรับคำขอเป็นเพื่อนจาก **`{bot}`**\n"
+            "ตั้งข้อความสถานะ VRChat ของคุณเป็นรหัสด้านล่าง\n"
+            "กดปุ่มเมื่อทำครบทั้งสองขั้นตอนแล้ว"
         ),
         "after": "เมื่อยืนยันเสร็จ เราจะลบคุณออกจากรายชื่อเพื่อน และคุณสามารถเปลี่ยนสถานะกลับได้",
         "check_button": "ฉันยอมรับและตั้งสถานะแล้ว",
@@ -2291,11 +2291,11 @@ _STATUS_TEXT = {
         "switch_hint": "不想把验证码放在简介里？可以改用状态验证。我会在 VRChat 上向你发送好友请求。",
         "switch_button": "改用状态验证",
         "title": "状态验证",
-        "subtitle": "正在通过你的 VRChat 状态验证 {username}",
+        "subtitle": "VRCHAT 状态检查",
         "steps": (
-            "1. 打开 VRChat，接受来自 **{bot}** 的好友请求。\n"
-            "2. 将你的 VRChat 状态消息设置为下方的验证码。\n"
-            "3. 完成以上两步后，点击按钮。"
+            "打开 VRChat，接受来自 **`{bot}`** 的好友请求。\n"
+            "将你的 VRChat 状态消息设置为下方的验证码:\n"
+            "完成以上两步后，点击按钮。"
         ),
         "after": "验证通过后，我会把你从好友列表中移除，你可以把状态改回去。",
         "check_button": "我已接受并设置状态",
@@ -2304,11 +2304,11 @@ _STATUS_TEXT = {
         "switch_hint": "不想把驗證碼放在簡介裡？可以改用狀態驗證。我會在 VRChat 上向你發送好友邀請。",
         "switch_button": "改用狀態驗證",
         "title": "狀態驗證",
-        "subtitle": "正在透過你的 VRChat 狀態驗證 {username}",
+        "subtitle": "VRCHAT 狀態檢查",
         "steps": (
-            "1. 開啟 VRChat，接受來自 **{bot}** 的好友邀請。\n"
-            "2. 將你的 VRChat 狀態訊息設定為下方的驗證碼。\n"
-            "3. 完成以上兩步後，點擊按鈕。"
+            "開啟 VRChat，接受來自 **`{bot}`** 的好友邀請。\n"
+            "將你的 VRChat 狀態訊息設定為下方的驗證碼:\n"
+            "完成以上兩步後，點擊按鈕。"
         ),
         "after": "驗證通過後，我會將你從好友名單中移除，你可以把狀態改回去。",
         "check_button": "我已接受並設定狀態",
@@ -2317,11 +2317,11 @@ _STATUS_TEXT = {
         "switch_hint": "コードを自己紹介（bio）に入れたくない場合は、代わりにステータス確認をご利用ください。VRChat でフレンドリクエストを送信します。",
         "switch_button": "ステータス確認を使う",
         "title": "ステータス確認",
-        "subtitle": "VRChat のステータスで {username} を認証します",
+        "subtitle": "VRCHAT ステータス確認",
         "steps": (
-            "1. VRChat を開き、**{bot}** からのフレンドリクエストを承認します。\n"
-            "2. VRChat のステータスメッセージを下のコードに設定します。\n"
-            "3. 両方終わったらボタンを押します。"
+            "VRChat を開き、**`{bot}`** からのフレンドリクエストを承認します。\n"
+            "VRChat のステータスメッセージを下のコードに設定します:\n"
+            "両方終わったらボタンを押します。"
         ),
         "after": "認証が完了したらフレンドリストから削除しますので、ステータスは元に戻して構いません。",
         "check_button": "承認してステータスを設定しました",
@@ -2330,11 +2330,11 @@ _STATUS_TEXT = {
         "switch_hint": "코드를 소개(bio)에 넣고 싶지 않으신가요? 대신 상태 확인을 이용하세요. VRChat에서 친구 요청을 보내드립니다.",
         "switch_button": "상태 확인 사용하기",
         "title": "상태 확인",
-        "subtitle": "VRChat 상태 메시지로 {username} 인증 중",
+        "subtitle": "VRCHAT 상태 확인",
         "steps": (
-            "1. VRChat을 열고 **{bot}**의 친구 요청을 수락하세요.\n"
-            "2. VRChat 상태 메시지를 아래 코드로 설정하세요.\n"
-            "3. 두 가지를 모두 마쳤다면 버튼을 누르세요."
+            "VRChat을 열고 **`{bot}`**의 친구 요청을 수락하세요.\n"
+            "VRChat 상태 메시지를 아래 코드로 설정하세요:\n"
+            "두 가지를 모두 마쳤다면 버튼을 누르세요."
         ),
         "after": "인증이 완료되면 친구 목록에서 삭제해 드리며, 상태 메시지는 원래대로 바꾸셔도 됩니다.",
         "check_button": "수락하고 상태를 설정했습니다",
@@ -2343,11 +2343,11 @@ _STATUS_TEXT = {
         "switch_hint": "Vous ne voulez pas du code dans votre bio ? Utilisez plutôt la vérification par statut. Je vous enverrai une demande d'ami sur VRChat.",
         "switch_button": "Utiliser la vérification par statut",
         "title": "Vérification par statut",
-        "subtitle": "Vérification de {username} avec votre statut VRChat",
+        "subtitle": "VÉRIFICATION DU STATUT VRCHAT",
         "steps": (
-            "1. Ouvrez VRChat et acceptez la demande d'ami de **{bot}**.\n"
-            "2. Définissez votre message de statut VRChat sur le code ci-dessous.\n"
-            "3. Appuyez sur le bouton une fois les deux étapes terminées."
+            "Ouvrez VRChat et acceptez la demande d'ami de **`{bot}`**.\n"
+            "Définissez votre message de statut VRChat sur le code ci-dessous:\n"
+            "Appuyez sur le bouton une fois les deux étapes terminées."
         ),
         "after": "Une fois vérifié, je vous retirerai de ma liste d'amis et vous pourrez remettre votre statut d'origine.",
         "check_button": "J'ai accepté et défini mon statut",
@@ -2356,11 +2356,11 @@ _STATUS_TEXT = {
         "switch_hint": "لا تريد الرمز في السيرة الذاتية (bio)؟ استخدم التحقق عبر الحالة بدلاً من ذلك. سأرسل لك طلب صداقة على VRChat.",
         "switch_button": "استخدام التحقق عبر الحالة",
         "title": "التحقق عبر الحالة",
-        "subtitle": "جارٍ التحقق من {username} باستخدام حالة VRChat الخاصة بك",
+        "subtitle": "فحص حالة VRCHAT",
         "steps": (
-            "1. افتح VRChat واقبل طلب الصداقة من **{bot}**.\n"
-            "2. اضبط رسالة حالة VRChat الخاصة بك على الرمز أدناه.\n"
-            "3. اضغط على الزر بعد إتمام الخطوتين."
+            "افتح VRChat واقبل طلب الصداقة من **`{bot}`**.\n"
+            "اضبط رسالة حالة VRChat الخاصة بك على الرمز أدناه:\n"
+            "اضغط على الزر بعد إتمام الخطوتين."
         ),
         "after": "بمجرد التحقق منك سأزيلك من قائمة أصدقائي، ويمكنك إعادة حالتك كما كانت.",
         "check_button": "قبلت الطلب وضبطت حالتي",
@@ -2369,11 +2369,11 @@ _STATUS_TEXT = {
         "switch_hint": "Tidak ingin kode di bio Anda? Gunakan pemeriksaan status sebagai gantinya. Saya akan mengirimkan permintaan pertemanan kepada Anda di VRChat.",
         "switch_button": "Gunakan Pemeriksaan Status",
         "title": "Pemeriksaan Status",
-        "subtitle": "Memverifikasi {username} dengan status VRChat Anda",
+        "subtitle": "PEMERIKSAAN STATUS VRCHAT",
         "steps": (
-            "1. Buka VRChat dan terima permintaan pertemanan dari **{bot}**.\n"
-            "2. Atur pesan status VRChat Anda menjadi kode di bawah.\n"
-            "3. Tekan tombol setelah Anda menyelesaikan keduanya."
+            "Buka VRChat dan terima permintaan pertemanan dari **`{bot}`**.\n"
+            "Atur pesan status VRChat Anda menjadi kode di bawah:\n"
+            "Tekan tombol setelah Anda menyelesaikan keduanya."
         ),
         "after": "Setelah Anda terverifikasi, saya akan menghapus Anda dari daftar teman saya, dan Anda dapat mengubah status Anda kembali.",
         "check_button": "Sudah diterima & status diatur",
@@ -2382,11 +2382,11 @@ _STATUS_TEXT = {
         "switch_hint": "Não quer o código na sua bio? Use antes a verificação por estado. Vou enviar-lhe um pedido de amizade no VRChat.",
         "switch_button": "Usar verificação por estado",
         "title": "Verificação por estado",
-        "subtitle": "A verificar {username} com o seu estado do VRChat",
+        "subtitle": "VERIFICAÇÃO DO ESTADO DO VRCHAT",
         "steps": (
-            "1. Abra o VRChat e aceite o pedido de amizade de **{bot}**.\n"
-            "2. Defina a mensagem de estado do seu VRChat com o código abaixo.\n"
-            "3. Clique no botão quando tiver feito ambas as coisas."
+            "Abra o VRChat e aceite o pedido de amizade de **`{bot}`**.\n"
+            "Defina a mensagem de estado do seu VRChat com o código abaixo:\n"
+            "Clique no botão quando tiver feito ambas as coisas."
         ),
         "after": "Depois de verificado, vou removê-lo da minha lista de amigos e poderá repor o seu estado.",
         "check_button": "Aceitei e defini o meu estado",
@@ -2395,11 +2395,11 @@ _STATUS_TEXT = {
         "switch_hint": "Ayaw mong ilagay ang code sa iyong bio? Gamitin na lang ang status check. Magpapadala ako sa iyo ng friend request sa VRChat.",
         "switch_button": "Gamitin ang Status Check",
         "title": "Status Check",
-        "subtitle": "Bini-verify si {username} gamit ang iyong VRChat status",
+        "subtitle": "PAGSUSURI NG STATUS SA VRCHAT",
         "steps": (
-            "1. Buksan ang VRChat at tanggapin ang friend request mula kay **{bot}**.\n"
-            "2. Itakda ang iyong VRChat status message sa code sa ibaba.\n"
-            "3. Pindutin ang button kapag nagawa mo na ang pareho."
+            "Buksan ang VRChat at tanggapin ang friend request mula kay **`{bot}`**.\n"
+            "Itakda ang iyong VRChat status message sa code sa ibaba:\n"
+            "Pindutin ang button kapag nagawa mo na ang pareho."
         ),
         "after": "Kapag na-verify ka na, aalisin kita sa friends list ko, at maaari mo nang ibalik ang iyong status.",
         "check_button": "Tinanggap ko at naitakda ang status",
@@ -2408,11 +2408,11 @@ _STATUS_TEXT = {
         "switch_hint": "לא רוצה את הקוד בביו שלך? השתמש באימות דרך סטטוס במקום זאת. אשלח לך בקשת חברות ב-VRChat.",
         "switch_button": "השתמש באימות סטטוס",
         "title": "אימות סטטוס",
-        "subtitle": "מאמת את {username} באמצעות הסטטוס שלך ב-VRChat",
+        "subtitle": "בדיקת סטטוס VRCHAT",
         "steps": (
-            "1. פתח את VRChat וקבל את בקשת החברות מ-**{bot}**.\n"
-            "2. הגדר את הודעת הסטטוס שלך ב-VRChat לקוד שלהלן.\n"
-            "3. לחץ על הלחצן לאחר שסיימת את שני השלבים."
+            "פתח את VRChat וקבל את בקשת החברות מ-**`{bot}`**.\n"
+            "הגדר את הודעת הסטטוס שלך ב-VRChat לקוד שלהלן:\n"
+            "לחץ על הלחצן לאחר שסיימת את שני השלבים."
         ),
         "after": "לאחר שתאומת, אסיר אותך מרשימת החברים שלי, ותוכל להחזיר את הסטטוס שלך.",
         "check_button": "קיבלתי והגדרתי את הסטטוס",
@@ -2421,11 +2421,11 @@ _STATUS_TEXT = {
         "switch_hint": "Etkö halua koodia biografiaasi? Käytä sen sijaan tilan tarkistusta. Lähetän sinulle kaveripyynnön VRChatissa.",
         "switch_button": "Käytä tilan tarkistusta",
         "title": "Tilan tarkistus",
-        "subtitle": "Vahvistetaan käyttäjä {username} VRChat-tilasi avulla",
+        "subtitle": "VRCHAT-TILAN TARKISTUS",
         "steps": (
-            "1. Avaa VRChat ja hyväksy kaveripyyntö käyttäjältä **{bot}**.\n"
-            "2. Aseta VRChat-tilaviestisi alla olevaksi koodiksi.\n"
-            "3. Paina painiketta, kun olet tehnyt molemmat."
+            "Avaa VRChat ja hyväksy kaveripyyntö käyttäjältä **`{bot}`**.\n"
+            "Aseta VRChat-tilaviestisi alla olevaksi koodiksi:\n"
+            "Paina painiketta, kun olet tehnyt molemmat."
         ),
         "after": "Kun olet vahvistettu, poistan sinut kaverilistaltani ja voit vaihtaa tilasi takaisin.",
         "check_button": "Hyväksyin ja asetin tilani",
@@ -2434,11 +2434,11 @@ _STATUS_TEXT = {
         "switch_hint": "Tidak mahu kod dalam bio anda? Gunakan semakan status sebagai ganti. Saya akan menghantar permintaan rakan kepada anda di VRChat.",
         "switch_button": "Guna Semakan Status",
         "title": "Semakan Status",
-        "subtitle": "Mengesahkan {username} dengan status VRChat anda",
+        "subtitle": "SEMAKAN STATUS VRCHAT",
         "steps": (
-            "1. Buka VRChat dan terima permintaan rakan daripada **{bot}**.\n"
-            "2. Tetapkan mesej status VRChat anda kepada kod di bawah.\n"
-            "3. Tekan butang selepas anda melakukan kedua-duanya."
+            "Buka VRChat dan terima permintaan rakan daripada **`{bot}`**.\n"
+            "Tetapkan mesej status VRChat anda kepada kod di bawah:\n"
+            "Tekan butang selepas anda melakukan kedua-duanya."
         ),
         "after": "Setelah anda disahkan, saya akan mengeluarkan anda daripada senarai rakan saya, dan anda boleh menukar status anda kembali.",
         "check_button": "Saya telah terima & tetapkan status",
@@ -2447,11 +2447,11 @@ _STATUS_TEXT = {
         "switch_hint": "Nechceš kód v biu? Použi namiesto toho kontrolu stavu. Pošlem ti vo VRChate žiadosť o priateľstvo.",
         "switch_button": "Použiť kontrolu stavu",
         "title": "Kontrola stavu",
-        "subtitle": "Overovanie používateľa {username} pomocou tvojho stavu vo VRChate",
+        "subtitle": "KONTROLA STAVU VRCHAT",
         "steps": (
-            "1. Otvor VRChat a prijmi žiadosť o priateľstvo od **{bot}**.\n"
-            "2. Nastav svoj stav vo VRChate na kód nižšie.\n"
-            "3. Keď budeš mať oboje hotové, stlač tlačidlo."
+            "Otvor VRChat a prijmi žiadosť o priateľstvo od **`{bot}`**.\n"
+            "Nastav svoj stav vo VRChate na kód nižšie:\n"
+            "Keď budeš mať oboje hotové, stlač tlačidlo."
         ),
         "after": "Hneď ako budeš overený, odstránim ťa zo svojich priateľov a svoj stav môžeš vrátiť späť.",
         "check_button": "Prijal/a som a nastavil/a stav",
@@ -2460,11 +2460,11 @@ _STATUS_TEXT = {
         "switch_hint": "बायो में कोड नहीं रखना चाहते? इसके बजाय स्टेटस जांच का उपयोग करें। मैं VRChat पर आपको एक फ्रेंड रिक्वेस्ट भेजूंगा।",
         "switch_button": "स्टेटस जांच का उपयोग करें",
         "title": "स्टेटस जांच",
-        "subtitle": "आपके VRChat स्टेटस से {username} का सत्यापन किया जा रहा है",
+        "subtitle": "VRCHAT स्टेटस जांच",
         "steps": (
-            "1. VRChat खोलें और **{bot}** की फ्रेंड रिक्वेस्ट स्वीकार करें।\n"
-            "2. अपना VRChat स्टेटस संदेश नीचे दिए गए कोड पर सेट करें।\n"
-            "3. दोनों काम हो जाने पर बटन दबाएं।"
+            "VRChat खोलें और **`{bot}`** की फ्रेंड रिक्वेस्ट स्वीकार करें।\n"
+            "अपना VRChat स्टेटस संदेश नीचे दिए गए कोड पर सेट करें:\n"
+            "दोनों काम हो जाने पर बटन दबाएं।"
         ),
         "after": "सत्यापित होते ही मैं आपको अपनी मित्र सूची से हटा दूंगा, और आप अपना स्टेटस वापस बदल सकते हैं।",
         "check_button": "मैंने स्वीकार कर स्टेटस सेट कर दिया",
@@ -2473,11 +2473,11 @@ _STATUS_TEXT = {
         "switch_hint": "Δεν θέλετε τον κωδικό στο βιογραφικό σας; Χρησιμοποιήστε αντί γι' αυτό τον έλεγχο κατάστασης. Θα σας στείλω αίτημα φιλίας στο VRChat.",
         "switch_button": "Χρήση ελέγχου κατάστασης",
         "title": "Έλεγχος κατάστασης",
-        "subtitle": "Επαλήθευση του {username} με την κατάστασή σας στο VRChat",
+        "subtitle": "ΕΛΕΓΧΟΣ ΚΑΤΑΣΤΑΣΗΣ VRCHAT",
         "steps": (
-            "1. Ανοίξτε το VRChat και αποδεχτείτε το αίτημα φιλίας από τον χρήστη **{bot}**.\n"
-            "2. Ορίστε το μήνυμα κατάστασής σας στο VRChat στον παρακάτω κωδικό.\n"
-            "3. Πατήστε το κουμπί όταν ολοκληρώσετε και τα δύο."
+            "Ανοίξτε το VRChat και αποδεχτείτε το αίτημα φιλίας από τον χρήστη **`{bot}`**.\n"
+            "Ορίστε το μήνυμα κατάστασής σας στο VRChat στον παρακάτω κωδικό:\n"
+            "Πατήστε το κουμπί όταν ολοκληρώσετε και τα δύο."
         ),
         "after": "Μόλις επαληθευτείτε, θα σας αφαιρέσω από τη λίστα φίλων μου και μπορείτε να επαναφέρετε την κατάστασή σας.",
         "check_button": "Αποδέχτηκα και όρισα την κατάσταση",
@@ -2486,11 +2486,11 @@ _STATUS_TEXT = {
         "switch_hint": "Vil du ikke have koden i din bio? Brug i stedet statustjek. Jeg sender dig en venneanmodning på VRChat.",
         "switch_button": "Brug statustjek i stedet",
         "title": "Statustjek",
-        "subtitle": "Verificerer {username} med din VRChat-status",
+        "subtitle": "VRCHAT STATUSTJEK",
         "steps": (
-            "1. Åbn VRChat og accepter venneanmodningen fra **{bot}**.\n"
-            "2. Sæt din VRChat-statusbesked til koden nedenfor.\n"
-            "3. Tryk på knappen, når du har gjort begge dele."
+            "Åbn VRChat og accepter venneanmodningen fra **`{bot}`**.\n"
+            "Sæt din VRChat-statusbesked til koden nedenfor:\n"
+            "Tryk på knappen, når du har gjort begge dele."
         ),
         "after": "Når du er verificeret, fjerner jeg dig fra min venneliste, og du kan ændre din status tilbage.",
         "check_button": "Jeg har accepteret og sat min status",
@@ -2499,11 +2499,11 @@ _STATUS_TEXT = {
         "switch_hint": "Vil du ikke ha koden i bioen din? Bruk statussjekk i stedet. Jeg sender deg en venneforespørsel på VRChat.",
         "switch_button": "Bruk statussjekk i stedet",
         "title": "Statussjekk",
-        "subtitle": "Verifiserer {username} med VRChat-statusen din",
+        "subtitle": "VRCHAT STATUSSJEKK",
         "steps": (
-            "1. Åpne VRChat og godta venneforespørselen fra **{bot}**.\n"
-            "2. Sett VRChat-statusmeldingen din til koden nedenfor.\n"
-            "3. Trykk på knappen når du har gjort begge deler."
+            "Åpne VRChat og godta venneforespørselen fra **`{bot}`**.\n"
+            "Sett VRChat-statusmeldingen din til koden nedenfor:\n"
+            "Trykk på knappen når du har gjort begge deler."
         ),
         "after": "Når du er verifisert, fjerner jeg deg fra vennelisten min, og du kan endre statusen din tilbake.",
         "check_button": "Jeg har godtatt og satt statusen",
@@ -2512,11 +2512,11 @@ _STATUS_TEXT = {
         "switch_hint": "نمی‌خواهید کد در بیو شما باشد؟ به‌جای آن از بررسی وضعیت استفاده کنید. من در VRChat برای شما درخواست دوستی می‌فرستم.",
         "switch_button": "استفاده از بررسی وضعیت",
         "title": "بررسی وضعیت",
-        "subtitle": "در حال تأیید {username} با وضعیت VRChat شما",
+        "subtitle": "بررسی وضعیت VRCHAT",
         "steps": (
-            "1. VRChat را باز کنید و درخواست دوستی **{bot}** را بپذیرید.\n"
-            "2. پیام وضعیت VRChat خود را روی کد زیر تنظیم کنید.\n"
-            "3. پس از انجام هر دو مرحله، روی دکمه کلیک کنید."
+            "VRChat را باز کنید و درخواست دوستی **`{bot}`** را بپذیرید.\n"
+            "پیام وضعیت VRChat خود را روی کد زیر تنظیم کنید:\n"
+            "پس از انجام هر دو مرحله، روی دکمه کلیک کنید."
         ),
         "after": "پس از تأیید، شما را از فهرست دوستانم حذف می‌کنم و می‌توانید وضعیت خود را به حالت قبل برگردانید.",
         "check_button": "پذیرفتم و وضعیت را تنظیم کردم",
@@ -2525,11 +2525,11 @@ _STATUS_TEXT = {
         "switch_hint": "Не желите код у свом био-у? Уместо тога користите проверу статуса. Послаћу вам захтев за пријатељство на VRChat-у.",
         "switch_button": "Користи проверу статуса",
         "title": "Провера статуса",
-        "subtitle": "Верификација корисника {username} помоћу вашег VRChat статуса",
+        "subtitle": "ПРОВЕРА VRCHAT СТАТУСА",
         "steps": (
-            "1. Отворите VRChat и прихватите захтев за пријатељство од **{bot}**.\n"
-            "2. Подесите своју VRChat статусну поруку на код испод.\n"
-            "3. Притисните дугме када завршите оба корака."
+            "Отворите VRChat и прихватите захтев за пријатељство од **`{bot}`**.\n"
+            "Подесите своју VRChat статусну поруку на код испод:\n"
+            "Притисните дугме када завршите оба корака."
         ),
         "after": "Када будете верификовани, уклонићу вас са своје листе пријатеља, а ви можете вратити свој статус.",
         "check_button": "Прихватио/ла сам и подесио/ла статус",
@@ -2538,11 +2538,11 @@ _STATUS_TEXT = {
         "switch_hint": "Ne želite kod u svom biou? Umjesto toga koristite provjeru statusa. Poslat ću vam zahtjev za prijateljstvo na VRChatu.",
         "switch_button": "Koristi provjeru statusa",
         "title": "Provjera statusa",
-        "subtitle": "Potvrđivanje korisnika {username} putem vašeg VRChat statusa",
+        "subtitle": "PROVJERA VRCHAT STATUSA",
         "steps": (
-            "1. Otvorite VRChat i prihvatite zahtjev za prijateljstvo od **{bot}**.\n"
-            "2. Postavite svoju VRChat statusnu poruku na kod u nastavku.\n"
-            "3. Pritisnite gumb kad završite oba koraka."
+            "Otvorite VRChat i prihvatite zahtjev za prijateljstvo od **`{bot}`**.\n"
+            "Postavite svoju VRChat statusnu poruku na kod u nastavku:\n"
+            "Pritisnite gumb kad završite oba koraka."
         ),
         "after": "Nakon što budete potvrđeni, uklonit ću vas s popisa prijatelja, a vi možete vratiti svoj status.",
         "check_button": "Prihvatio/la sam i postavio/la status",
@@ -2551,11 +2551,11 @@ _STATUS_TEXT = {
         "switch_hint": "বায়োতে কোড রাখতে চান না? এর বদলে স্ট্যাটাস চেক ব্যবহার করুন। আমি VRChat-এ আপনাকে একটি ফ্রেন্ড রিকোয়েস্ট পাঠাব।",
         "switch_button": "স্ট্যাটাস চেক ব্যবহার করুন",
         "title": "স্ট্যাটাস চেক",
-        "subtitle": "আপনার VRChat স্ট্যাটাস দিয়ে {username} যাচাই করা হচ্ছে",
+        "subtitle": "VRCHAT স্ট্যাটাস পরীক্ষা",
         "steps": (
-            "1. VRChat খুলুন এবং **{bot}**-এর ফ্রেন্ড রিকোয়েস্ট গ্রহণ করুন।\n"
-            "2. আপনার VRChat স্ট্যাটাস মেসেজ নিচের কোডে সেট করুন।\n"
-            "3. দুটোই করা হয়ে গেলে বোতামটি চাপুন।"
+            "VRChat খুলুন এবং **`{bot}`**-এর ফ্রেন্ড রিকোয়েস্ট গ্রহণ করুন।\n"
+            "আপনার VRChat স্ট্যাটাস মেসেজ নিচের কোডে সেট করুন:\n"
+            "দুটোই করা হয়ে গেলে বোতামটি চাপুন।"
         ),
         "after": "যাচাই সম্পন্ন হলে আমি আপনাকে আমার বন্ধুতালিকা থেকে সরিয়ে দেব, এবং আপনি আপনার স্ট্যাটাস আগের মতো করে নিতে পারবেন।",
         "check_button": "গ্রহণ করেছি ও স্ট্যাটাস সেট করেছি",
@@ -2564,11 +2564,11 @@ _STATUS_TEXT = {
         "switch_hint": "Не искате кода във вашата биография? Използвайте проверка чрез статус. Ще ви изпратя покана за приятелство във VRChat.",
         "switch_button": "Използвай проверка чрез статус",
         "title": "Проверка чрез статус",
-        "subtitle": "Потвърждаване на {username} чрез вашия VRChat статус",
+        "subtitle": "ПРОВЕРКА НА VRCHAT СТАТУС",
         "steps": (
-            "1. Отворете VRChat и приемете поканата за приятелство от **{bot}**.\n"
-            "2. Задайте статус съобщението си във VRChat да бъде кодът по-долу.\n"
-            "3. Натиснете бутона, след като направите и двете."
+            "Отворете VRChat и приемете поканата за приятелство от **`{bot}`**.\n"
+            "Задайте статус съобщението си във VRChat да бъде кодът по-долу:\n"
+            "Натиснете бутона, след като направите и двете."
         ),
         "after": "След като бъдете потвърдени, ще ви премахна от списъка си с приятели и можете да върнете статуса си.",
         "check_button": "Приех и зададох статуса си",
@@ -2577,11 +2577,11 @@ _STATUS_TEXT = {
         "switch_hint": "No vols el codi a la teva biografia? Fes servir la comprovació per estat. T'enviaré una sol·licitud d'amistat a VRChat.",
         "switch_button": "Utilitza la comprovació per estat",
         "title": "Comprovació per estat",
-        "subtitle": "Verificant {username} amb el teu estat de VRChat",
+        "subtitle": "COMPROVACIÓ DE L'ESTAT DE VRCHAT",
         "steps": (
-            "1. Obre VRChat i accepta la sol·licitud d'amistat de **{bot}**.\n"
-            "2. Estableix el missatge d'estat de VRChat amb el codi de sota.\n"
-            "3. Prem el botó quan hagis fet les dues coses."
+            "Obre VRChat i accepta la sol·licitud d'amistat de **`{bot}`**.\n"
+            "Estableix el missatge d'estat de VRChat amb el codi de sota:\n"
+            "Prem el botó quan hagis fet les dues coses."
         ),
         "after": "Un cop estiguis verificat, t'eliminaré de la meva llista d'amics i podràs tornar a canviar el teu estat.",
         "check_button": "He acceptat i establert l'estat",
