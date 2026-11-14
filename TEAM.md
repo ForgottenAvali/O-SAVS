@@ -10,8 +10,8 @@
       <a href="https://vrchat.com/home/user/usr_3ff00b98-2df1-493b-95f1-fd05cf99dbac">
         <img src="https://raw.githubusercontent.com/ForgottenAvali/O-SAVS_Assets/main/Team%20Images/ForgottenAvali.png" width="120" alt="ForgottenAvali" />
       </a><br />
-      <b>ForgottenAvali</b><br />
-      <img src="https://img.shields.io/badge/Developer%20%2F%20Maintainer-0005FF?style=flat" alt="Developer / Maintainer" /><br />
+      <b>ForgottenAvali / Noodle</b><br />
+      <img src="https://img.shields.io/badge/Developer%2FMaintainer-0005FF?style=flat" alt="Developer / Maintainer" /><br />
       <sub>VRC: <a href="https://vrchat.com/home/user/usr_3ff00b98-2df1-493b-95f1-fd05cf99dbac"><b>NoodleTheAvali</b></a></sub><br />
       <sub>Discord: <code>forgotten_avali</code></sub>
     </td>
