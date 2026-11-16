@@ -13,4 +13,10 @@
       <sub>Discord: <a href="https://discord.gg/PeXzxBeUcB"><b>Coming Soon!</b></a></sub>
     </td>
   </tr>
+
+  <tr>
+    <td align="center" colspan="3" width="1000">
+      <sub>Interested in partnering with O-SAVS? Apply in <a href="https://discord.gg/PeXzxBeUcB"><b>Noodle's Nexus</b></a></sub>
+    </td>
+  </tr>
 </table>
