@@ -1,4 +1,4 @@
-import os, aiohttp
+import os, re, aiohttp
 
 from dotenv import load_dotenv
 
@@ -36,6 +36,11 @@ async def get_latest_release() -> dict:
     if not asset:
         return {"success": False, "error": "Latest release has no .exe asset attached."}
 
+    digest = str(asset.get("digest") or "").lower()
+    sha256 = digest[len("sha256:"):] if digest.startswith("sha256:") else ""
+    if not re.fullmatch(r"[0-9a-f]{64}", sha256):
+        sha256 = None
+
     return {
         "success": True,
         "tag_name": data.get("tag_name", ""),
@@ -44,6 +49,7 @@ async def get_latest_release() -> dict:
         "asset_id": asset["id"],
         "asset_name": asset["name"],
         "asset_size": asset["size"],
+        "asset_sha256": sha256,
     }
 
 async def stream_release_asset(asset_id: int, write_chunk):
