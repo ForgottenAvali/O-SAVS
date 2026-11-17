@@ -367,7 +367,7 @@ def render_steps(lang) -> str:
     return "\n".join(lines) + "\n\n" + lang.done
 
 class LanguageSelect(ui.Select):
-    def __init__(self, bot: commands.Bot, cog: commands.Cog, server_language: str, chunk: list, index: int):
+    def __init__(self, bot: commands.Bot, cog: commands.Cog, server_language: str, chunk: list, index: int, on_pick=None):
         texts = get_lang_select_text(server_language)
         placeholder = texts[0] if index == 0 else texts[1]
         super().__init__(
@@ -388,9 +388,14 @@ class LanguageSelect(ui.Select):
         self.bot = bot
         self.cog = cog
         self.server_language = server_language
+        self.on_pick = on_pick
 
     async def callback(self, interaction: Interaction):
         code = self.values[0]
+        if self.on_pick is not None:
+            await self.on_pick(interaction, code)
+            return
+
         if interaction.message is not None and interaction.message.flags.ephemeral:
             unlocked = record_language_pick(interaction.user.id, code)
             await interaction.response.edit_message(
@@ -408,11 +413,11 @@ class LanguageSelect(ui.Select):
             )
 
 class LanguageModalView(ui.LayoutView):
-    def __init__(self, bot: commands.Bot, cog: commands.Cog, server_language: str = DEFAULT_LANGUAGE):
+    def __init__(self, bot: commands.Bot, cog: commands.Cog, server_language: str = DEFAULT_LANGUAGE, on_pick=None):
         super().__init__(timeout=300)
         _, _, title, description = get_lang_select_text(server_language)
         rows = [
-            ui.ActionRow(LanguageSelect(bot, cog, server_language, chunk, i))
+            ui.ActionRow(LanguageSelect(bot, cog, server_language, chunk, i, on_pick))
             for i, chunk in enumerate(language_chunks())
         ]
         self.add_item(ui.Container(
@@ -423,15 +428,16 @@ class LanguageModalView(ui.LayoutView):
         ))
 
 class LanguagePickerButton(ui.Button):
-    def __init__(self, bot: commands.Bot, cog: commands.Cog, language: str = DEFAULT_LANGUAGE, ephemeral: bool = False):
+    def __init__(self, bot: commands.Bot, cog: commands.Cog, language: str = DEFAULT_LANGUAGE, ephemeral: bool = False, on_pick=None):
         super().__init__(label="🌐 Change Language", style=ButtonStyle.secondary, custom_id="open_language_picker")
         self.bot = bot
         self.cog = cog
         self.language = language
         self.ephemeral = ephemeral
+        self.on_pick = on_pick
 
     async def callback(self, interaction: Interaction):
-        view = LanguageModalView(self.bot, self.cog, self.language)
+        view = LanguageModalView(self.bot, self.cog, self.language, on_pick=self.on_pick)
         await interaction.response.send_message(view=view, ephemeral=True)
 
 class HiddenLanguageButton(ui.Button):
@@ -911,13 +917,21 @@ class DataDeletionView(ui.LayoutView):
         self.cog = cog
         self.user_id = user_id
         self.language = language
+        self.servers = servers
+        self.banned = banned
         self.message_interaction: Optional[Interaction] = None
         self._finished = False
 
+        self.build()
+
+    def build(self):
+        self.clear_items()
+
+        language = self.language
         heading, body = split_heading(get_text("data_delete_prompt", language))
-        if servers:
-            body += f"\n\n{get_text('data_delete_servers', language, count=len(servers))}\n{format_server_list(servers, language)}"
-        if banned:
+        if self.servers:
+            body += f"\n\n{get_text('data_delete_servers', language, count=len(self.servers))}\n{format_server_list(self.servers, language)}"
+        if self.banned:
             body += f"\n\n-# {get_text('data_delete_ban_note', language)}"
 
         self.add_item(ui.Container(
@@ -925,9 +939,29 @@ class DataDeletionView(ui.LayoutView):
             sep(),
             ui.TextDisplay(body),
             sep(),
-            ui.ActionRow(DataDeletionButton(self, True), DataDeletionButton(self, False)),
+            ui.ActionRow(
+                DataDeletionButton(self, True),
+                DataDeletionButton(self, False),
+                LanguagePickerButton(self.cog.bot, self.cog, language or DEFAULT_LANGUAGE, ephemeral=True, on_pick=self.change_language),
+            ),
             accent_colour=discord.Color.orange(),
         ))
+
+    async def change_language(self, interaction: Interaction, code: str):
+        await interaction.response.defer()
+
+        if not self._finished and self.message_interaction and code in LANGUAGES:
+            self.language = code
+            self.build()
+            try:
+                await self.message_interaction.edit_original_response(view=self)
+            except discord.HTTPException as e:
+                logging.warning(f"[Data Deletion] Could not update language: {e}")
+
+        try:
+            await interaction.delete_original_response()
+        except discord.HTTPException:
+            pass
 
     async def interaction_check(self, interaction: Interaction) -> bool:
         return interaction.user.id == self.user_id
