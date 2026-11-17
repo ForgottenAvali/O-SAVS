@@ -947,17 +947,25 @@ class DataDeletionView(ui.LayoutView):
             accent_colour=discord.Color.orange(),
         ))
 
+    async def apply_language(self, code: str):
+        if self._finished or not self.message_interaction:
+            return
+        self.language = code
+        self.build()
+        try:
+            await self.message_interaction.edit_original_response(view=self)
+        except discord.HTTPException as e:
+            logging.warning(f"[Data Deletion] Could not update language: {e}")
+
     async def change_language(self, interaction: Interaction, code: str):
+        unlocked = record_language_pick(interaction.user.id, code)
+        await self.apply_language(code)
+
+        if unlocked and not self._finished:
+            await interaction.response.edit_message(view=DeletionHiddenLanguageView(self, unlocked))
+            return
+
         await interaction.response.defer()
-
-        if not self._finished and self.message_interaction and code in LANGUAGES:
-            self.language = code
-            self.build()
-            try:
-                await self.message_interaction.edit_original_response(view=self)
-            except discord.HTTPException as e:
-                logging.warning(f"[Data Deletion] Could not update language: {e}")
-
         try:
             await interaction.delete_original_response()
         except discord.HTTPException:
@@ -1017,6 +1025,27 @@ class DataDeletionView(ui.LayoutView):
                 )
             except discord.HTTPException:
                 pass
+
+class DeletionHiddenLanguageButton(ui.Button):
+    def __init__(self, deletion_view: "DataDeletionView", code: str):
+        super().__init__(label=HIDDEN_UNLOCK_LABELS.get(code, "Switch language"), style=ButtonStyle.success)
+        self.deletion_view = deletion_view
+        self.code = code
+
+    async def callback(self, interaction: Interaction):
+        await interaction.response.defer()
+        await self.deletion_view.apply_language(self.code)
+        try:
+            await interaction.delete_original_response()
+        except discord.HTTPException:
+            pass
+
+class DeletionHiddenLanguageView(ui.LayoutView):
+    def __init__(self, deletion_view: "DataDeletionView", unlocked: list):
+        super().__init__(timeout=900)
+        self.add_item(ui.Container(
+            ui.ActionRow(*(DeletionHiddenLanguageButton(deletion_view, code) for code in unlocked[:4]))
+        ))
 
 class Verification(commands.Cog):
     def __init__(self, bot: commands.Bot):
