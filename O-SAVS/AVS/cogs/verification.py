@@ -10,11 +10,8 @@ import data.languages as _languages_module
 from data.vrchat import (
     get_vrchat_user,
     get_vrchat_bio,
-    get_vrchat_status,
-    send_friend_request,
-    remove_friend,
-    BOT_VRC_NAME,
 )
+from data.sanitize import escape_link_text, find_vrchat_id
 from data.database import (
     get_server_settings,
     get_vrchat_id_from_discord,
@@ -25,6 +22,7 @@ from data.database import (
     delete_server_settings,
     is_banned,
     get_maintenance_mode,
+    remove_verified_user,
 )
 from data.languages import (
     LANGUAGES,
@@ -37,7 +35,6 @@ from data.languages import (
     get_bio_panel_text,
     get_panel_subtitle,
     get_text,
-    get_status_text,
     get_notice_titles,
     describe_language,
     get_wizard_text,
@@ -56,17 +53,6 @@ MAINTENANCE_NOTICE = get_text("maintenance", DEFAULT_LANGUAGE)
 HIDDEN_LANGUAGE_WINDOW = 300
 _puzzle_progress: dict[int, tuple[list[str], float]] = {}
 
-FRIEND_REQUEST_COOLDOWN = 60
-_friend_request_times: dict[int, float] = {}
-
-
-def friend_request_cooldown(user_id: int) -> int:
-    now = time.monotonic()
-    for uid, started in list(_friend_request_times.items()):
-        if now - started >= FRIEND_REQUEST_COOLDOWN:
-            del _friend_request_times[uid]
-    started = _friend_request_times.get(user_id)
-    return 0 if started is None else max(1, int(FRIEND_REQUEST_COOLDOWN - (now - started)))
 
 def record_language_pick(user_id: int, code: str) -> list[str]:
     sequences = {lang: seq for lang, seq in HIDDEN_SEQUENCES.items() if seq}
@@ -89,7 +75,6 @@ def record_language_pick(user_id: int, code: str) -> list[str]:
 def language_chunks(size: int = 25) -> list[list]:
     langs = list(LANGUAGES.values())
     return [langs[i:i + size] for i in range(0, len(langs), size)]
-
 
 def log_invalid_selects(components, path: str = "root"):
     for i, comp in enumerate(components or []):
@@ -160,6 +145,13 @@ async def maintenance_blocked(interaction: Interaction, language: Optional[str] 
     else:
         await interaction.response.send_message(view=view, ephemeral=True)
     return True
+
+def language_from_locale(locale) -> Optional[str]:
+    code = str(locale or "")
+    if code in LANGUAGES:
+        return code
+    primary = code.split("-")[0]
+    return primary if primary in LANGUAGES else None
 
 def has_age_button(components) -> bool:
     for comp in components:
@@ -302,9 +294,6 @@ class BioCheckView(ui.LayoutView):
                 ui.TextDisplay(after),
                 accessory=BioCheckButton(self, self.language)
             ),
-            sep(),
-            ui.TextDisplay(f"-# {get_status_text('switch_hint', self.language)}"),
-            ui.ActionRow(StatusSwitchButton(self)),
         ))
 
     async def run_check(self, interaction: Interaction):
@@ -331,126 +320,6 @@ class BioCheckView(ui.LayoutView):
 
         await finalize_verification(self.bot, self.cog, interaction, self.user_id, language)
         self.stop()
-
-class StatusSwitchButton(ui.Button):
-    def __init__(self, bio_view: "BioCheckView"):
-        super().__init__(label=get_status_text("switch_button", bio_view.language), style=ButtonStyle.secondary)
-        self.bio_view = bio_view
-
-    async def callback(self, interaction: Interaction):
-        view = self.bio_view
-        language = view.language
-
-        if await maintenance_blocked(interaction, language):
-            return
-
-        await interaction.response.defer()
-
-        if await verification_blocked(interaction, view.user_id, language):
-            view.stop()
-            return
-
-        remaining = friend_request_cooldown(interaction.user.id)
-        if remaining:
-            return await interaction.followup.send(
-                view=notice(get_text("cooldown", language, seconds=remaining), language), ephemeral=True
-            )
-
-        _friend_request_times[interaction.user.id] = time.monotonic()
-        result = await send_friend_request(view.user_id)
-        if not result.get("success"):
-            _friend_request_times.pop(interaction.user.id, None)
-            key = "rate_limited" if result.get("error") == "rate_limited" else "request_failed"
-            return await interaction.followup.send(view=notice(get_text(key, language), language), ephemeral=True)
-
-        status_view = StatusCheckView(view.bot, view.cog, view.user_id, view.code, view.settings, view.username)
-        view.stop()
-        await interaction.edit_original_response(view=status_view)
-
-class StatusCheckButton(ui.Button):
-    def __init__(self, status_view: "StatusCheckView"):
-        super().__init__(label=get_status_text("check_button", status_view.language), style=ButtonStyle.success)
-        self.status_view = status_view
-
-    async def callback(self, interaction: Interaction):
-        if await maintenance_blocked(interaction, self.status_view.language):
-            return
-        await self.status_view.run_check(interaction)
-
-class StatusCheckView(ui.LayoutView):
-    def __init__(self, bot: commands.Bot, cog: commands.Cog, user_id: str, code: str, settings: dict, username: str = "Unknown User"):
-        super().__init__(timeout=600)
-        self.bot = bot
-        self.cog = cog
-        self.user_id = user_id
-        self.code = code
-        self.settings = settings
-        self.username = username
-        self.language = settings.get("language") or DEFAULT_LANGUAGE
-        self.friend_released = False
-
-        self.build()
-
-    def build(self):
-        self.clear_items()
-
-        steps = get_status_text("steps", self.language, bot=BOT_VRC_NAME).split("\n")
-        after = get_status_text("after", self.language)
-        title = get_bio_panel_text(self.language, self.username)[0]
-
-        self.add_item(ui.Container(
-            ui.TextDisplay(f"# 🔐 {title}"),
-            ui.TextDisplay(f"-# {get_status_text('subtitle', self.language)}"),
-            sep(),
-            ui.Section(
-                ui.TextDisplay("\n".join(steps[:2])),
-                ui.TextDisplay(f"# `{self.code}`"),
-                ui.TextDisplay("\n".join(steps[2:] + ["", after])),
-                accessory=StatusCheckButton(self)
-            ),
-        ))
-
-    async def release_friend(self):
-        if self.friend_released:
-            return
-        self.friend_released = True
-        if not await remove_friend(self.user_id):
-            logging.warning(f"[Status Check] Could not remove {self.user_id} from the bot's friends list")
-
-    async def on_timeout(self):
-        await self.release_friend()
-
-    async def run_check(self, interaction: Interaction):
-        await interaction.response.defer(ephemeral=True)
-
-        language = self.language
-
-        if await verification_blocked(interaction, self.user_id, language):
-            self.stop()
-            await self.release_friend()
-            return
-
-        user_data = await get_vrchat_status(self.user_id)
-
-        if not user_data:
-            return await interaction.followup.send(view=notice(get_text("fetch_failed", language), language), ephemeral=True)
-
-        if not user_data.get("is_friend"):
-            return await interaction.followup.send(
-                view=notice(get_text("not_friend", language, bot=BOT_VRC_NAME), language), ephemeral=True
-            )
-
-        if self.code not in (user_data.get("status_description") or ""):
-            return await interaction.followup.send(
-                view=notice(get_text("status_missing", language, verification_code=self.code), language), ephemeral=True
-            )
-
-        if not user_data.get("verification"):
-            return await interaction.followup.send(view=notice(get_text("not_age_verified", language), language), ephemeral=True)
-
-        await finalize_verification(self.bot, self.cog, interaction, self.user_id, language)
-        self.stop()
-        await self.release_friend()
 
 def _iter_components(components):
     for comp in components or []:
@@ -650,9 +519,9 @@ class VRChatUsername(ui.Modal):
             return await modal_interaction.followup.send(view=notice(get_text("banned_discord", language), language), ephemeral=True)
 
         user_input = self.userID.value.strip()
-        match = re.search(r"usr_[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}", user_input, re.IGNORECASE)
+        clean_id = find_vrchat_id(user_input)
 
-        if not match:
+        if not clean_id:
             invalid_layout = static_layout(
                 ui.Container(
                     ui.TextDisplay(f"# {get_text('invalid_title', language)}"),
@@ -662,8 +531,6 @@ class VRChatUsername(ui.Modal):
                 )
             )
             return await modal_interaction.followup.send(view=invalid_layout, ephemeral=True)
-
-        clean_id = match.group(0).lower()
 
         if await is_banned(clean_id):
             return await modal_interaction.followup.send(view=notice(get_text("banned_vrchat", language), language), ephemeral=True)
@@ -1013,10 +880,115 @@ class SetupWizardView(ui.LayoutView):
         await interaction.message.edit(view=final_layout, allowed_mentions=discord.AllowedMentions.none())
         await interaction.followup.send(view=notice("✅ Server setup completed successfully!"), ephemeral=True)
 
+MAX_LISTED_SERVERS = 10
+
+def split_heading(text: str) -> tuple[str, str]:
+    first, _, body = text.partition("\n")
+    return first.replace("**", ""), body.strip()
+
+def format_server_list(names: list[str], language: Optional[str]) -> str:
+    shown = [f"• {discord.utils.escape_mentions(discord.utils.escape_markdown(n))}" for n in names[:MAX_LISTED_SERVERS]]
+    if len(names) > MAX_LISTED_SERVERS:
+        shown.append(get_text("data_delete_more", language, count=len(names) - MAX_LISTED_SERVERS))
+    return "\n".join(shown)
+
+class DataDeletionButton(ui.Button):
+    def __init__(self, deletion_view: "DataDeletionView", is_confirm: bool):
+        label = get_text("data_delete_confirm_button" if is_confirm else "data_delete_cancel_button", deletion_view.language)
+        super().__init__(label=label, style=ButtonStyle.danger if is_confirm else ButtonStyle.secondary)
+        self.deletion_view = deletion_view
+        self.is_confirm = is_confirm
+
+    async def callback(self, interaction: Interaction):
+        if self.is_confirm:
+            await self.deletion_view.handle_confirm(interaction)
+        else:
+            await self.deletion_view.handle_cancel(interaction)
+
+class DataDeletionView(ui.LayoutView):
+    def __init__(self, cog: commands.Cog, user_id: int, language: Optional[str], servers: list[str], banned: bool):
+        super().__init__(timeout=120)
+        self.cog = cog
+        self.user_id = user_id
+        self.language = language
+        self.message_interaction: Optional[Interaction] = None
+        self._finished = False
+
+        heading, body = split_heading(get_text("data_delete_prompt", language))
+        if servers:
+            body += f"\n\n{get_text('data_delete_servers', language, count=len(servers))}\n{format_server_list(servers, language)}"
+        if banned:
+            body += f"\n\n-# {get_text('data_delete_ban_note', language)}"
+
+        self.add_item(ui.Container(
+            ui.TextDisplay(f"# {heading}"),
+            sep(),
+            ui.TextDisplay(body),
+            sep(),
+            ui.ActionRow(DataDeletionButton(self, True), DataDeletionButton(self, False)),
+            accent_colour=discord.Color.orange(),
+        ))
+
+    async def interaction_check(self, interaction: Interaction) -> bool:
+        return interaction.user.id == self.user_id
+
+    def _release(self):
+        self._finished = True
+        self.cog._deletions_open.discard(self.user_id)
+        self.stop()
+
+    async def handle_cancel(self, interaction: Interaction):
+        if self._finished:
+            return await interaction.response.defer()
+        self._release()
+        await interaction.response.edit_message(view=notice(get_text("data_delete_cancelled", self.language), self.language))
+
+    async def handle_confirm(self, interaction: Interaction):
+        if self._finished:
+            return await interaction.response.defer()
+        self._release()
+
+        if await get_maintenance_mode():
+            return await interaction.response.edit_message(
+                view=notice(get_text("maintenance", self.language), self.language)
+            )
+
+        await interaction.response.edit_message(view=notice(get_text("data_delete_working", self.language), self.language))
+        try:
+            result = await self.cog.delete_user_data(interaction.user)
+        except Exception:
+            logging.exception("[Data Deletion] Could not delete user data")
+            return await interaction.edit_original_response(
+                view=notice(get_text("data_delete_failed", self.language), self.language)
+            )
+
+        if result["failed"]:
+            text = get_text(
+                "data_delete_done_partial", self.language,
+                removed=result["removed"],
+                servers=", ".join(discord.utils.escape_mentions(discord.utils.escape_markdown(n)) for n in result["failed"]),
+            )
+        else:
+            text = get_text("data_delete_done", self.language, removed=result["removed"])
+        await interaction.edit_original_response(view=notice(text, self.language))
+
+    async def on_timeout(self):
+        if self._finished:
+            return
+        self._release()
+        if self.message_interaction:
+            try:
+                await self.message_interaction.edit_original_response(
+                    view=notice(get_text("data_delete_expired", self.language), self.language)
+                )
+            except discord.HTTPException:
+                pass
+
 class Verification(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self._has_synced = False
+        self._deletions_open: set[int] = set()
         self._panel_view = ConfirmCheck(bot, self)
         self.bot.add_view(self._panel_view)
 
@@ -1040,7 +1012,7 @@ class Verification(commands.Cog):
 
         fields = [
             ("Discord User", f"{user.mention} (`{user.id}`)"),
-            ("VRChat Profile", f"[{username}](https://vrchat.com/home/user/{vrchat_id}) (`{vrchat_id}`)"),
+            ("VRChat Profile", f"[{escape_link_text(username)}](https://vrchat.com/home/user/{vrchat_id}) (`{vrchat_id}`)"),
         ]
 
         if origin_guild:
@@ -1085,8 +1057,6 @@ class Verification(commands.Cog):
                 seen.add(id(view))
                 if type(view).__module__ == __name__:
                     view.stop()
-                    if isinstance(view, StatusCheckView):
-                        asyncio.get_running_loop().create_task(view.release_friend())
         except Exception as e:
             logging.warning(f"[Verification] Could not stop old message views on unload: {e}")
 
@@ -1182,7 +1152,7 @@ class Verification(commands.Cog):
 
         fields = [
             ("User", f"{member.mention} (`{member.id}`)"),
-            ("VRChat Account", f"[{username}](https://vrchat.com/home/user/{vrchat_id}) (`{vrchat_id}`)"),
+            ("VRChat Account", f"[{escape_link_text(username)}](https://vrchat.com/home/user/{vrchat_id}) (`{vrchat_id}`)"),
             ("Operator", f"{active_operator.mention} (`{active_operator.id}`)"),
         ]
 
@@ -1214,6 +1184,109 @@ class Verification(commands.Cog):
             except Exception as e:
                 logging.error(f"[Dispatch Log Error - {guild.id}] {e}")
                 break
+
+    async def servers_with_verified_role(self, user_id: int) -> list[str]:
+        names = []
+        for guild in self.bot.guilds:
+            member = guild.get_member(user_id)
+            if not member:
+                continue
+            try:
+                role_id = (await get_server_settings(guild.id)).get("verified_role")
+            except Exception:
+                logging.exception(f"[Data Deletion - {guild.id}] Could not read settings for the preview")
+                continue
+            role = guild.get_role(role_id) if role_id else None
+            if role and role in member.roles:
+                names.append(guild.name)
+        return names
+
+    async def send_deletion_log(self, guild: discord.Guild, member: discord.Member, role_removed: bool):
+        settings = await get_server_settings(guild.id)
+        log_channel_id = settings.get("verification_logs") or settings.get("log_channel")
+        log_channel = guild.get_channel(log_channel_id) if log_channel_id else None
+        if not isinstance(log_channel, discord.TextChannel):
+            return
+
+        fields = [
+            ("User", f"{member.mention} (`{member.id}`)"),
+            ("Action", "Requested deletion of their O-SAVS data"),
+            ("Result", "Verified role removed." if role_removed else "The verified role could not be removed. Please remove it manually."),
+        ]
+        colour = discord.Color.orange() if role_removed else discord.Color.red()
+        try:
+            await log_channel.send(
+                view=log_layout("🗑️ Data Deletion", colour, fields),
+                allowed_mentions=discord.AllowedMentions.none()
+            )
+        except discord.HTTPException as e:
+            logging.error(f"[Data Deletion Log Error - {guild.id}] {e}")
+
+    async def delete_user_data(self, user: discord.User | discord.Member) -> dict:
+        await remove_verified_user(user.id)
+        _puzzle_progress.pop(user.id, None)
+
+        removed = 0
+        failed: list[str] = []
+        for guild in self.bot.guilds:
+            member = guild.get_member(user.id)
+            if not member:
+                continue
+
+            try:
+                role_id = (await get_server_settings(guild.id)).get("verified_role")
+                role = guild.get_role(role_id) if role_id else None
+                if not role or role not in member.roles:
+                    continue
+
+                role_removed = False
+                try:
+                    await member.remove_roles(role, reason="O-SAVS: user requested deletion of their data")
+                    role_removed = True
+                    removed += 1
+                except (discord.Forbidden, discord.HTTPException) as e:
+                    logging.warning(f"[Data Deletion - {guild.id}] Could not remove role: {e}")
+                    failed.append(guild.name)
+
+                await self.send_deletion_log(guild, member, role_removed)
+                await asyncio.sleep(0.5)
+            except Exception:
+                logging.exception(f"[Data Deletion - {guild.id}] Unexpected error")
+                failed.append(guild.name)
+
+        return {"removed": removed, "failed": failed}
+
+    @app_commands.command(name="data-deletion", description="Delete your O-SAVS data and remove your verification from every server")
+    async def data_deletion(self, interaction: Interaction):
+        user_id = interaction.user.id
+        language = language_from_locale(interaction.locale)
+        if language is None and interaction.guild_id:
+            language = (await get_server_settings(interaction.guild_id)).get("language")
+
+        if await maintenance_blocked(interaction, language):
+            return
+
+        if user_id in self._deletions_open:
+            return await interaction.response.send_message(
+                view=notice(get_text("data_delete_pending", language), language), ephemeral=True
+            )
+
+        self._deletions_open.add(user_id)
+        handed_off = False
+        try:
+            banned = await is_banned(user_id)
+            if not await get_vrchat_id_from_discord(user_id):
+                key = "data_delete_none_banned" if banned else "data_delete_none"
+                return await interaction.response.send_message(view=notice(get_text(key, language), language), ephemeral=True)
+
+            servers = await self.servers_with_verified_role(user_id)
+            view = DataDeletionView(self, user_id, language, servers, banned)
+            await interaction.response.send_message(view=view, ephemeral=True)
+            view.message_interaction = interaction
+            handed_off = True
+        finally:
+            if not handed_off:
+                self._deletions_open.discard(user_id)
 
     @app_commands.command(name="setup", description="Interactive setup wizard for configuring O-SAVS in your server")
     @app_commands.default_permissions(administrator=True)
