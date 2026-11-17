@@ -24,7 +24,6 @@ def generate_auth_code() -> str:
             return code
 
 async def init_db():
-    _prepare_db_file()
     async with aiosqlite.connect(DB_PATH) as conn:
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS admin_accounts (
