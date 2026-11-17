@@ -30,15 +30,16 @@ O-SAVS (Open-Source Age Verification System) is a global Discord age-verificatio
 
 1. [How It Works](#how-it-works)
 2. [Features](#features)
-3. [Server Setup](#server-setup)
-4. [Admin Dashboard](#admin-dashboard)
-5. [Maintenance Mode](#maintenance-mode)
-6. [Self-Hosted Administration](#self-hosted-administration)
-7. [Database Architecture](#database-architecture)
-8. [Installation & Host Setup](#installation--host-setup)
-9. [Project Structure](#project-structure)
-10. [Community & Team](#community--team)
-11. [Legal & Policies](#legal--policies)
+3. [Data Deletion](#data-deletion)
+4. [Server Setup](#server-setup)
+5. [Admin Dashboard](#admin-dashboard)
+6. [Maintenance Mode](#maintenance-mode)
+7. [Self-Hosted Administration](#self-hosted-administration)
+8. [Database Architecture](#database-architecture)
+9. [Installation & Host Setup](#installation--host-setup)
+10. [Project Structure](#project-structure)
+11. [Community & Team](#community--team)
+12. [Legal & Policies](#legal--policies)
 
 ---
 
@@ -48,8 +49,7 @@ O-SAVS (Open-Source Age Verification System) is a global Discord age-verificatio
 2. **Placement.** The member places the generated verification code in their VRChat bio.
 3. **Confirmation.** The member clicks **I've updated my profile**. The bot checks the member's VRChat public profile to confirm account ownership and verifies that the account holds official VRChat 18+ age verification status.
 4. **Assignment & Sync.** Upon verification, the verified role is assigned in the current server and automatically synced across all mutual servers running O-SAVS.
-5. **Status check (alternative).** Instead of editing their bio, a member can press **Use Status Check Instead** on the code message. The bot sends a friend request from its VRChat account (`BOT_VRC_NAME` in `data/vrchat.py`, shown to the member). The member accepts it, sets their VRChat status message to the code, and presses the finalize button. The bot confirms the friendship, the code in the status message and the 18+ verification status, assigns the role, and then unfriends the member.
-6. **Localization.** Users can press **Change Language** on the verification panel and pick from any of the 40 supported languages. The whole flow (instructions, buttons, prompts, and messages) is then shown in that language. Each server also has a configurable default language.
+5. **Localization.** Users can press **Change Language** on the verification panel and pick from any of the 40 supported languages. The whole flow (instructions, buttons, prompts, and messages) is then shown in that language. Each server also has a configurable default language.
 
 ---
 
@@ -57,9 +57,9 @@ O-SAVS (Open-Source Age Verification System) is a global Discord age-verificatio
 
 - **Global Verification Sync.** Verify once and be synced automatically across all participating Discord servers.
 - **VRChat Profile Integration.** Generates custom verification codes for users to place in their VRChat bio to prove account ownership.
-- **Status Check.** An alternative to the bio check. The bot sends a friend request, the member accepts it and puts the code in their VRChat status message, and the bot unfriends them once they are verified (or when the check times out). Friend requests are rate limited per Discord user.
 - **40 Languages.** The verification panel, prompts, notices, and the setup wizard are fully localized. Users can switch language per session, and servers set their own default.
 - **Interactive Setup Wizard.** The `/setup` slash command creates a private `#verification-logs` channel and walks admins through configuration. See [Server Setup](#server-setup).
+- **Self-Service Data Deletion.** Anyone can run `/data-deletion` to delete their own verification record. After a confirmation that warns them, it removes their verified role from every server they share with the bot. See [Data Deletion](#data-deletion).
 - **Required Pre-Role (Optional).** Servers can require members to hold a specific role before they can verify. The verified role is granted automatically once a verified member acquires the required role.
 - **Role Hierarchy Safety.** Built-in checks prevent configuration failures when managing role assignments.
 - **Auto-Syncing.** Verified roles are assigned automatically to members who join, to members already in the global database when a server is set up, and to verified members when the bot starts. Globally banned users are skipped.
@@ -70,6 +70,16 @@ O-SAVS (Open-Source Age Verification System) is a global Discord age-verificatio
 - **Single-Instance Lock.** Prevents two copies of the bot from running on the same host at once.
 - **Admin Dashboard.** A standalone desktop application used by O-SAVS Administration to manage the bot. See [Admin Dashboard](#admin-dashboard).
 - **Self-Hosted Admin Commands.** Slash-command administration for self-hosters, restricted to a configurable list of user IDs. See [Self-Hosted Administration](#self-hosted-administration).
+
+---
+
+## Data Deletion
+
+Anyone can run `/data-deletion`, in a server or in a direct message with the bot, to delete their own data. The command first shows a confirmation that explains what will happen, including the servers where they currently hold the verified role, and nothing changes until they press **Delete my data**. The confirmation expires after two minutes.
+
+On confirmation the bot deletes the user's verification record and removes the verified role in every server they share with it. If a server's verification log channel is configured, it receives a short entry showing the user's Discord ID (never their VRChat ID or name) and whether the role was removed. If the bot can't remove the role in some server, the user is told which one so they can ask that server's staff.
+
+Records of global bans are kept and are not affected by this command, as described in the [Privacy Policy](PRIVACY.md). The command is unavailable during [Maintenance Mode](#maintenance-mode).
 
 ---
 
@@ -97,10 +107,10 @@ O-SAVS Administration manages the bot through a standalone desktop application r
 - **Maintenance Control.** Enter or exit [Maintenance Mode](#maintenance-mode) from the sidebar. This action requires the administrator's personal authorization code.
 - **Audit Logging.** Every administrative action taken through the dashboard is recorded and searchable.
 - **Restricted Access.** Access is limited to authorized administrators through a credentialed login. Accounts linked to a Discord ID are cross-checked against the admin allow-list (`utils/administrator_user_ids.json`). Failed login attempts are rate-limited (5 attempts, then a 15-minute lockout), as are failed authorization codes.
-- **Session Security.** Sessions use bearer tokens that expire after 7 days. Saved sessions are stored in the operating system's secure credential store.
+- **Session Security.** Sessions use bearer tokens that expire after 7 days. Logging out, or resetting an account's password or authorization code, or disabling the account, ends its sessions. Saved sessions are stored in the operating system's secure credential store.
 - **Updates.** The application checks for new releases and displays release notes for each version.
 
-> **Authorization codes** are 4-digit codes assigned per account and are required for the most sensitive actions: removing the bot from a server and toggling maintenance mode. Create dashboard accounts and set or reset authorization codes with `create_admin.py`.
+> **Authorization codes** are 12-character codes assigned per account and are required for the most sensitive actions: removing the bot from a server and toggling maintenance mode. Create dashboard accounts, reset passwords and authorization codes, and disable or re-enable accounts with `create_admin.py`.
 
 ---
 
@@ -141,7 +151,7 @@ Administrators are listed by Discord user ID in `utils/administrator_user_ids.js
 }
 ```
 
-The file is read at startup and again every time maintenance mode is exited, so you can edit it without restarting the bot.
+The file is re-read whenever it changes, and again every time maintenance mode is exited, so edits (including removing an administrator) take effect immediately without restarting the bot.
 
 ### Slash Commands
 
@@ -171,15 +181,15 @@ Stored in `utils/database.db` (SQLite, WAL mode).
 
 - **`server_settings`** stores per-guild configuration. Primary key: `server_id`. Fields: `verified_role`, `verify_channel`, `verification_logs`, `av_start_code`, `required_role`, `language`.
 - **`verified_users`** maps Discord accounts to VRChat accounts. Primary key: `discord_id`. Fields: `vrchat_id` (unique, stored lowercase).
-- **`banned_users`** holds global user ban records. Primary key: `target_id`, which may be either a Discord ID or a VRChat User ID. Fields: `reason`, `moderator_id`, `timestamp`.
+- **`banned_users`** holds global user ban records. Primary key: `target_id`, which may be either a Discord ID or a VRChat User ID. Fields: `reason`, `moderator_id`, `timestamp`, `ban_group`. Bans issued together (a Discord ID and its linked VRChat ID) share a `ban_group`, so lifting one lifts the other.
 - **`banned_servers`** holds banned server records. The bot automatically leaves any server listed here. Primary key: `server_id`. Fields: `reason`, `moderator_id`, `timestamp`.
 - **`bot_state`** stores persistent runtime state, such as the maintenance mode flag. Primary key: `key`. Fields: `value`.
 
 ### Admin Database
 
-Stored in `cogs/admin_app.db`. Used only when the Admin Dashboard API (`admin_api.py`) is installed.
+Stored in `utils/admin_app.db`. Used only when the Admin Dashboard API (`admin_api.py`) is installed.
 
-- **`admin_accounts`** stores dashboard administrator credentials. Passwords and authorization codes are stored as salted hashes. Primary key: `username`. Fields: `password_hash`, `salt`, `discord_id`, `auth_code_hash`, `auth_code_salt`.
+- **`admin_accounts`** stores dashboard administrator credentials. Passwords and authorization codes are stored as salted hashes. Primary key: `username`. Fields: `password_hash`, `salt`, `discord_id`, `auth_code_hash`, `auth_code_salt`, plus the hashing cost, a session counter and a disabled flag.
 - **`action_log`** is the audit trail of administrative actions. Primary key: `id`. Fields: `timestamp`, `actor_username`, `action`, `target`, `reason`, `result_summary`.
 
 ---
@@ -231,15 +241,11 @@ Admin Dashboard only:
 - `EVIDENCE_FORUM_CHANNEL_ID`: ID of a forum channel where an evidence thread is created for each global user ban. Leave unset to disable evidence threads.
 - `BOT_ID`: The bot's own user ID. It is excluded from the verified-user count.
 
-### 4. Configure `data/vrchat.py`
-
-- `BOT_VRC_NAME`: Display name of the VRChat account the bot logs in with. Members are told to accept the friend request from this name during a status check.
-
-### 5. Configure the Admin Allow-List
+### 4. Configure the Admin Allow-List
 
 Add the Discord user IDs of your administrators to `utils/administrator_user_ids.json`. See [Admin Allow-List](#admin-allow-list).
 
-### 6. Start the Bot
+### 5. Start the Bot
 
 ```bash
 python bot.py
@@ -265,7 +271,8 @@ cogs/
 data/
   database.py               Bot database access
   languages.py              All localized text
-  vrchat.py                 VRChat API login, bio and status lookups, friend requests
+  vrchat.py                 VRChat API login and profile lookups
+  sanitize.py               ID parsing and markdown escaping for admin input and names
   lock.py                   Single-instance lock
 utils/
   database.db               Bot database (created automatically)
