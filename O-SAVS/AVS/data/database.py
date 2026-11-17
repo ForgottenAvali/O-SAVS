@@ -1,4 +1,4 @@
-import os, aiosqlite
+import os, secrets, aiosqlite
 
 from typing import Optional
 
@@ -17,6 +17,25 @@ def safe_int(value: Optional[str | int]) -> Optional[int]:
         return None
 
 _settings_cache: dict[str, dict] = {}
+
+async def _backfill_ban_groups(conn):
+    async with conn.execute(
+        "SELECT target_id, reason, moderator_id, timestamp FROM banned_users WHERE ban_group IS NULL"
+    ) as cursor:
+        rows = await cursor.fetchall()
+
+    buckets: dict[tuple, list[str]] = {}
+    for target_id, reason, moderator_id, timestamp in rows:
+        buckets.setdefault((reason, moderator_id, timestamp), []).append(target_id)
+
+    for members in buckets.values():
+        discord_side = [t for t in members if t.isdigit()]
+        vrchat_side = [t for t in members if not t.isdigit()]
+        if len(discord_side) == 1 and len(vrchat_side) == 1:
+            await conn.execute(
+                "UPDATE banned_users SET ban_group = ? WHERE target_id IN (?, ?)",
+                (secrets.token_hex(8), discord_side[0], vrchat_side[0]),
+            )
 
 async def init_db():
     async with aiosqlite.connect(DB_PATH) as conn:
@@ -65,6 +84,17 @@ async def init_db():
                 value TEXT NOT NULL
             )
         """)
+
+        async with conn.execute("PRAGMA table_info(banned_users)") as cursor:
+            ban_columns = {row[1] for row in await cursor.fetchall()}
+        if "ban_group" not in ban_columns:
+            await conn.execute("ALTER TABLE banned_users ADD COLUMN ban_group TEXT")
+
+        async with conn.execute("SELECT value FROM bot_state WHERE key = 'ban_groups_backfilled'") as cursor:
+            backfilled = await cursor.fetchone()
+        if not backfilled:
+            await _backfill_ban_groups(conn)
+            await conn.execute("INSERT OR REPLACE INTO bot_state (key, value) VALUES ('ban_groups_backfilled', '1')")
 
         async with conn.execute("SELECT value FROM bot_state WHERE key = 'vrchat_ids_lowercased'") as cursor:
             migrated = await cursor.fetchone()
@@ -222,6 +252,25 @@ async def get_verified_users_page(limit: int = 100, offset: int = 0) -> tuple[li
             results.append((parsed, v))
     return results, total
 
+async def get_verified_users_after(after: int = 0, limit: int = 100) -> tuple[list[tuple[int, str]], int, Optional[int]]:
+    limit = max(1, min(int(limit), 500))
+    after = max(0, int(after))
+    async with aiosqlite.connect(DB_PATH) as conn:
+        async with conn.execute(
+            "SELECT rowid, discord_id, vrchat_id FROM verified_users WHERE rowid > ? ORDER BY rowid LIMIT ?",
+            (after, limit),
+        ) as cursor:
+            rows = await cursor.fetchall()
+        async with conn.execute("SELECT COUNT(*) FROM verified_users") as cursor:
+            total = (await cursor.fetchone())[0]
+    results = []
+    for _, d, v in rows:
+        parsed = safe_int(d)
+        if parsed is not None:
+            results.append((parsed, v))
+    next_after = rows[-1][0] if len(rows) == limit else None
+    return results, total, next_after
+
 async def get_all_verified_users() -> list[tuple[int, str]]:
     async with aiosqlite.connect(DB_PATH) as conn:
         async with conn.execute("SELECT discord_id, vrchat_id FROM verified_users") as cursor:
@@ -239,14 +288,17 @@ async def add_verified_user(discord_id: int | str, vrchat_id: str, overwrite: bo
     vrc = vrchat_id.strip().lower()
 
     async with aiosqlite.connect(DB_PATH) as conn:
+        await conn.execute("BEGIN IMMEDIATE")
         async with conn.execute(
             "SELECT discord_id, vrchat_id FROM verified_users WHERE discord_id = ? OR vrchat_id = ?",
             (target_id, vrc)
         ) as cursor:
             existing = await cursor.fetchall()
         if existing and all(d == target_id and v == vrc for d, v in existing):
+            await conn.rollback()
             return True
         if existing and not overwrite:
+            await conn.rollback()
             return False
         if existing:
             await conn.execute(
@@ -307,7 +359,7 @@ async def get_banned_user(target_id: int | str) -> Optional[dict]:
                 }
             return None
 
-async def add_banned_user(target_id: int | str, reason: str, moderator_id: int | str):
+async def add_banned_user(target_id: int | str, reason: str, moderator_id: int | str, ban_group: Optional[str] = None):
     clean_mod = safe_int(moderator_id)
     
     target_key = str(target_id).strip()
@@ -315,8 +367,8 @@ async def add_banned_user(target_id: int | str, reason: str, moderator_id: int |
 
     async with aiosqlite.connect(DB_PATH) as conn:
         await conn.execute(
-            "INSERT OR REPLACE INTO banned_users (target_id, reason, moderator_id) VALUES (?, ?, ?)",
-            (target_key, reason, target_mod)
+            "INSERT OR REPLACE INTO banned_users (target_id, reason, moderator_id, ban_group) VALUES (?, ?, ?, ?)",
+            (target_key, reason, target_mod, ban_group)
         )
         await conn.commit()
 
@@ -327,6 +379,26 @@ async def remove_banned_user(target_id: int | str) -> bool:
         ) as cursor:
             await conn.commit()
             return cursor.rowcount > 0
+
+async def remove_banned_user_and_group(target_id: int | str) -> list[str]:
+    key = str(target_id).strip()
+    async with aiosqlite.connect(DB_PATH) as conn:
+        await conn.execute("BEGIN IMMEDIATE")
+        async with conn.execute("SELECT ban_group FROM banned_users WHERE target_id = ?", (key,)) as cursor:
+            row = await cursor.fetchone()
+        if not row:
+            await conn.rollback()
+            return []
+        group = row[0]
+        if group:
+            async with conn.execute("SELECT target_id FROM banned_users WHERE ban_group = ?", (group,)) as cursor:
+                removed = [r[0] for r in await cursor.fetchall()]
+            await conn.execute("DELETE FROM banned_users WHERE ban_group = ?", (group,))
+        else:
+            removed = [key]
+            await conn.execute("DELETE FROM banned_users WHERE target_id = ?", (key,))
+        await conn.commit()
+        return removed
 
 async def is_server_banned(server_id: int | str) -> bool:
     async with aiosqlite.connect(DB_PATH) as conn:
