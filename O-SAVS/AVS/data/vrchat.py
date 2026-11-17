@@ -14,7 +14,7 @@ config = vrchatapi.Configuration(username=VRCUSER, password=VRCPASS)
 
 _existing_client = globals().get("client")
 client = _existing_client if _existing_client is not None else vrchatapi.ApiClient(config)
-client.user_agent = f"O-SAVS/1.5.0 (contact: {CONTACT})"
+client.user_agent = f"O-SAVS/1.5.1 (contact: {CONTACT})"
 
 auth_api = authentication_api.AuthenticationApi(client)
 users_api_instance = users_api.UsersApi(client)
