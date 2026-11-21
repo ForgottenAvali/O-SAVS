@@ -151,8 +151,13 @@ class AdminCommands(commands.Cog):
         gid = parse_id(server_id)
         if gid is None:
             return await respond(interaction, {"success": False, "error": "Invalid server ID."}, "")
-        r = await admin_core.perform_ban_server(self.bot, interaction.user.id, gid, reason)
-        await respond(interaction, r, "Server banned", f"`{gid}` — bot left: {r.get('left_server')}")
+        r = await admin_core.perform_ban_server(
+            self.bot, interaction.user.id, gid, reason, operator_name=str(interaction.user)
+        )
+        details = f"`{gid}` - bot left: {r.get('left_server')}"
+        if r.get("evidence_thread"):
+            details += f"\nEvidence thread: {r['evidence_thread']}"
+        await respond(interaction, r, "Server banned", details)
 
     @admin.command(name="serverunban", description="Unban a server")
     @admin_only()
@@ -161,7 +166,7 @@ class AdminCommands(commands.Cog):
         gid = parse_id(server_id)
         if gid is None:
             return await respond(interaction, {"success": False, "error": "Invalid server ID."}, "")
-        r = await admin_core.perform_unban_server(gid)
+        r = await admin_core.perform_unban_server(gid, self.bot, interaction.user.id, str(interaction.user), reason)
         await respond(interaction, r, "Server unbanned", f"`{gid}`")
 
 async def setup(bot: commands.Bot):

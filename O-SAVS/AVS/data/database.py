@@ -1,8 +1,14 @@
-import os, secrets, aiosqlite
+import base64, hashlib, hmac, logging, os, secrets, aiosqlite
 
+from dotenv import load_dotenv
 from typing import Optional
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "..", "utils", "database.db")
+
+load_dotenv()
+
+_ENC_PREFIX = "enc:v1:"
+_crypto_keys: Optional[tuple[bytes, bytes]] = None
 
 
 def safe_int(value: Optional[str | int]) -> Optional[int]:
@@ -15,6 +21,59 @@ def safe_int(value: Optional[str | int]) -> Optional[int]:
         return int(val_str)
     except ValueError:
         return None
+
+def _get_keys() -> tuple[bytes, bytes]:
+    global _crypto_keys
+    if _crypto_keys is None:
+        secret = os.getenv("BAN_REASON_KEY", "").strip()
+        if len(secret) < 32:
+            raise RuntimeError(
+                "BAN_REASON_KEY is missing or too short (need 32+ characters) in .env. Generate one with:\n"
+                "  python -c \"import secrets; print(secrets.token_urlsafe(48))\"\n"
+                "Back it up somewhere that is NOT next to the database; without it, stored reasons "
+                "can never be read again."
+            )
+        master = hashlib.sha256(secret.encode("utf-8")).digest()
+        _crypto_keys = (
+            hmac.new(master, b"osavs-enc", hashlib.sha256).digest(),
+            hmac.new(master, b"osavs-mac", hashlib.sha256).digest(),
+        )
+    return _crypto_keys
+
+def check_key() -> None:
+    _get_keys()
+
+def _keystream(enc_key: bytes, nonce: bytes, length: int) -> bytes:
+    out = bytearray()
+    counter = 0
+    while len(out) < length:
+        out += hmac.new(enc_key, nonce + counter.to_bytes(8, "big"), hashlib.sha256).digest()
+        counter += 1
+    return bytes(out[:length])
+
+def encrypt_text(value: Optional[str]) -> Optional[str]:
+    if value is None or value.startswith(_ENC_PREFIX):
+        return value
+    enc_key, mac_key = _get_keys()
+    nonce = secrets.token_bytes(16)
+    data = value.encode("utf-8")
+    ct = bytes(a ^ b for a, b in zip(data, _keystream(enc_key, nonce, len(data))))
+    tag = hmac.new(mac_key, nonce + ct, hashlib.sha256).digest()
+    return _ENC_PREFIX + base64.urlsafe_b64encode(nonce + ct + tag).decode("ascii")
+
+def decrypt_text(value: Optional[str]) -> Optional[str]:
+    if value is None or not value.startswith(_ENC_PREFIX):
+        return value
+    enc_key, mac_key = _get_keys()
+    try:
+        raw = base64.urlsafe_b64decode(value[len(_ENC_PREFIX):].encode("ascii"))
+        nonce, ct, tag = raw[:16], raw[16:-32], raw[-32:]
+        if not hmac.compare_digest(tag, hmac.new(mac_key, nonce + ct, hashlib.sha256).digest()):
+            raise ValueError("bad tag")
+        return bytes(a ^ b for a, b in zip(ct, _keystream(enc_key, nonce, len(ct)))).decode("utf-8")
+    except Exception:
+        logging.error("[Crypto] Could not decrypt a stored reason (wrong BAN_REASON_KEY or corrupted data).")
+        return "[unreadable: wrong key or corrupted]"
 
 _settings_cache: dict[str, dict] = {}
 
@@ -37,7 +96,17 @@ async def _backfill_ban_groups(conn):
                 (secrets.token_hex(8), discord_side[0], vrchat_side[0]),
             )
 
+async def _encrypt_existing_reasons(conn):
+    for table, key_col in (("banned_users", "target_id"), ("banned_servers", "server_id")):
+        async with conn.execute(f"SELECT {key_col}, reason FROM {table}") as cursor:
+            rows = await cursor.fetchall()
+        for key, reason in rows:
+            enc = encrypt_text(reason)
+            if enc != reason:
+                await conn.execute(f"UPDATE {table} SET reason = ? WHERE {key_col} = ?", (enc, key))
+
 async def init_db():
+    check_key()
     async with aiosqlite.connect(DB_PATH) as conn:
         await conn.execute("PRAGMA journal_mode=WAL")
         await conn.execute("PRAGMA synchronous=NORMAL")
@@ -90,11 +159,24 @@ async def init_db():
         if "ban_group" not in ban_columns:
             await conn.execute("ALTER TABLE banned_users ADD COLUMN ban_group TEXT")
 
+        async with conn.execute("PRAGMA table_info(banned_servers)") as cursor:
+            server_ban_columns = {row[1] for row in await cursor.fetchall()}
+        if "evidence_thread_id" not in ban_columns:
+            await conn.execute("ALTER TABLE banned_users ADD COLUMN evidence_thread_id TEXT")
+        if "evidence_thread_id" not in server_ban_columns:
+            await conn.execute("ALTER TABLE banned_servers ADD COLUMN evidence_thread_id TEXT")
+
         async with conn.execute("SELECT value FROM bot_state WHERE key = 'ban_groups_backfilled'") as cursor:
             backfilled = await cursor.fetchone()
         if not backfilled:
             await _backfill_ban_groups(conn)
             await conn.execute("INSERT OR REPLACE INTO bot_state (key, value) VALUES ('ban_groups_backfilled', '1')")
+
+        async with conn.execute("SELECT value FROM bot_state WHERE key = 'ban_reasons_encrypted'") as cursor:
+            reasons_done = await cursor.fetchone()
+        if not reasons_done:
+            await _encrypt_existing_reasons(conn)
+            await conn.execute("INSERT OR REPLACE INTO bot_state (key, value) VALUES ('ban_reasons_encrypted', '1')")
 
         async with conn.execute("SELECT value FROM bot_state WHERE key = 'vrchat_ids_lowercased'") as cursor:
             migrated = await cursor.fetchone()
@@ -353,7 +435,7 @@ async def get_banned_user(target_id: int | str) -> Optional[dict]:
                 raw_target = data["target_id"]
                 return {
                     "target_id": safe_int(raw_target) if raw_target.isdigit() else raw_target,
-                    "reason": data["reason"],
+                    "reason": decrypt_text(data["reason"]),
                     "moderator_id": safe_int(data["moderator_id"]),
                     "timestamp": data["timestamp"]
                 }
@@ -368,9 +450,42 @@ async def add_banned_user(target_id: int | str, reason: str, moderator_id: int |
     async with aiosqlite.connect(DB_PATH) as conn:
         await conn.execute(
             "INSERT OR REPLACE INTO banned_users (target_id, reason, moderator_id, ban_group) VALUES (?, ?, ?, ?)",
-            (target_key, reason, target_mod, ban_group)
+            (target_key, encrypt_text(reason), target_mod, ban_group)
         )
         await conn.commit()
+
+async def set_ban_thread_id(target_ids: list, thread_id: int | str) -> None:
+    async with aiosqlite.connect(DB_PATH) as conn:
+        for t in target_ids:
+            await conn.execute(
+                "UPDATE banned_users SET evidence_thread_id = ? WHERE target_id = ?",
+                (str(thread_id), str(t).strip()),
+            )
+        await conn.commit()
+
+async def get_ban_thread_id(target_id: int | str) -> Optional[str]:
+    async with aiosqlite.connect(DB_PATH) as conn:
+        async with conn.execute(
+            "SELECT evidence_thread_id FROM banned_users WHERE target_id = ?", (str(target_id).strip(),)
+        ) as cursor:
+            row = await cursor.fetchone()
+    return row[0] if row and row[0] else None
+
+async def set_server_ban_thread_id(server_id: int | str, thread_id: int | str) -> None:
+    async with aiosqlite.connect(DB_PATH) as conn:
+        await conn.execute(
+            "UPDATE banned_servers SET evidence_thread_id = ? WHERE server_id = ?",
+            (str(thread_id), str(server_id).strip()),
+        )
+        await conn.commit()
+
+async def get_server_ban_thread_id(server_id: int | str) -> Optional[str]:
+    async with aiosqlite.connect(DB_PATH) as conn:
+        async with conn.execute(
+            "SELECT evidence_thread_id FROM banned_servers WHERE server_id = ?", (str(server_id).strip(),)
+        ) as cursor:
+            row = await cursor.fetchone()
+    return row[0] if row and row[0] else None
 
 async def remove_banned_user(target_id: int | str) -> bool:
     async with aiosqlite.connect(DB_PATH) as conn:
@@ -412,7 +527,7 @@ async def add_banned_server(server_id: int | str, reason: str, moderator_id: Opt
     async with aiosqlite.connect(DB_PATH) as conn:
         await conn.execute(
             "INSERT OR REPLACE INTO banned_servers (server_id, reason, moderator_id) VALUES (?, ?, ?)",
-            (str(server_id).strip(), reason, str(moderator_id) if moderator_id is not None else None)
+            (str(server_id).strip(), encrypt_text(reason), str(moderator_id) if moderator_id is not None else None)
         )
         await conn.commit()
 
@@ -431,7 +546,10 @@ async def get_all_banned_users() -> list[dict]:
             "SELECT target_id, reason, moderator_id, timestamp FROM banned_users ORDER BY timestamp DESC"
         ) as cursor:
             rows = await cursor.fetchall()
-    return [dict(r) for r in rows]
+    out = [dict(r) for r in rows]
+    for r in out:
+        r["reason"] = decrypt_text(r["reason"])
+    return out
 
 async def get_all_banned_servers() -> list[dict]:
     async with aiosqlite.connect(DB_PATH) as conn:
@@ -440,7 +558,10 @@ async def get_all_banned_servers() -> list[dict]:
             "SELECT server_id, reason, moderator_id, timestamp FROM banned_servers ORDER BY timestamp DESC"
         ) as cursor:
             rows = await cursor.fetchall()
-    return [dict(r) for r in rows]
+    out = [dict(r) for r in rows]
+    for r in out:
+        r["reason"] = decrypt_text(r["reason"])
+    return out
 
 async def get_maintenance_mode() -> bool:
     async with aiosqlite.connect(DB_PATH) as conn:

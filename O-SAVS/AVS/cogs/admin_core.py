@@ -18,6 +18,10 @@ from data.database import (
     add_banned_user,
     remove_banned_user_and_group,
     get_banned_user,
+    set_ban_thread_id,
+    get_ban_thread_id,
+    set_server_ban_thread_id,
+    get_server_ban_thread_id,
     get_all_banned_users,
     is_server_banned,
     add_banned_server,
@@ -180,17 +184,25 @@ async def perform_leave_server(bot: commands.Bot, guild_id: int) -> dict:
 
     return {"success": True, "server_id": guild_id, "server_name": guild_name}
 
-async def perform_ban_server(bot: commands.Bot, operator_id, server_id: int, reason: str) -> dict:
+async def perform_ban_server(
+    bot: commands.Bot, operator_id, server_id: int, reason: str, operator_name=None
+) -> dict:
     if await is_server_banned(server_id):
         return {"success": False, "error": f"Server `{server_id}` is already banned."}
 
+    guild = bot.get_guild(server_id)
+    server_name = guild.name if guild else None
+
+    thread_url, thread_error = await create_server_evidence_thread(
+        bot, server_id, server_name, reason, operator_id, operator_name
+    )
+
     await add_banned_server(server_id, reason, operator_id)
+    if thread_url:
+        await set_server_ban_thread_id(server_id, _thread_id_from_url(thread_url))
 
     left = False
-    server_name = None
-    guild = bot.get_guild(server_id)
     if guild:
-        server_name = guild.name
         try:
             await guild.leave()
             left = True
@@ -203,12 +215,23 @@ async def perform_ban_server(bot: commands.Bot, operator_id, server_id: int, rea
         "server_name": server_name,
         "bot_was_in_server": guild is not None,
         "left_server": left,
+        "evidence_thread": thread_url,
+        "errors": [thread_error] if thread_error else [],
     }
 
-async def perform_unban_server(server_id: int) -> dict:
+async def perform_unban_server(
+    server_id: int, bot=None, operator_id=None, operator_name=None, reason=None
+) -> dict:
+    thread_id = await get_server_ban_thread_id(server_id)
     if not await remove_banned_server(server_id):
         return {"success": False, "error": f"Server `{server_id}` is not currently banned."}
-    return {"success": True, "server_id": server_id}
+
+    errors = []
+    if bot is not None and thread_id:
+        err = await post_unban_note(bot, thread_id, operator_id, operator_name, reason)
+        if err:
+            errors.append(err)
+    return {"success": True, "server_id": server_id, "errors": errors}
 
 async def enforce_server_bans(bot: commands.Bot) -> int:
     count = 0
@@ -373,13 +396,32 @@ async def perform_unlink(bot, operator_id, operator_name, target_user_id: int, r
         "errors": error_summary,
     }
 
+def _thread_id_from_url(url: str) -> str:
+    return url.rstrip("/").rsplit("/", 1)[-1]
+
+async def post_unban_note(bot: commands.Bot, thread_id, operator_id, operator_name, reason) -> Optional[str]:
+    try:
+        thread = bot.get_channel(int(thread_id)) or await bot.fetch_channel(int(thread_id))
+    except (ValueError, discord.NotFound, discord.Forbidden, discord.HTTPException) as e:
+        return f"Unban note not posted: could not load the evidence thread ({e})."
+    if not isinstance(thread, discord.Thread):
+        return "Unban note not posted: the evidence thread is not a thread."
+
+    unbanned_by = f"<@{operator_id}>" if operator_id else f"{operator_name} (dashboard)"
+    text = (reason or "").strip() or "No reason provided"
+    content = f"**Unbanned** by {unbanned_by}\nReason: {text}"[:2000]
+    try:
+        await thread.send(content, allowed_mentions=discord.AllowedMentions.none())
+    except (discord.Forbidden, discord.HTTPException) as e:
+        logging.error(f"[AdminCore] Failed to post unban note: {e}")
+        return f"Unban note not posted: {e}"
+    return None
+
 def _short_reason(reason: str) -> str:
     head = reason.split(":", 1)[0].strip()
     return head or reason.strip()
 
-async def create_evidence_thread(
-    bot: commands.Bot, discord_id, vrchat_id, reason: str, operator_id, operator_name
-) -> tuple[Optional[str], Optional[str]]:
+async def _get_evidence_forum(bot: commands.Bot):
     if not EVIDENCE_FORUM_CHANNEL_ID:
         return None, None
 
@@ -392,6 +434,40 @@ async def create_evidence_thread(
 
     if not isinstance(channel, discord.ForumChannel):
         return None, "Evidence thread not created: EVIDENCE_FORUM_CHANNEL_ID is not a forum channel."
+    return channel, None
+
+async def create_server_evidence_thread(
+    bot: commands.Bot, server_id, server_name, reason: str, operator_id, operator_name
+) -> tuple[Optional[str], Optional[str]]:
+    channel, error = await _get_evidence_forum(bot)
+    if channel is None:
+        return None, error
+
+    label = (server_name or "").strip() or str(server_id)
+    content = f"Description: {_short_reason(reason)}\nServer: {label} | {server_id}"
+    banned_by = f"<@{operator_id}>" if operator_id else f"{operator_name} (dashboard)"
+    content += f"\nBanned by: {banned_by}"
+    name = f"{label} (Server)"[:100]
+
+    try:
+        created = await channel.create_thread(
+            name=name,
+            content=content,
+            allowed_mentions=discord.AllowedMentions.none(),
+            reason="O-SAVS server ban evidence thread",
+        )
+    except (discord.Forbidden, discord.HTTPException) as e:
+        logging.error(f"[AdminCore] Failed to create server evidence thread: {e}")
+        return None, f"Evidence thread not created: {e}"
+
+    return created.thread.jump_url, None
+
+async def create_evidence_thread(
+    bot: commands.Bot, discord_id, vrchat_id, reason: str, operator_id, operator_name
+) -> tuple[Optional[str], Optional[str]]:
+    channel, error = await _get_evidence_forum(bot)
+    if channel is None:
+        return None, error
 
     description = _short_reason(reason)
 
@@ -496,6 +572,8 @@ async def perform_ban(
     )
     if thread_error:
         error_summary.append(f"• {thread_error}")
+    if thread_url:
+        await set_ban_thread_id(new_keys, _thread_id_from_url(thread_url))
 
     return {
         "success": True,
@@ -512,6 +590,12 @@ async def perform_unban(bot, operator_id, operator_name, target_input: str, reas
 
     keys = {str(k).strip() for k in (discord_id, vrchat_id, target_input.strip().lower()) if k}
 
+    thread_ids: list[str] = []
+    for key in keys:
+        tid = await get_ban_thread_id(key)
+        if tid and tid not in thread_ids:
+            thread_ids.append(tid)
+
     removed: list[str] = []
     for key in keys:
         removed.extend(await remove_banned_user_and_group(key))
@@ -527,7 +611,13 @@ async def perform_unban(bot, operator_id, operator_name, target_input: str, reas
     if not unbanned:
         return {"success": False, "error": f"Target `{target_input}` is not currently globally banned."}
 
-    return {"success": True, "discord_id": discord_id, "vrchat_id": vrchat_id}
+    errors = []
+    for tid in thread_ids:
+        err = await post_unban_note(bot, tid, operator_id, operator_name, reason)
+        if err:
+            errors.append(f"• {err}")
+
+    return {"success": True, "discord_id": discord_id, "vrchat_id": vrchat_id, "errors": errors}
 
 async def perform_get_ban(bot, target_input: str) -> dict:
     discord_id, vrchat_id = await resolve_target(target_input)

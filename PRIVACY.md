@@ -1,6 +1,6 @@
 # O-SAVS Privacy Policy
 
-*Last Updated: November 17, 2026*
+*Last Updated: November 21, 2026*
 
 O-SAVS ("the Bot") is committed to protecting user privacy and maintaining transparency regarding data collection, storage, and usage.
 
@@ -9,16 +9,16 @@ To provide global age-verification functionality, O-SAVS stores the following mi
 - **Discord User ID:** Stored as text to uniquely identify users across participating servers.
 - **VRChat User ID:** Stored as text to map verified status between Discord and VRChat accounts.
 - **Server Settings:** Guild IDs, role IDs, channel IDs (verification panel and logs), required pre-role IDs, default server language preferences, and custom verification prefix codes configured by server administrators.
-- **Global User Sanction Records:** Discord User IDs or VRChat User IDs, internal reason codes, timestamps, and moderator IDs for globally banned accounts to enforce system-wide exclusions.
-- **Global Server Sanction Records:** Server IDs, internal reason codes, timestamps, and moderator IDs for globally banned servers, used to ensure the Bot leaves and does not rejoin those servers.
-- **Admin Action Logs:** Timestamps, the acting administrator's dashboard username, the action taken, the target Discord/VRChat ID or server ID, any reason provided, and a summary of the action's result (which may include details such as a server name or VRChat username), recorded for every action performed through the Admin Dashboard.
+- **Global User Sanction Records:** Discord User IDs or VRChat User IDs, internal reason codes, timestamps, and moderator IDs for globally banned accounts to enforce system-wide exclusions. Reasons are stored encrypted.
+- **Global Server Sanction Records:** Server IDs, internal reason codes, timestamps, and moderator IDs for globally banned servers, used to ensure the Bot leaves and does not rejoin those servers. Reasons are stored encrypted.
+- **Admin Action Logs:** Timestamps, the acting administrator's dashboard username, the action taken, the target Discord/VRChat ID or server ID, any reason provided (stored encrypted), and a summary of the action's result (which may include details such as a server name or VRChat username), recorded for every action performed through the Admin Dashboard. Successful dashboard logins and logouts are not logged; failed login attempts are, to detect and limit abuse.
 
 ### Information Viewed by O-SAVS Administration
 - **Server Metadata:** Server names and member counts are retrieved live from Discord and shown to O-SAVS Administration in the Admin Dashboard for auditing and support. They are not stored in the bot database, though they may appear in Admin Action Logs as described above.
 - **Verification Logs:** When a user verifies, is linked, unlinked, or banned, a log entry is posted in the `#verification-logs` channel of each affected server, visible to that server's administrators. A global log is also posted in the primary O-SAVS server. These entries include the user's Discord ID, VRChat User ID, and VRChat display name, and the global log also names the origin server.
 
 ### Ban Evidence
-When a global ban of a user or server is being reviewed or issued, O-SAVS Administration may store evidence related to that ban, such as message content along with the associated message, author, channel, and server IDs and timestamps. This evidence is kept in a restricted evidence forum on Discord, hosted by Discord and accessible only to authorized O-SAVS Administration. This applies only to content relevant to the ban (see Section 2).
+When a global ban of a user or server is being reviewed or issued, O-SAVS Administration may store evidence related to that ban, such as message content along with the associated message, author, channel, and server IDs and timestamps. A ban reason is also posted there when the ban is issued, before it is stored encrypted in the database. This evidence is kept in a restricted evidence forum on Discord, hosted by Discord and accessible only to authorized O-SAVS Administration. This applies only to content relevant to the ban (see Section 2).
 
 ## 2. Information We DO NOT Collect
 - **Personal Identification Documents:** We do not request, collect, or store real names, IDs, passports, driver's licenses, or facial images.
