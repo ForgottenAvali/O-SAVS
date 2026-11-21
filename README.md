@@ -65,7 +65,7 @@ O-SAVS (Open-Source Age Verification System) is a global Discord age-verificatio
 - **Auto-Syncing.** Verified roles are assigned automatically to members who join, to members already in the global database when a server is set up, and to verified members when the bot starts. Globally banned users are skipped.
 - **Panel Updates.** On startup and after every maintenance exit, verification panels are checked and refreshed automatically if their layout has changed.
 - **Maintenance Mode.** Pauses new verifications without taking the bot offline. See [Maintenance Mode](#maintenance-mode).
-- **Global Bans.** Discord and VRChat IDs can be banned globally, and entire servers can be banned. Banned servers are left immediately, and the bot leaves again if re-added. When an evidence forum is configured, each global user ban also opens an evidence thread.
+- **Global Bans.** Discord and VRChat IDs can be banned globally, and entire servers can be banned. Banned servers are left immediately, and the bot leaves again if re-added. When an evidence forum is configured, each global user ban and server ban also opens an evidence thread, and unbanning posts a note in that same thread. Ban reasons are stored encrypted in the database (see [Database Architecture](#database-architecture)).
 - **Auto-Cleanup.** Purges a server's configuration from the O-SAVS database upon bot removal. Discord roles, channels, and member verifications are left intact.
 - **Single-Instance Lock.** Prevents two copies of the bot from running on the same host at once.
 - **Admin Dashboard.** A standalone desktop application used by O-SAVS Administration to manage the bot. See [Admin Dashboard](#admin-dashboard).
@@ -105,7 +105,7 @@ O-SAVS Administration manages the bot through a standalone desktop application r
 - **Server Management.** View every server the bot is in, ban or unban entire servers, and request temporary, single-use support invites for auditing purposes. Invites are sent to the administrator by direct message, so the dashboard account must be linked to a Discord ID.
 - **Server Removal.** Remove the bot from a server on demand. This action requires the administrator's personal authorization code and a stated reason.
 - **Maintenance Control.** Enter or exit [Maintenance Mode](#maintenance-mode) from the sidebar. This action requires the administrator's personal authorization code.
-- **Audit Logging.** Every administrative action taken through the dashboard is recorded and searchable.
+- **Audit Logging.** Every administrative action taken through the dashboard is recorded and searchable. Reasons in the log are stored encrypted. Successful logins and logouts are not logged; failed login attempts are.
 - **Restricted Access.** Access is limited to authorized administrators through a credentialed login. Accounts linked to a Discord ID are cross-checked against the admin allow-list (`utils/administrator_user_ids.json`). Failed login attempts are rate-limited (5 attempts, then a 15-minute lockout), as are failed authorization codes.
 - **Session Security.** Sessions use bearer tokens that expire after 7 days. Logging out, or resetting an account's password or authorization code, or disabling the account, ends its sessions. Saved sessions are stored in the operating system's secure credential store.
 - **Updates.** The application checks for new releases and displays release notes for each version.
@@ -181,8 +181,8 @@ Stored in `utils/database.db` (SQLite, WAL mode).
 
 - **`server_settings`** stores per-guild configuration. Primary key: `server_id`. Fields: `verified_role`, `verify_channel`, `verification_logs`, `av_start_code`, `required_role`, `language`.
 - **`verified_users`** maps Discord accounts to VRChat accounts. Primary key: `discord_id`. Fields: `vrchat_id` (unique, stored lowercase).
-- **`banned_users`** holds global user ban records. Primary key: `target_id`, which may be either a Discord ID or a VRChat User ID. Fields: `reason`, `moderator_id`, `timestamp`, `ban_group`. Bans issued together (a Discord ID and its linked VRChat ID) share a `ban_group`, so lifting one lifts the other.
-- **`banned_servers`** holds banned server records. The bot automatically leaves any server listed here. Primary key: `server_id`. Fields: `reason`, `moderator_id`, `timestamp`.
+- **`banned_users`** holds global user ban records. Primary key: `target_id`, which may be either a Discord ID or a VRChat User ID. Fields: `reason` (stored encrypted), `moderator_id`, `timestamp`, `ban_group`, `evidence_thread_id`. Bans issued together (a Discord ID and its linked VRChat ID) share a `ban_group`, so lifting one lifts the other.
+- **`banned_servers`** holds banned server records. The bot automatically leaves any server listed here. Primary key: `server_id`. Fields: `reason` (stored encrypted), `moderator_id`, `timestamp`, `evidence_thread_id`.
 - **`bot_state`** stores persistent runtime state, such as the maintenance mode flag. Primary key: `key`. Fields: `value`.
 
 ### Admin Database
@@ -190,7 +190,11 @@ Stored in `utils/database.db` (SQLite, WAL mode).
 Stored in `utils/admin_app.db`. Used only when the Admin Dashboard API (`admin_api.py`) is installed.
 
 - **`admin_accounts`** stores dashboard administrator credentials. Passwords and authorization codes are stored as salted hashes. Primary key: `username`. Fields: `password_hash`, `salt`, `discord_id`, `auth_code_hash`, `auth_code_salt`, plus the hashing cost, a session counter and a disabled flag.
-- **`action_log`** is the audit trail of administrative actions. Primary key: `id`. Fields: `timestamp`, `actor_username`, `action`, `target`, `reason`, `result_summary`.
+- **`action_log`** is the audit trail of administrative actions. Primary key: `id`. Fields: `timestamp`, `actor_username`, `action`, `target`, `reason` (stored encrypted), `result_summary`.
+
+### Ban Reason Encryption
+
+Ban reasons in `banned_users`, `banned_servers` and `action_log` are encrypted before they are written, so a leaked database file alone does not reveal them. The plaintext reason is still posted to Discord (the evidence thread and log embeds) before it is encrypted, and administrators see it decrypted in the dashboard and `/admin bancheck`. Encryption uses the standard library only (HMAC-SHA256 in counter mode with an HMAC integrity tag) and a key from `BAN_REASON_KEY` in `.env`, which is never stored in the database. Rows created before encryption was added are encrypted automatically on first start. **If the key is lost, stored reasons cannot be recovered**, so keep a backup away from the database.
 
 ---
 
@@ -226,6 +230,7 @@ Required:
 - `VRC_USER`: VRChat account username.
 - `VRC_PASS`: VRChat account password.
 - `CONTACT`: Contact information included in the user agent sent to the VRChat API.
+- `BAN_REASON_KEY`: Secret used to encrypt ban reasons (32+ random characters). Generate one with `python -c "import secrets; print(secrets.token_urlsafe(48))"`. Keep it private and backed up; losing it makes stored reasons unreadable.
 
 Admin Dashboard only:
 
@@ -238,7 +243,7 @@ Admin Dashboard only:
 
 - `PRIMARY_SERVER`: ID of your main server. The `/admin` commands are registered here, and it is excluded from the public server count.
 - `GLOBAL_LOG_CHANNEL_ID`: ID of the channel in the primary server where global verification events are logged.
-- `EVIDENCE_FORUM_CHANNEL_ID`: ID of a forum channel where an evidence thread is created for each global user ban. Leave unset to disable evidence threads.
+- `EVIDENCE_FORUM_CHANNEL_ID`: ID of a forum channel where an evidence thread is created for each global user ban and server ban. Leave unset to disable evidence threads.
 - `BOT_ID`: The bot's own user ID. It is excluded from the verified-user count.
 
 ### 4. Configure the Admin Allow-List
@@ -269,7 +274,7 @@ cogs/
   admin_commands.py         /admin slash commands (optional)
   create_admin.py           Create dashboard accounts, set authorization codes
 data/
-  database.py               Bot database access
+  database.py               Bot database access and ban reason encryption
   languages.py              All localized text
   vrchat.py                 VRChat API login and profile lookups
   sanitize.py               ID parsing and markdown escaping for admin input and names
