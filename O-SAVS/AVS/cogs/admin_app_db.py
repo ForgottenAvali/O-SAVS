@@ -2,6 +2,8 @@ import asyncio, aiosqlite, hashlib, hmac, os, secrets, shutil
 
 from datetime import datetime, timezone
 
+from data.database import encrypt_text, decrypt_text
+
 DB_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "utils", "admin_app.db"))
 
 PBKDF2_ITERATIONS = 600_000
@@ -231,28 +233,24 @@ async def log_action(actor_username: str, action: str, target: str, reason: str,
             """INSERT INTO action_log
                (timestamp, actor_username, action, target, reason, result_summary)
                VALUES (?, ?, ?, ?, ?, ?)""",
-            (datetime.now(timezone.utc).isoformat(), actor_username, action, target, reason, result_summary),
+            (datetime.now(timezone.utc).isoformat(), actor_username, action, target, encrypt_text(reason), result_summary),
         )
         await conn.commit()
 
 async def search_logs(query: str = "", limit: int = 300):
     async with aiosqlite.connect(DB_PATH) as conn:
         conn.row_factory = aiosqlite.Row
+        async with conn.execute("SELECT * FROM action_log ORDER BY id DESC") as cursor:
+            rows = [dict(r) for r in await cursor.fetchall()]
 
-        if query:
-            like = f"%{query}%"
-            async with conn.execute(
-                """SELECT * FROM action_log
-                   WHERE actor_username LIKE ? OR action LIKE ? OR target LIKE ?
-                      OR reason LIKE ? OR result_summary LIKE ?
-                   ORDER BY id DESC LIMIT ?""",
-                (like, like, like, like, like, limit),
-            ) as cursor:
-                rows = await cursor.fetchall()
-        else:
-            async with conn.execute(
-                "SELECT * FROM action_log ORDER BY id DESC LIMIT ?", (limit,)
-            ) as cursor:
-                rows = await cursor.fetchall()
-
-        return [dict(r) for r in rows]
+    q = query.lower()
+    results = []
+    for r in rows:
+        r["reason"] = decrypt_text(r.get("reason"))
+        if q and not any(q in str(r.get(k) or "").lower()
+                         for k in ("actor_username", "action", "target", "reason", "result_summary")):
+            continue
+        results.append(r)
+        if len(results) >= limit:
+            break
+    return results
