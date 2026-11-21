@@ -300,14 +300,12 @@ class AdminAPI(commands.Cog):
         for k in keys:
             _clear_failed_logins(k)
         token = _new_token(account["username"], account["discord_id"], account["session_epoch"])
-        await db.log_action(account["username"], "login", None, None, "Success")
         return web.json_response({"success": True, "token": token, "username": account["username"]})
 
     async def logout(self, request: web.Request):
         auth = request.headers.get("Authorization", "")
-        session = _sessions.pop(auth[len("Bearer "):], None) if auth.startswith("Bearer ") else None
-        if session:
-            await db.log_action(session["username"], "logout", None, None, "Success")
+        if auth.startswith("Bearer "):
+            _sessions.pop(auth[len("Bearer "):], None)
         return web.json_response({"success": True})
 
     async def servers(self, request: web.Request):
@@ -389,7 +387,9 @@ class AdminAPI(commands.Cog):
         if denied:
             return denied
 
-        result = await admin_core.perform_ban_server(self.bot, session["discord_id"], server_id, reason)
+        result = await admin_core.perform_ban_server(
+            self.bot, session["discord_id"], server_id, reason, operator_name=session["username"]
+        )
         await db.log_action(session["username"], "ban_server", str(server_id), reason, str(result))
         return web.json_response(result)
 
@@ -405,7 +405,9 @@ class AdminAPI(commands.Cog):
         if denied:
             return denied
 
-        result = await admin_core.perform_unban_server(server_id)
+        result = await admin_core.perform_unban_server(
+            server_id, self.bot, session["discord_id"], session["username"], reason
+        )
         await db.log_action(session["username"], "unban_server", str(server_id), reason, str(result))
         return web.json_response(result)
 
