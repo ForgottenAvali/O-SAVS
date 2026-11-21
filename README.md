@@ -211,10 +211,17 @@ Ban reasons in `banned_users`, `banned_servers` and `action_log` are encrypted b
   - **Embed Links & Attach Files**: Required to render styled UI layouts and status notices.
   - **Create Invite** (optional): Only needed for the admin invite command and dashboard feature.
 - **VRChat Account** that the bot uses to read public profiles. A dedicated account is recommended.
+- **Windows Python launcher (`py`)** if you use `run.bat`. It is included with the standard Python installer from python.org.
 
 > **Role Hierarchy Safety:** The bot's top role in your Discord server must be positioned **higher** than the verified role and required pre-roles it is configured to manage.
 
 ### 1. Install Dependencies
+
+`requirements.txt` lives in the top-level `O-SAVS` folder, one folder above the `AVS` folder that holds `run.bat` and `bot.py`.
+
+**Windows:** you can skip this step. `run.bat` installs and updates the dependencies for you every time it starts (see [Step 5](#5-start-the-bot)).
+
+**Manual install (Linux, macOS, or Windows without `run.bat`):** run this from the `O-SAVS` folder (the one that contains `requirements.txt`):
 
 ```bash
 pip install -r requirements.txt
@@ -222,7 +229,7 @@ pip install -r requirements.txt
 
 ### 2. Configure Environment Variables
 
-Create a `.env` file in the project root.
+Create a `.env` file in the top-level `O-SAVS` folder, next to `requirements.txt` (one folder above `bot.py`).
 
 Required:
 
@@ -252,6 +259,17 @@ Add the Discord user IDs of your administrators to `utils/administrator_user_ids
 
 ### 5. Start the Bot
 
+**Windows (recommended):** double-click `run.bat`.
+
+`run.bat` does the following:
+
+1. Switches to its own folder, so it works no matter where you launch it from.
+2. Looks for `requirements.txt` in the parent folder and runs `pip install -U -r` on it. If the file is missing, it skips the install and continues. If the install fails, it shows the error and stops.
+3. Starts `bot.py` and passes along any arguments you gave it.
+4. Pauses when the bot exits so you can read any errors.
+
+**Manual start (Linux, macOS, or Windows without `run.bat`):** run this from the `AVS` folder (the one that contains `bot.py`):
+
 ```bash
 python bot.py
 ```
@@ -263,27 +281,33 @@ On first launch, VRChat may request a two-factor code in the console. Once enter
 ## Project Structure
 
 ```
-bot.py                      Entry point, status loop, startup
-settings.py                 Server and channel IDs
-cogs/
-  verification.py           Verification flow, panels, /setup wizard
-  admin_core.py             Shared admin logic (required by both admin options)
-  admin_api.py              Dashboard HTTP API (optional)
-  admin_app_db.py           Dashboard accounts and audit log (optional)
-  admin_update.py           Dashboard update checks (optional)
-  admin_commands.py         /admin slash commands (optional)
-  create_admin.py           Create dashboard accounts, set authorization codes
-data/
-  database.py               Bot database access and ban reason encryption
-  languages.py              All localized text
-  vrchat.py                 VRChat API login and profile lookups
-  sanitize.py               ID parsing and markdown escaping for admin input and names
-  lock.py                   Single-instance lock
-utils/
-  database.db               Bot database (created automatically)
-  administrator_user_ids.json  Admin allow-list
-  vrc_auth_token.json       Saved VRChat session (created automatically)
-  panel_state.json          Panel layout hash (created automatically)
+O-SAVS/
+  .env                      Environment variables (see Installation & Host Setup)
+  requirements.txt          Python dependencies
+  AVS/
+    run.bat                 Windows launcher: installs requirements, starts bot.py
+    bot.py                  Entry point, status loop, startup
+    settings.py             Server and channel IDs
+    cogs/
+      verification.py       Verification flow, panels, /setup wizard
+      admin_core.py         Shared admin logic (required by both admin options)
+      admin_api.py          Dashboard HTTP API (optional)
+      admin_app_db.py       Dashboard accounts and audit log (optional)
+      admin_update.py       Dashboard update checks (optional)
+      admin_commands.py     /admin slash commands (optional)
+      create_admin.py       Create dashboard accounts, set authorization codes
+    data/
+      database.py           Bot database access and ban reason encryption
+      languages.py          All localized text
+      vrchat.py             VRChat API login and profile lookups
+      sanitize.py           ID parsing and markdown escaping for admin input and names
+      lock.py               Single-instance lock
+    utils/
+      database.db           Bot database (created automatically)
+      admin_app.db          Dashboard accounts and audit log (created automatically)
+      administrator_user_ids.json  Admin allow-list
+      vrc_auth_token.json   Saved VRChat session (created automatically)
+      panel_state.json      Panel layout hash (created automatically)
 ```
 
 ---
