@@ -1,8 +1,8 @@
 # O-SAVS Terms of Service
 
-*Last Updated: November 17, 2026*
+*Last Updated: November 22, 2026*
 
-By inviting, configuring, or using O-SAVS ("the Bot") in your Discord server, or by verifying through the Bot as an end-user, you agree to the following terms:
+By inviting, configuring, or using O-SAVS ("the bot") in your Discord server, or by verifying through the bot as an end-user, you agree to the following terms:
 
 ## 1. Acceptable Use
 - **Age Requirement:** O-SAVS is designed to restrict access to adult (18+) spaces. Users under the age of 18 are strictly prohibited from attempting to bypass verification systems.
@@ -12,7 +12,7 @@ By inviting, configuring, or using O-SAVS ("the Bot") in your Discord server, or
   - Users also may not attempt to link multiple Discord accounts to a single VRChat profile or use alternate accounts to bypass an existing global ban.
 
 ## 2. Server Administrator Responsibilities & Bot Access
-- **Role Hierarchy & Setup Permissions:** Server owners are responsible for ensuring O-SAVS has the required permissions (`Manage Roles`, `Manage Channels`, `Send Messages`, `Embed Links`, etc.) and that the bot's highest role is positioned above any verified roles.
+- **Role Hierarchy & Setup Permissions:** Server owners are responsible for ensuring O-SAVS has the required permissions (`Manage Roles`, `Manage Channels`, `Send Messages`, `Embed Links`, `Read Message History`, `View CHannels`, `Send Messages`) and that the bot's highest role is positioned above any verified roles.
 - **Language & Server Configuration:** Administrators are responsible for configuring default server languages and ensuring panel setups comply with community needs.
 - **Access Management:** Server administrators must comply with Discord's Community Guidelines regarding age-gated channels and content moderation.
 - **System Administration & Support Access:** The O-SAVS administrators reserve the right to audit server installations and generate temporary, single-use access links through the official O-SAVS Admin Dashboard, exclusively for technical support, verification abuse investigations, security auditing, or compliance checks.
@@ -23,12 +23,12 @@ By inviting, configuring, or using O-SAVS ("the Bot") in your Discord server, or
 - **Scope:** Global bans issued by O-SAVS administrators revoke verification status and block users from verifying across **all** participating Discord servers using the bot. A global ban does not remove anyone from a Discord server. Server-level administrators cannot override a global system ban within their own guilds.
 
 ### 3.2 Global Server Bans
-- **Grounds:** O-SAVS Administration may globally ban a server for violating these Terms, abusing or attempting to exploit the Bot, hosting or enabling verification abuse or ban evasion, or operating in violation of Discord's Community Guidelines or Terms of Service. Bans are issued at the sole discretion of O-SAVS Administration.
-- **Effect:** When a server is globally banned, the Bot automatically leaves it and will leave again if re-added. Server-level administrators cannot override a global server ban. Banned servers lose access to O-SAVS verification and syncing.
+- **Grounds:** O-SAVS Administration may globally ban a server for violating these Terms, abusing or attempting to exploit the bot, hosting or enabling verification abuse or ban evasion, or operating in violation of Discord's Community Guidelines or Terms of Service. Bans are issued at the sole discretion of O-SAVS Administration.
+- **Effect:** When a server is globally banned, the bot automatically leaves it and will leave again if re-added. Server-level administrators cannot override a global server ban. Banned servers lose access to O-SAVS verification and syncing.
 - **Records:** The server's ID, reason, timestamp, and moderator ID are retained to enforce the ban, as described in the [Privacy Policy](PRIVACY.md).
 
 ### 3.3 Evidence
-By using the Bot or having it in your server, you acknowledge that message content related to a global user ban or global server ban may be stored by O-SAVS Administration as evidence, as described in the [Privacy Policy](PRIVACY.md). O-SAVS does not read, log, or store chat messages unrelated to a ban.
+By using the bot or having it in your server, you acknowledge that message content related to a global user ban or global server ban may be stored by O-SAVS Administration as evidence, as described in the [Privacy Policy](PRIVACY.md). O-SAVS does not read, log, or store chat messages unrelated to a ban.
 
 ### 3.4 Appeals
 Users and servers who believe a global ban was issued in error may file an appeal by joining the [Noodle's Nexus](https://discord.gg/PeXzxBeUcB) support server. Decisions made by O-SAVS Administration regarding global bans are final.
